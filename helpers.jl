@@ -44,6 +44,9 @@ threshold matrix by percentage
 function threshold_matrix(A,d)
     A_flat = sort(vec(A))
     index = Int(round(d*length(A_flat))) + 1
+    if index > length(A_flat)
+        index = length(A_flat)
+    end
     threshold = A_flat[index]
     A_thresh = copy(A)
     A_thresh[A_thresh.<threshold] .= 0
