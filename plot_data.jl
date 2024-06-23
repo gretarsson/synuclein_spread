@@ -2,6 +2,7 @@ using DelimitedFiles
 using Plots
 using Statistics
 using GLMakie
+include("helpers.jl")
 #=
 In this file, we read the structural connectome and plot it.
 We also read total_path.csv and plot each regions timeseries. remove ROIs not found in struct. connectome,
@@ -17,16 +18,8 @@ W_labeled = readdlm(file_W, ',')
 W_labels = W_labeled[2:end,1]
 W = W_labeled[2:end,2:end]
 N = size(W, 1)
-for i in 1:N  # removing self-loops
-    W[i,i] = 0
-end
-# create Laplacian from struct. connectome
-D = zeros(N,N)  # out-degree matrix
-for i in 1:N
-    W[i,i] = 0
-    D[i,i] = sum(W[i,:])
-end
-L = D - W 
+L = laplacian_out(W)
+writedlm("data/W.csv", W, ',')
 writedlm("data/L_out.csv", L, ',')
 
 # plot adjacency matrix

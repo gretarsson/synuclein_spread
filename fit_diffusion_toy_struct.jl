@@ -16,12 +16,15 @@ using LinearAlgebra
 using Random
 Random.seed!(16);
 
+include("helpers.jl")
+
 #=
 Read data 
 =#
-L = readdlm("data/L_out.csv",',')
+W = readdlm("data/W.csv",',')
+L = laplacian_out(W)
 LT = transpose(L)  # to use col vecs and Lx, we use the transpose
-N = size(L,1)
+N = size(LT,1)
 
 #=
 Define, simulate, and plot model
@@ -35,14 +38,19 @@ end
 
 # Define initial-value problem.
 alg = Tsit5()
-u0 = [1.0 for i in 1:N]  # initial conditions
+alg_stiff = TRBDF2()
+max_iter = Int(10^8)
+u0 = [1. for i in 1:N]  # initial conditions
 u0[1] = 1  # seed
 p = 0.075
 tspan = (0.0,9.0)
 prob = ODEProblem(diffusion, u0, tspan, p)
 
 # Plot simulation.
-@btime solve(prob,alg)
+
+# dense: 
+# sparse:
+@btime solve(prob,alg, abstol=1e-4, reltol=1e-2)
 plot(solve(prob, alg), legend=false)
 
 
@@ -71,12 +79,12 @@ u0_prior_std = [0.05 for i in 1:N]
 @model function fitlv(data, prob)
     # Prior distributions.
     σ ~ InverseGamma(2, 3)
-    ρ ~ Normal(0, 0.5)
+    ρ ~ truncated(Normal(1.0, 0.1); lower=0., upper=Inf)
     u0 ~ MvNormal(u0_prior_avg, u0_prior_std)
 
     # Simulate diffusion model 
     p = ρ
-    predicted = solve(prob, alg; u0=u0, p=p, saveat=timestep)
+    predicted = solve(prob, alg; u0=u0, p=p, saveat=timestep, abstol=1e-4, reltol=1e-2)
 
     # Observations.
     for i in 1:length(predicted)
@@ -89,7 +97,7 @@ end
 model = fitlv(odedata, prob)
 
 # Sample 3 independent chains with forward-mode automatic differentiation (the default).
-chain = sample(model, NUTS(), MCMCSerial(), 1000, 3; progress=false)
+chain = sample(model, NUTS(), MCMCSerial(), 1000, 1; progress=true)
 chain_plot = StatsPlots.plot(chain)
 save("figures/diffusion_inference/diffusion_toy_struct/chain_plot.png",chain_plot)
 
