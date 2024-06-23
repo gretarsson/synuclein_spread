@@ -1,50 +1,40 @@
 using DifferentialEquations
 using DelimitedFiles
 using Plots
+using SparseArrays
+using BenchmarkTools
+include("helpers.jl")
 
 # create random Laplacian
 N = 10
-W = rand([0,1], N, N)
-W = W*W'
-for i in 1:N
-    W[i,i] = 0
-end
-D = zeros(N,N)
-for i in 1:N
-    D[i,i] = sum(W[i,:])
-end
-L = D - W
+L_rand = random_laplacian(N)
 
 # read strutural connectome
-file_W = "C:/Users/cga32/Desktop/synuclein_spread/data/W_labeled.csv"
-W_labeled = readdlm(file_W, ',')
-W = W_labeled[2:end,2:end]
+file_W = "C:/Users/cga32/Desktop/synuclein_spread/data/W.csv"
+W = readdlm(file_W, ',')
 N = size(W, 1)
+W = threshold_matrix(W,0.9)
+L = laplacian_out(W)
+LT = transpose(L)
+LT_sparse = sparse(LT)
 
-# create Laplacian from struct. connectome
-D = zeros(N,N)  # out-degree matrix
-for i in 1:N
-    W[i,i] = 0
-    D[i,i] = sum(W[i,:])
-end
-L = D - W 
-
-# define ODE
-function diffusion(du,u,p,t;L=L)
+# Define network diffusion model.
+function diffusion(du,u,p,t;L=LT_sparse)
     ρ = p
-    du .= -ρ*u*L  # u is a row vector
+    du .= -ρ*L*u  
 end
 
 # settings for ODE
-u0 = transpose([0.0 for i in 1:N])  # initial conditions
+u0 = [0.0 for i in 1:N]  # initial conditions
 u0[1] = N  # seed
-p = 1.
-tspan = (0.0,10.0)
+p = 0.025
+tspan = (0.0,9.0)
 
 # run ODE
 prob = ODEProblem(diffusion,u0, tspan,p)
+@btime solve(prob, Tsit5())
 sol = solve(prob, Tsit5())
-plot(sol)
+Plots.plot(sol)
 
 
 

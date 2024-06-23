@@ -29,6 +29,10 @@ xticks!(0:50:N)
 yticks!(reverse(0:50:N))
 savefig("figures/adjacency_matrix.pdf")
 
+# plot histogram of adjacency matrix elements
+histogram(vec(W), xlims=(0,30), norm=true)
+
+
 
 # read total pathology
 file_total_path = "C:/Users/cga32/Desktop/synuclein_spread/data/total_path.csv"

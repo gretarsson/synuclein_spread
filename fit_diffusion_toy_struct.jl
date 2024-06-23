@@ -33,7 +33,7 @@ Define, simulate, and plot model
 # Define network diffusion model.
 function diffusion(du,u,p,t;L=LT)
     ρ = p
-    du .= -ρ*L*u  # u is a row vector
+    du .= -ρ*L*u  
 end
 
 # Define initial-value problem.
