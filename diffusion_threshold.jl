@@ -63,7 +63,9 @@ println(mses)
 
 mean_mses = mean(eachrow(mses))
 vars_mses = std(eachrow(mses))
-Plots.plot(thresholds,mean_mses; legend=false, color=:tab10, yerror=vars_mses)
-ylims!((-Inf,0.25))
-ylabel!("normalized mean squared error")
-xlabel!("Thresholding level %")
+fig = Plots.plot(thresholds,mean_mses; legend=false, color=:tab10, yerror=vars_mses)
+ylims!((-Inf,0.1))
+ylabel!("Normalized mean squared error")
+xlabel!("Thresholding level")
+savefig(fig, "figures/thresholding/mse_struct_threshold.pdf")
+
