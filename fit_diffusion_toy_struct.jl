@@ -58,9 +58,10 @@ plot(solve(prob, alg), legend=false)
 create synthetic data from simulation
 =#
 timestep = 1.
-variance = 0.01
+variance = 0.5
 sol = solve(prob, alg; saveat=timestep)
 odedata = Array(sol) + variance * randn(size(Array(sol)))
+odedata[odedata.<0] .= 0
 
 # Plot simulation and noisy observations.
 plt = plot(sol; alpha=0.7)
@@ -80,7 +81,7 @@ u0_prior_std = [0.05 for i in 1:N]
     # Prior distributions.
     σ ~ InverseGamma(2, 3)
     ρ ~ truncated(Normal(1.0, 0.1); lower=0., upper=Inf)
-    u0 ~ MvNormal(u0_prior_avg, u0_prior_std)
+    #u0 ~ MvNormal(u0_prior_avg, u0_prior_std)
 
     # Simulate diffusion model 
     p = ρ
@@ -116,8 +117,9 @@ end
 posterior_samples = sample(chain, 300; replace=false)
 for sample in eachrow(Array(posterior_samples))
     ρ = sample[2]
-    u0 = sample[3:end]
-    sol_p = solve(prob, alg; p=ρ, u0=u0, saveat=0.1)
+    #u0 = sample[3:end]
+    #sol_p = solve(prob, alg; p=ρ, u0=u0, saveat=0.1)
+    sol_p = solve(prob, alg; p=ρ, saveat=0.1)
     for i in 1:N
         lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
     end
