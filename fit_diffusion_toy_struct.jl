@@ -11,6 +11,10 @@ import StatsPlots
 Makie.inline!(true)
 
 using LinearAlgebra
+using TuringBenchmarking
+using ReverseDiff
+using Zygote
+using SciMLSensitivity
 
 # Set a seed for reproducibility.
 using Random
@@ -101,29 +105,32 @@ end
 model = fitlv(odedata, prob)
 
 # benchmarking 
-using TuringBenchmarking
-using ReverseDiff
-using Zygote
-using SciMLSensitivity
-#suite = TuringBenchmarking.make_turing_suite(
-#                model;
-#                adbackends=[:forwarddiff, :reversediff, :zygote]
-#            )
-#run(suite)
-
-benchmark_model(
-    model;
-    # Check correctness of computations
-    check=true,
-    # Automatic differentiation backends to check and benchmark
-    adbackends=[:forwarddiff, :reversediff, :reversediff_compiled, :zygote]
-)
+#benchmark_model(
+#    model;
+#    # Check correctness of computations
+#    check=true,
+#    # Automatic differentiation backends to check and benchmark
+#    adbackends=[:forwarddiff, :reversediff, :reversediff_compiled, :zygote]
+#)
 # with priors on ICs (450 parameters), AutoReverseDiff(true) is much better than AutoForwardDiff
 
-# Sample 3 independent chains with forward-mode automatic differentiation (the default).
-chain = sample(model, NUTS(;adtype=AutoReverseDiff(true)), 1000; progress=true)
+# Sample to approximate posterior
+chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
 chain_plot = StatsPlots.plot(chain)
 save("figures/diffusion_inference/diffusion_toy_struct/chain_plot.png",chain_plot)
+
+# plot individual posterior
+N_pars = size(chain)[2]
+vars = chain.info.varname_to_symbol
+i = 1
+for (key,value) in vars
+    println(key)
+    chain_i = Chains(chain[:,i,:], [value])
+    chain_plot_i = StatsPlots.plot(chain_i)
+    save("figures/diffusion_inference/diffusion_toy_struct/chain_$(i).png",chain_plot_i)
+    i += 1
+end
+
 
 
 #=
@@ -140,8 +147,8 @@ end
 posterior_samples = sample(chain, 300; replace=false)
 for sample in eachrow(Array(posterior_samples))
     ρ = sample[2]
-    #u0 = sample[3:end]
-    #sol_p = solve(prob, alg; p=ρ, u0=u0, saveat=0.1)
+    u0 = sample[3:end]
+    sol_p = solve(prob, alg; p=ρ, u0=u0, saveat=0.1)
     sol_p = solve(prob, alg; p=ρ, saveat=0.1)
     for i in 1:N
         lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
