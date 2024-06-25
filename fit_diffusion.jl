@@ -77,9 +77,17 @@ for i in 1:N
         u0_prior_avg[i] = 0.
     end
 end
+# create map for indices that are not NaN
+proper_idxs = [[] for _ in 1:length(timepoints)]
+for j in axes(data,2), i in axes(data,1)
+    if !isnan(data[i,j])
+        append!(proper_idxs[j], i)
+    end
+end
+# std of IC prior
 u0_prior_std = [0.05 for i in 1:N]
 
-@model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints)
+@model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints, proper_idxs=proper_idxs)
     # Prior distributions.
     σ ~ InverseGamma(2, 3)
     ρ ~ truncated(Normal(1.0, 0.1); lower=0., upper=Inf)
@@ -90,13 +98,20 @@ u0_prior_std = [0.05 for i in 1:N]
     predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, abstol=1e-4, reltol=1e-2)
 
     # Observations.
-    for j in axes(data,2), i in axes(data,1)
-        if isnan(data[i,j])  # skip NaN data points
-            continue
-        else
+    #for j in axes(data,2), i in axes(data,1)
+    #    if isnan(data[i,j])  # skip NaN data points
+    #        continue
+    #    else
+    #        data[i,j] ~ Normal(predicted[i,j], σ^2)
+    #    end
+    #end
+    for j in axes(data,2) 
+        for i in proper_idxs[j]  # using pre-defined indices is quicker
             data[i,j] ~ Normal(predicted[i,j], σ^2)
         end
     end
+
+
 
     return nothing
 end
@@ -106,14 +121,15 @@ model = fitlv(data, prob)
 
 
 # benchmarking 
-#benchmark_model(
-#    model;
-#    # Check correctness of computations
-#    check=true,
-#    # Automatic differentiation backends to check and benchmark
-#    adbackends=[:forwarddiff, :reversediff, :reversediff_compiled, :zygote]
-#)
+benchmark_model(
+    model;
+    # Check correctness of computations
+    check=true,
+    # Automatic differentiation backends to check and benchmark
+    adbackends=[:forwarddiff, :reversediff, :reversediff_compiled, :zygote]
+)
 # with priors on ICs (450 parameters), AutoReverseDiff(true) is much better than AutoForwardDiff
+# using proper_idxs gives (980ms, 1.7s linked/standard), for loop gives (960ms,3.0s)
 
 # Sample to approximate posterior
 chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
@@ -131,8 +147,6 @@ for (key,value) in vars
     save("figures/diffusion_inference/diffusion_data/chain_$(i).png",chain_plot_i)
     i += 1
 end
-
-
 
 #=
 Data retrodiciton
