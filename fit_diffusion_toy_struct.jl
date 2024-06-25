@@ -149,7 +149,7 @@ for sample in eachrow(Array(posterior_samples))
     ρ = sample[2]
     u0 = sample[3:end]
     sol_p = solve(prob, alg; p=ρ, u0=u0, saveat=0.1)
-    sol_p = solve(prob, alg; p=ρ, saveat=0.1)
+    #sol_p = solve(prob, alg; p=ρ, saveat=0.1)
     for i in 1:N
         lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
     end
