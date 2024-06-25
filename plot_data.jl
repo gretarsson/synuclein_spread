@@ -71,6 +71,7 @@ end
 # we therefore average over the mice at different time points
 # because julia has no nanmean function, we need to discard NaNs ourselves
 timepoints = sort(unique(total_path_time))
+writedlm("data/timepoints.csv", timepoints, ',')
 N_timepoints = length(timepoints)
 average_total_path = zeros(N,N_timepoints)
 for i in 1:N_timepoints

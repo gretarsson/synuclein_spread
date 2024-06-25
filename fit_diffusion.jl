@@ -109,8 +109,8 @@ model = fitlv(odedata, prob)
 
 # Sample to approximate posterior
 chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
-chain_plot = StatsPlots.plot(chain)
-save("figures/diffusion_inference/diffusion_toy_struct/chain_plot.png",chain_plot)
+#chain_plot = StatsPlots.plot(chain)
+#save("figures/diffusion_inference/diffusion_data/chain_plot.png",chain_plot)
 
 # plot individual posterior
 N_pars = size(chain)[2]
@@ -120,7 +120,7 @@ for (key,value) in vars
     println(key)
     chain_i = Chains(chain[:,i,:], [value])
     chain_plot_i = StatsPlots.plot(chain_i)
-    save("figures/diffusion_inference/diffusion_toy_struct/chain_$(i).png",chain_plot_i)
+    save("figures/diffusion_inference/diffusion_data/chain_$(i).png",chain_plot_i)
     i += 1
 end
 
@@ -153,7 +153,7 @@ ground_truth = solve(prob, alg; saveat=0.1)  # ground truth
 for i in 1:N
     lines!(axs[i], ground_truth.t, ground_truth[i,:]; linewidth=1, alpha=1., colormap=:tab10)
     scatter!(axs[i], sol.t, odedata[i,:], colormap=:tab10)
-    save("figures/diffusion_inference/diffusion_toy_struct/retrodiction_region_$(i).png", fs[i])
+    save("figures/diffusion_inference/diffusion_data/retrodiction_region_$(i).png", fs[i])
 end
 
 
