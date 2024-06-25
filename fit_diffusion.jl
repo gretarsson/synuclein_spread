@@ -11,10 +11,10 @@ import StatsPlots
 Makie.inline!(true)
 
 using LinearAlgebra
-using TuringBenchmarking
 using ReverseDiff
 using Zygote
 using SciMLSensitivity
+using TuringBenchmarking
 
 # Set a seed for reproducibility.
 using Random
@@ -52,12 +52,12 @@ prob = ODEProblem(diffusion, u0, tspan, p)
 
 # Plot simulation.
 #@btime solve(prob,alg, abstol=1e-4, reltol=1e-2)
-plot(solve(prob, alg; saveat=timepoints), legend=false)
+plot(solve(prob, alg), legend=false)
 
 #=
 read data
 =#
-file_data = "C:/Users/cga32/Desktop/synuclein_spread/data/avg_total_path.csv"
+file_data = "data/avg_total_path.csv"
 file_time = "data/timepoints.csv"
 data = readdlm(file_data, ',')
 timepoints = vec(readdlm(file_time, ','))
@@ -70,11 +70,16 @@ plt
 #=
 Bayesian estimation of model parameters
 =#
-# priors
+# priors (some data points are NaN, set them to zero at t=0)
 u0_prior_avg = data[:,1]
+for i in 1:N
+    if isnan(u0_prior_avg[i])
+        u0_prior_avg[i] = 0.
+    end
+end
 u0_prior_std = [0.05 for i in 1:N]
 
-@model function fitlv(data, prob; alg=alg, timestep=timestep, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints)
+@model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints)
     # Prior distributions.
     σ ~ InverseGamma(2, 3)
     ρ ~ truncated(Normal(1.0, 0.1); lower=0., upper=Inf)
@@ -86,16 +91,19 @@ u0_prior_std = [0.05 for i in 1:N]
 
     # Observations.
     for j in axes(data,2), i in axes(data,1)
-        data[i,j] ~ Normal(predicted[i,j], σ^2)
+        if isnan(data[i,j])  # skip NaN data points
+            continue
+        else
+            data[i,j] ~ Normal(predicted[i,j], σ^2)
+        end
     end
-    #for i in 1:length(predicted)
-    #    data[:,i] ~ MvNormal(predicted[i], σ^2 * I)
-    #end
 
     return nothing
 end
 
-model = fitlv(odedata, prob)
+
+model = fitlv(data, prob)
+
 
 # benchmarking 
 #benchmark_model(
@@ -109,8 +117,8 @@ model = fitlv(odedata, prob)
 
 # Sample to approximate posterior
 chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
-#chain_plot = StatsPlots.plot(chain)
-#save("figures/diffusion_inference/diffusion_data/chain_plot.png",chain_plot)
+chain_plot = StatsPlots.plot(chain)
+save("figures/diffusion_inference/diffusion_data/chain_plot.png",chain_plot)
 
 # plot individual posterior
 N_pars = size(chain)[2]
