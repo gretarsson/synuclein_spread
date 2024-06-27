@@ -121,13 +121,13 @@ model = fitlv(data, prob)
 
 
 # benchmarking 
-benchmark_model(
-    model;
-    # Check correctness of computations
-    check=true,
-    # Automatic differentiation backends to check and benchmark
-    adbackends=[:forwarddiff, :reversediff, :reversediff_compiled, :zygote]
-)
+#benchmark_model(
+#    model;
+#    # Check correctness of computations
+#    check=true,
+#    # Automatic differentiation backends to check and benchmark
+#    adbackends=[:forwarddiff, :reversediff, :reversediff_compiled, :zygote]
+#)
 # with priors on ICs (450 parameters), AutoReverseDiff(true) is much better than AutoForwardDiff
 # using proper_idxs gives (980ms, 1.7s linked/standard), for loop gives (960ms,3.0s)
 
@@ -171,10 +171,8 @@ for sample in eachrow(Array(posterior_samples))
 end
 
 # Plot simulation and noisy observations.
-ground_truth = solve(prob, alg; saveat=0.1)  # ground truth
 for i in 1:N
-    lines!(axs[i], ground_truth.t, ground_truth[i,:]; linewidth=1, alpha=1., colormap=:tab10)
-    scatter!(axs[i], sol.t, odedata[i,:], colormap=:tab10)
+    scatter!(axs[i], timepoints, data[i,:], colormap=:tab10)
     save("figures/diffusion_inference/diffusion_data/retrodiction_region_$(i).png", fs[i])
 end
 
