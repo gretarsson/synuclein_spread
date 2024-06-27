@@ -14,7 +14,7 @@ using LinearAlgebra
 using ReverseDiff
 using Zygote
 using SciMLSensitivity
-using TuringBenchmarking
+using TuringBenchmarking  # only version 0.5.1 works for Mac
 
 # Set a seed for reproducibility.
 using Random
@@ -30,6 +30,9 @@ L = laplacian_out(W)
 LT = transpose(L)  # to use col vecs and Lx, we use the transpose
 N = size(LT,1)
 
+# find seed iCP
+labels = readdlm("data/W_labeled.csv",',')[1,:]
+seed = findall(x->x=="iCP",labels)[1]
 #=
 Define, simulate, and plot model
 =#
@@ -42,18 +45,13 @@ end
 
 # Define initial-value problem.
 alg = Tsit5()
-alg_stiff = TRBDF2()
-max_iter = Int(10^8)
-u0 = [1. for i in 1:N]  # initial conditions
-u0[1] = 1  # seed
+u0 = [0. for i in 1:N]  # initial conditions
+u0[80] = 10  # seed
 p = [0.075]
 tspan = (0.0,9.0)
 prob = ODEProblem(diffusion, u0, tspan, p)
 sol = solve(prob,alg)
-
-# Plot simulation.
-#@btime solve(prob,alg, abstol=1e-4, reltol=1e-2)
-plot(sol, legend=false)
+StatsPlots.plot(sol; legend=false, ylim=(0,1))
 
 #=
 read data
@@ -88,6 +86,8 @@ end
 # std of IC prior
 u0_prior_std = [0.1 for i in 1:N]
 u0_prior_avg = [0. for i in 1:N]
+u0_prior_avg[seed] = 10.
+u0_prior_std[seed] = 1.
 
 @model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints, proper_idxs=proper_idxs)
     # Prior distributions.
