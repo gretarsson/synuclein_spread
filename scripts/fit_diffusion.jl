@@ -93,12 +93,12 @@ u0_prior_std[seed] = 1.
     # Prior distributions.
     σ ~ InverseGamma(2, 3)
     ρ ~ truncated(Normal(1.0, 0.1); lower=0.)
-    u0 ~ arraydist([truncated(Normal(u0_prior_avg[i], u0_prior_std[i]); lower=0) for i in 1:N])
+    #u0 ~ arraydist([truncated(Normal(u0_prior_avg[i], u0_prior_std[i]); lower=0) for i in 1:N])
 
     # Simulate diffusion model 
     p = [ρ]
     sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)) 
-    predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, sensealg=sensealg)
+    predicted = solve(prob, alg; u0=u0_prior_avg, p=p, saveat=timepoints, sensealg=sensealg)
 
     # Observations.
     for j in axes(data,2)  # 1.2s / 2.1s 
@@ -118,7 +118,7 @@ benchmark_model(
     model;
     # Check correctness of computations
     check=true,
-    # Automatic differentiation backends to check and benchmark
+        # Automatic differentiation backends to check and benchmark
     adbackends=[:forwarddiff, :reversediff]
 )
 
@@ -153,8 +153,8 @@ end
 posterior_samples = sample(chain, 300; replace=false)
 for sample in eachrow(Array(posterior_samples))
     ρ = sample[2]
-    u0 = sample[3:end]
-    sol_p = solve(prob, alg; p=ρ, u0=u0, saveat=0.1)
+    #u0 = sample[3:end]
+    sol_p = solve(prob, alg; p=ρ, u0=u0_prior_avg, saveat=0.1)
     #sol_p = solve(prob, alg; p=ρ, saveat=0.1)
     for i in 1:N
         lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
