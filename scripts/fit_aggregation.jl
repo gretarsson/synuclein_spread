@@ -40,19 +40,14 @@ Define, simulate, and plot model
 # Define network diffusion model.
 function diffusion(du,u,p,t;L=LT)
     ρ,α = p
-    du .= -ρ*L*u + α .* u .* (1 .- u)  
-
-    α,γ,κ = p 
-    x,y = u
-    du[1] = α*x*(y-x)
-    du[2] = -γ*(y-(1-κ*x))
+    du .= -ρ*L*u .+ α .* u .* (1 .- u)  
 end
 
 # Define initial-value problem.
 alg = Tsit5()
 u0 = [0. for i in 1:N]  # initial conditions
 u0[80] = 10  # seed
-p = [0.075]
+p = [0.075, 1.]
 tspan = (0.0,9.0)
 prob = ODEProblem(diffusion, u0, tspan, p)
 sol = solve(prob,alg)
