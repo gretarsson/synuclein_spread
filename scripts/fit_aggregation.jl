@@ -39,19 +39,19 @@ Define, simulate, and plot model
 
 # Define network diffusion model.
 function diffusion(du,u,p,t;L=LT)
-    ρ,α = p
-    du .= -ρ*L*u .+ α .* u .* (1 .- u)  
+    ρ,α,β = p
+    du .= -ρ*L*u .+ α .* u .* (β .- u)  
 end
 
 # Define initial-value problem.
 alg = Tsit5()
 u0 = [0. for i in 1:N]  # initial conditions
 u0[80] = 10  # seed
-p = [0.075, 1.]
+p = [0.075, 0.1, 0.1]
 tspan = (0.0,9.0)
 prob = ODEProblem(diffusion, u0, tspan, p)
 sol = solve(prob,alg)
-StatsPlots.plot(sol; legend=false, ylim=(0,1))
+StatsPlots.plot(sol; legend=false, ylim=(0,5))
 
 #=
 read data
@@ -86,19 +86,21 @@ end
 # std of IC prior
 u0_prior_std = [0.1 for i in 1:N]
 u0_prior_avg = [0. for i in 1:N]
-u0_prior_avg[seed] = 10.
-u0_prior_std[seed] = 1.
+#u0_prior_avg[seed] = 10.
+#u0_prior_std[seed] = 1.
 
 @model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints, proper_idxs=proper_idxs)
     # Prior distributions.
     σ ~ InverseGamma(2, 3)
     ρ ~ truncated(Normal(1.0, 0.1); lower=0.)
-    #u0 ~ arraydist([truncated(Normal(u0_prior_avg[i], u0_prior_std[i]); lower=0) for i in 1:N])
+    α ~ truncated(Normal(1.0, 0.1); lower=0.)
+    β ~ truncated(Normal(1.0, 0.1); lower=0.)
+    u0 ~ arraydist([truncated(Normal(u0_prior_avg[i], u0_prior_std[i]); lower=0) for i in 1:N])
 
     # Simulate diffusion model 
-    p = [ρ]
+    p = [ρ,α,β]
     sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)) 
-    predicted = solve(prob, alg; u0=u0_prior_avg, p=p, saveat=timepoints, sensealg=sensealg)
+    predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, sensealg=sensealg, abstol=1e-9, reltol=1e-6)
 
     # Observations.
     for j in axes(data,2)  # 1.2s / 2.1s 
@@ -119,13 +121,13 @@ benchmark_model(
     # Check correctness of computations
     check=true,
         # Automatic differentiation backends to check and benchmark
-    adbackends=[:forwarddiff, :reversediff]
+        adbackends=[:reversediff]
 )
 
 # Sample to approximate posterior
 chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
 chain_plot = StatsPlots.plot(chain)
-save("figures/diffusion_inference/diffusion_data/chain_plot.png",chain_plot)
+save("figures/aggregation_inference/aggregation_data/chain_plot.png",chain_plot)
 
 # plot individual posterior
 N_pars = size(chain)[2]
@@ -135,7 +137,7 @@ for (key,value) in vars
     println(key)
     chain_i = Chains(chain[:,i,:], [value])
     chain_plot_i = StatsPlots.plot(chain_i)
-    save("figures/diffusion_inference/diffusion_data/chain_$(i).png",chain_plot_i)
+    save("figures/aggregation_inference/aggregation_data/chain_$(i).png",chain_plot_i)
     i += 1
 end
 
@@ -153,9 +155,10 @@ end
 posterior_samples = sample(chain, 300; replace=false)
 for sample in eachrow(Array(posterior_samples))
     ρ = sample[2]
-    #u0 = sample[3:end]
-    sol_p = solve(prob, alg; p=ρ, u0=u0_prior_avg, saveat=0.1)
-    #sol_p = solve(prob, alg; p=ρ, saveat=0.1)
+    α = sample[3]
+    β = sample[4]
+    u0 = sample[5:end]
+    sol_p = solve(prob, alg; p=[ρ,α,β], u0=u0, saveat=0.1)
     for i in 1:N
         lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
     end
@@ -164,5 +167,5 @@ end
 # Plot simulation and noisy observations.
 for i in 1:N
     scatter!(axs[i], timepoints, data[i,:], colormap=:tab10)
-    save("figures/diffusion_inference/diffusion_data/retrodiction_region_$(i).png", fs[i])
+    save("figures/aggregation_inference/aggregation_data/retrodiction_region_$(i).png", fs[i])
 end

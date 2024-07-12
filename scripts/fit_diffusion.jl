@@ -86,7 +86,7 @@ end
 # std of IC prior
 u0_prior_std = [0.1 for i in 1:N]
 u0_prior_avg = [0. for i in 1:N]
-u0_prior_avg[seed] = 10.
+u0_prior_avg[seed] = 1.
 u0_prior_std[seed] = 1.
 
 @model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints, proper_idxs=proper_idxs)
@@ -98,7 +98,7 @@ u0_prior_std[seed] = 1.
     # Simulate diffusion model 
     p = [ρ]
     sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)) 
-    predicted = solve(prob, alg; u0=u0_prior_avg, p=p, saveat=timepoints, sensealg=sensealg)
+    predicted = solve(prob, alg; u0=u0_prior_avg, p=p, saveat=timepoints, sensealg=sensealg, abstol=1e-9, reltol=1e-6)
 
     # Observations.
     for j in axes(data,2)  # 1.2s / 2.1s 
