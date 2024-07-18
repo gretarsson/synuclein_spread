@@ -39,19 +39,25 @@ Define, simulate, and plot model
 
 # Define network diffusion model.
 function diffusion(du,u,p,t;L=LT)
-    ρ,α,β = p
+    ρ = p[1]
+    α = p[2:(1+N)]
+    β = p[(2+N):(1+2*N)]
+
     du .= -ρ*L*u .+ α .* u .* (β .- u)  
 end
 
 # Define initial-value problem.
 alg = Tsit5()
 u0 = [0. for i in 1:N]  # initial conditions
-u0[80] = 10  # seed
-p = [0.075, 0.1, 0.1]
+u0[80] = 1.  # seed
+α = [1. for _ in 1:N]
+β = [1. for _ in 1:N]
+ρ = 0.075
+p = [1, α..., β...]
 tspan = (0.0,9.0)
 prob = ODEProblem(diffusion, u0, tspan, p)
 sol = solve(prob,alg)
-StatsPlots.plot(sol; legend=false, ylim=(0,5))
+StatsPlots.plot(sol; legend=false, ylim=(0,1))
 
 #=
 read data
@@ -86,19 +92,28 @@ end
 # std of IC prior
 u0_prior_std = [0.1 for i in 1:N]
 u0_prior_avg = [0. for i in 1:N]
-#u0_prior_avg[seed] = 10.
-#u0_prior_std[seed] = 1.
+u0_prior_avg[seed] = 1.
+u0_prior_std[seed] = 0.2
 
-@model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints, proper_idxs=proper_idxs)
-    # Prior distributions.
+#u0 = [0. for _ in 1:N]
+@model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints, proper_idxs=proper_idxs, seed=seed)
+    # Prior on model parameters
     σ ~ InverseGamma(2, 3)
     ρ ~ truncated(Normal(1.0, 0.1); lower=0.)
-    α ~ truncated(Normal(1.0, 0.1); lower=0.)
-    β ~ truncated(Normal(1.0, 0.1); lower=0.)
-    u0 ~ arraydist([truncated(Normal(u0_prior_avg[i], u0_prior_std[i]); lower=0) for i in 1:N])
+    #α ~ truncated(Normal(1.0, 0.1); lower=0.)
+    #β ~ truncated(Normal(1.0, 0.1); lower=0.) . # single parameter
+    #α ~ MvNormal([1.0 for _ in 1:N], 0.1*I)  # multiple pars
+    #β ~ MvNormal([0.5 for _ in 1:N], 0.1*I)  # multiple pars
+    α ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  
+    β ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  
+    
+    # Prior on initial conditions 
+    u0 ~ arraydist([truncated(Normal(u0_prior_avg[i], u0_prior_std[i]); lower=0., upper=1.) for i in 1:N])  # unstable with alpha vectorized
+    #u0 = [0 for _ in 1:N]
+    #u0[seed] ~ truncated(Normal(1.,0.1), lower=0.)  # only seed has uncertainty in initial concentration
 
     # Simulate diffusion model 
-    p = [ρ,α,β]
+    p = [ρ,α...,β...]
     sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)) 
     predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, sensealg=sensealg, abstol=1e-9, reltol=1e-6)
 
@@ -134,10 +149,9 @@ N_pars = size(chain)[2]
 vars = chain.info.varname_to_symbol
 i = 1
 for (key,value) in vars
-    println(key)
     chain_i = Chains(chain[:,i,:], [value])
     chain_plot_i = StatsPlots.plot(chain_i)
-    save("figures/aggregation_inference/aggregation_data/chain_$(i).png",chain_plot_i)
+    save("figures/aggregation_inference/aggregation_data/chain_$(key).png",chain_plot_i)
     i += 1
 end
 
@@ -154,11 +168,16 @@ for i in 1:N
 end
 posterior_samples = sample(chain, 300; replace=false)
 for sample in eachrow(Array(posterior_samples))
+    # samples
     ρ = sample[2]
-    α = sample[3]
-    β = sample[4]
-    u0 = sample[5:end]
-    sol_p = solve(prob, alg; p=[ρ,α,β], u0=u0, saveat=0.1)
+    α = sample[3:(2+N)]
+    β = sample[(3+N):(2+2*N)]
+    u0_seed = sample[end]
+    # IC
+    u0 = [0. for _ in 1:N]
+    u0[seed] = u0_seed
+    # solve
+    sol_p = solve(prob, alg; p=[ρ,α...,β...], u0=u0, saveat=0.1)
     for i in 1:N
         lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
     end
