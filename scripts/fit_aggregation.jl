@@ -104,7 +104,7 @@ u0_prior_std[seed] = 0.2
     #β ~ truncated(Normal(1.0, 0.1); lower=0.) . # single parameter
     #α ~ MvNormal([1.0 for _ in 1:N], 0.1*I)  # multiple pars
     #β ~ MvNormal([0.5 for _ in 1:N], 0.1*I)  # multiple pars
-    α ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  
+    α ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  # does truncating stablilize solver?
     β ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  
     
     # Prior on initial conditions 
