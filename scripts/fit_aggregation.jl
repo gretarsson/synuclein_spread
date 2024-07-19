@@ -168,14 +168,14 @@ posterior_samples = sample(chain, 300; replace=false)
 for sample in eachrow(Array(posterior_samples))
     # samples
     ρ = sample[2]
-    α = sample[3:(2+N)]
-    β = sample[(3+N):(2+2*N)]
+    α = sample[3]
+    β = sample[4:(3+N)]
     u0_seed = sample[end]
     # IC
     u0 = [0. for _ in 1:N]
     u0[seed] = u0_seed
     # solve
-    sol_p = solve(prob, alg; p=[ρ,α...,β...], u0=u0, saveat=0.1)
+    sol_p = solve(prob, alg; p=[ρ,α,β...], u0=u0, saveat=0.1)
     for i in 1:N
         lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
     end
