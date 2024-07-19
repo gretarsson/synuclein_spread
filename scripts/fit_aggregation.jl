@@ -40,8 +40,8 @@ Define, simulate, and plot model
 # Define network diffusion model.
 function diffusion(du,u,p,t;L=LT)
     ρ = p[1]
-    α = p[2:(1+N)]
-    β = p[(2+N):(1+2*N)]
+    α = p[2]
+    β = p[3:end]
 
     du .= -ρ*L*u .+ α .* u .* (β .- u)  
 end
@@ -50,10 +50,10 @@ end
 alg = Tsit5()
 u0 = [0. for i in 1:N]  # initial conditions
 u0[80] = 1.  # seed
-α = [1. for _ in 1:N]
-β = [1. for _ in 1:N]
 ρ = 0.075
-p = [1, α..., β...]
+α = 1.
+β = [1. for _ in 1:N]
+p = [ρ, α, β...]
 tspan = (0.0,9.0)
 prob = ODEProblem(diffusion, u0, tspan, p)
 sol = solve(prob,alg)
@@ -100,20 +100,18 @@ u0_prior_std[seed] = 0.2
     # Prior on model parameters
     σ ~ InverseGamma(2, 3)
     ρ ~ truncated(Normal(1.0, 0.1); lower=0.)
-    #α ~ truncated(Normal(1.0, 0.1); lower=0.)
-    #β ~ truncated(Normal(1.0, 0.1); lower=0.) . # single parameter
-    #α ~ MvNormal([1.0 for _ in 1:N], 0.1*I)  # multiple pars
-    #β ~ MvNormal([0.5 for _ in 1:N], 0.1*I)  # multiple pars
-    α ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  # does truncating stablilize solver?
-    β ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  
+    α ~ truncated(Normal(1.0, 0.1); lower=0.)  # scalar
+    #β ~ truncated(Normal(1.0, 0.1); lower=0.)  # scalar
+    #α ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  # vector
+    β ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  # vector
     
     # Prior on initial conditions 
-    u0 ~ arraydist([truncated(Normal(u0_prior_avg[i], u0_prior_std[i]); lower=0., upper=1.) for i in 1:N])  # unstable with alpha vectorized
-    #u0 = [0 for _ in 1:N]
-    #u0[seed] ~ truncated(Normal(1.,0.1), lower=0.)  # only seed has uncertainty in initial concentration
+    #u0 ~ arraydist([truncated(Normal(u0_prior_avg[i], u0_prior_std[i]); lower=0., upper=1.) for i in 1:N])  # vector
+    u0 = [0 for _ in 1:N]
+    u0[seed] ~ truncated(Normal(1.,0.1), lower=0.)  # scalar (seed) 
 
     # Simulate diffusion model 
-    p = [ρ,α...,β...]
+    p = [ρ,α,β...]
     sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)) 
     predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, sensealg=sensealg, abstol=1e-9, reltol=1e-6)
 
@@ -141,8 +139,8 @@ benchmark_model(
 
 # Sample to approximate posterior
 chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
-chain_plot = StatsPlots.plot(chain)
-save("figures/aggregation_inference/aggregation_data/chain_plot.png",chain_plot)
+#chain_plot = StatsPlots.plot(chain)
+#save("figures/aggregation_inference/aggregation_data/chain_plot.png",chain_plot)
 
 # plot individual posterior
 N_pars = size(chain)[2]
@@ -151,7 +149,7 @@ i = 1
 for (key,value) in vars
     chain_i = Chains(chain[:,i,:], [value])
     chain_plot_i = StatsPlots.plot(chain_i)
-    save("figures/aggregation_inference/aggregation_data/chain_$(key).png",chain_plot_i)
+    save("figures/aggregation_inference/aggregation_data/chains/chain_$(key).png",chain_plot_i)
     i += 1
 end
 
@@ -186,5 +184,5 @@ end
 # Plot simulation and noisy observations.
 for i in 1:N
     scatter!(axs[i], timepoints, data[i,:], colormap=:tab10)
-    save("figures/aggregation_inference/aggregation_data/retrodiction_region_$(i).png", fs[i])
+    save("figures/aggregation_inference/aggregation_data/retrodiction/retrodiction_region_$(i).png", fs[i])
 end
