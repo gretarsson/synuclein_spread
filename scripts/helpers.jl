@@ -54,4 +54,30 @@ function threshold_matrix(A,d)
     return A_thresh
 end
 
+
+#=
+find NaN rows in matrix
+=#
+function nonnan_rows(A)
+    nonnan_idxs = [true for _ in 1:N]  # boolean indices of rows without any NaNs
+    for j in axes(A,2), i in axes(A,1)
+        if isnan(A[i,j])
+            nonnan_idxs[i] = false
+        end
+    end
+    return nonnan_idxs
+end
     
+#=
+find rows with maximum larger than a
+=#
+function larger_rows(A,a)
+    larger_idxs = [false for _ in 1:size(A)[1]]
+    for i in axes(A,1)
+        if maximum(A[i,:]) > a
+            larger_idxs[i] = true
+        end
+    end
+    return larger_idxs
+end
+

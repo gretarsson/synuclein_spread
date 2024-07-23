@@ -33,6 +33,20 @@ N = size(LT,1)
 # find seed iCP
 labels = readdlm("data/W_labeled.csv",',')[1,:]
 seed = findall(x->x=="iCP",labels)[1]
+
+#=
+read data
+=#
+file_data = "data/avg_total_path.csv"
+file_time = "data/timepoints.csv"
+data = readdlm(file_data, ',')
+timepoints = vec(readdlm(file_time, ','))
+plt = StatsPlots.plot()
+for i in 1:N
+    StatsPlots.plot!(plt,timepoints, data[i,:], legend=false)
+end
+plt
+
 #=
 Define, simulate, and plot model
 =#
@@ -57,32 +71,26 @@ end
 # Define initial-value problem.
 alg = Tsit5()
 x0 = [0. for i in 1:N]  # initial conditions
-x0[80] = 1.  # seed
-y0 = [1. for i in 1:N]
+x0[80] = 0.1  # seed
+y0 = [0.1 for i in 1:N]
 u0 = [x0..., y0...]
-ρ = 0.001
-α = 5.
-β = [1. for _ in 1:N]
+ρ = 0.01
+α = 10.
 γ = 1
 κ = 1.
+β = Array{Float64}(undef,N)
+for i in 1:N
+    if isnan(data[i,end]) || data[i,end] < 1e-3 
+        β[i] = 0.01
+    else
+        β[i] = data[i,end]/(1-κ*data[i,end]) 
+    end
+end
 p = [ρ, α, β..., γ, κ]
 tspan = (0.0,9.0)
 prob = ODEProblem(dad, u0, tspan, p)
 sol = solve(prob,alg)
 StatsPlots.plot(sol; legend=false, ylim=(0,1), idxs=1:N)
-
-#=
-read data
-=#
-file_data = "data/avg_total_path.csv"
-file_time = "data/timepoints.csv"
-data = readdlm(file_data, ',')
-timepoints = vec(readdlm(file_time, ','))
-plt = StatsPlots.plot()
-for i in 1:N
-    StatsPlots.plot!(plt,timepoints, data[i,:], legend=false)
-end
-plt
 
 #=
 Bayesian estimation of model parameters
@@ -107,22 +115,25 @@ u0_prior_avg = [0. for i in 1:N]
 u0_prior_avg[seed] = 1.
 u0_prior_std[seed] = 0.2
 
+# prior for beta based on SS
+β0 = β
+
 #u0 = [0. for _ in 1:N]
 @model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints, proper_idxs=proper_idxs, seed=seed)
     # Prior on model parameters
     σ ~ InverseGamma(2, 3)
     ρ ~ truncated(Normal(0., 0.1); lower=0.)
-    α ~ truncated(Normal(5.0, 0.1); lower=0.)  # scalar
+    α ~ truncated(Normal(10., 0.5); lower=0.)  # scalar
     #β ~ truncated(Normal(1.0, 0.1); lower=0.)  # scalar
     #α ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  # vector
-    β ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  # vector
+    β ~ arraydist([truncated(Normal(β0[i], 0.1); lower=0.) for i in 1:N])  # vector
     γ ~ truncated(Normal(1.0, 0.1); lower=0.)  # scalar
     κ ~ truncated(Normal(1.0, 0.1); lower=0.)  # scalar
     
     # Prior on initial conditions 
     x0 = [0. for _ in 1:N]
     y0 = [1. for _ in 1:N]
-    x0[seed] ~ truncated(Normal(0.5,0.25), lower=0.)  # scalar (seed) 
+    x0[seed] ~ truncated(Normal(0.,0.1), lower=0., upper=1.)  # scalar (seed) 
 
 
     # Simulate diffusion model 

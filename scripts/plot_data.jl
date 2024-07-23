@@ -13,7 +13,7 @@ We save the resulting regions x timepoint array as avg_total_path.csv
 
 # read data
 # read strutural connectome
-file_W = "C:/Users/cga32/Desktop/synuclein_spread/data/W_labeled.csv"
+file_W = "data/W_labeled.csv"
 W_labeled = readdlm(file_W, ',')
 W_labels = W_labeled[2:end,1]
 W = W_labeled[2:end,2:end]
@@ -23,19 +23,17 @@ writedlm("data/W.csv", W, ',')
 writedlm("data/L_out.csv", L, ',')
 
 # plot adjacency matrix
-heatmap(W, title="Weighted adjacency matrix", xlabel="regions", ylabel="regions")
+Plots.heatmap(W, title="Weighted adjacency matrix", xlabel="regions", ylabel="regions")
 yflip!(true)
-xticks!(0:50:N)
-yticks!(reverse(0:50:N))
-savefig("figures/adjacency_matrix.pdf")
+Plots.xticks!(0:50:N)
+Plots.yticks!(reverse(0:50:N))
+Plots.savefig("figures/adjacency_matrix.pdf")
 
 # plot histogram of adjacency matrix elements
 histogram(vec(W), xlims=(0,30), norm=true)
 
-
-
 # read total pathology
-file_total_path = "C:/Users/cga32/Desktop/synuclein_spread/data/total_path.csv"
+file_total_path = "data/total_path.csv"
 total_path_labeled = readdlm(file_total_path, ',')
 total_path = total_path_labeled[2:end, 3:end]
 total_path_rois = total_path_labeled[1, 3:end]

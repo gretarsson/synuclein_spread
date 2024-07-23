@@ -46,12 +46,19 @@ end
 # Define initial-value problem.
 alg = Tsit5()
 u0 = [0. for i in 1:N]  # initial conditions
-u0[80] = 10  # seed
+u0[80] = 10000  # seed
 p = [0.075]
 tspan = (0.0,9.0)
 prob = ODEProblem(diffusion, u0, tspan, p)
 sol = solve(prob,alg)
 StatsPlots.plot(sol; legend=false, ylim=(0,1))
+
+# investigate steady state from eigenvector
+eigs = LinearAlgebra.eigvals(LT)  # only one zero eigenvalue -> one connected component
+uzero = real.(LinearAlgebra.eigvecs(LT)[:,1])
+uzero = uzero ./ maximum(uzero)
+minind = argmin(uzero)
+StatsPlots.plot(sol; legend=false, ylim=(0,1), idxs=[minind])  # verify that graph is strongly connected
 
 #=
 read data
@@ -92,8 +99,12 @@ u0_prior_std[seed] = 1.
 @model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints, proper_idxs=proper_idxs)
     # Prior distributions.
     σ ~ InverseGamma(2, 3)
-    ρ ~ truncated(Normal(1.0, 0.1); lower=0.)
+    #ρ ~ truncated(Normal(1.0, 0.1); lower=0.)
+    ρ ~ Uniform(0.,2.)
     #u0 ~ arraydist([truncated(Normal(u0_prior_avg[i], u0_prior_std[i]); lower=0) for i in 1:N])
+    u0 = [0 for _ in 1:N]
+    #u0[seed] ~ truncated(Normal(0.5,0.25), lower=0., upper=1.)  # scalar (seed) 
+    u0[seed] ~ Uniform(0.,1.)  # scalar (seed) 
 
     # Simulate diffusion model 
     p = [ρ]
@@ -119,13 +130,11 @@ benchmark_model(
     # Check correctness of computations
     check=true,
         # Automatic differentiation backends to check and benchmark
-    adbackends=[:forwarddiff, :reversediff]
+    adbackends=[:reversediff]
 )
 
 # Sample to approximate posterior
 chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
-chain_plot = StatsPlots.plot(chain)
-save("figures/diffusion_inference/diffusion_data/chain_plot.png",chain_plot)
 
 # plot individual posterior
 N_pars = size(chain)[2]
@@ -135,7 +144,7 @@ for (key,value) in vars
     println(key)
     chain_i = Chains(chain[:,i,:], [value])
     chain_plot_i = StatsPlots.plot(chain_i)
-    save("figures/diffusion_inference/diffusion_data/chain_$(i).png",chain_plot_i)
+    save("figures/diffusion_inference/diffusion_data/chains/chain_$(i).png",chain_plot_i)
     i += 1
 end
 
@@ -153,9 +162,10 @@ end
 posterior_samples = sample(chain, 300; replace=false)
 for sample in eachrow(Array(posterior_samples))
     ρ = sample[2]
-    #u0 = sample[3:end]
-    sol_p = solve(prob, alg; p=ρ, u0=u0_prior_avg, saveat=0.1)
-    #sol_p = solve(prob, alg; p=ρ, saveat=0.1)
+    u0_seed = sample[3]
+    u0 = [0. for i in 1:N]
+    u0[seed] = u0_seed
+    sol_p = solve(prob, alg; p=ρ, u0=u0, saveat=0.1)
     for i in 1:N
         lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
     end
@@ -164,7 +174,7 @@ end
 # Plot simulation and noisy observations.
 for i in 1:N
     scatter!(axs[i], timepoints, data[i,:], colormap=:tab10)
-    save("figures/diffusion_inference/diffusion_data/retrodiction_region_$(i).png", fs[i])
+    save("figures/diffusion_inference/diffusion_data/retrodiction/retrodiction_region_$(i).png", fs[i])
 end
 
 
