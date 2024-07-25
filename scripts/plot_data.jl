@@ -109,5 +109,23 @@ end
 writedlm("data/avg_total_path.csv", average_total_path, ',')
 
 
+# plot distribution of data below certain theshold
+data = average_total_path
+nonnan_idxs = nonnan_rows(data)
+m = 1000
+ps = LinRange(minimum(data[nonnan_idxs,:]), 0.2,m)
+portion_regions = Array{Float64}(undef,m)
+sum(nonnan_idxs)
+for (i,p) in enumerate(ps)
+    larger_idxs = larger_rows(data,p)
+    idxs = nonnan_idxs .* larger_idxs
+    portion_regions[i] = sum(idxs) 
+end
+plt = StatsPlots.plot()
+portion_regions
+StatsPlots.plot(ps, portion_regions, legend=false, ylim=(0,N))
+
+
+
 
 

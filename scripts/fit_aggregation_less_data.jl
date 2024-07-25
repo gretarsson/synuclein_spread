@@ -183,5 +183,4 @@ end
 # Plot simulation and noisy observations.
 for i in 1:N
     scatter!(axs[i], timepoints, data[i,:], colormap=:tab10)
-    save("figures/aggregation_inference/aggregation_data_less/retrodiction/retrodiction_region_$(i).png", fs[i])
-end
+    save("figures/aggregation_inference/aggregation_data/retrodiction/retrodiction_region_$(i).png", fs[i])

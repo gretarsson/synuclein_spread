@@ -25,46 +25,27 @@ include("helpers.jl")
 #=
 read pathology data
 =#
-file_data = "data/avg_total_path.csv"
-file_time = "data/timepoints.csv"
-data = readdlm(file_data, ',')
-N = size(data)[1]
-timepoints = vec(readdlm(file_time, ','))
+data = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.)
+timepoints = vec(readdlm("data/timepoints.csv", ','))
 plt = StatsPlots.plot()
-for i in 1:N
+for i in axes(data,1)
     StatsPlots.plot!(plt,timepoints, data[i,:], legend=false)
 end
 plt
-
-# prune data for NaN
-# create map of rows with no NaNs (ignoring regions with any NaN)
-nonnan_idxs = nonnan_rows(data)
-larger_idxs = larger_rows(data,-0.1)
-idxs = nonnan_idxs .* larger_idxs
-data = data[idxs,:]
 N = size(data)[1]
-println(sum(idxs))
-plt = StatsPlots.plot()
-StatsPlots.plot(timepoints, transpose(data), legend=false, ylim=(0,1))
 
 #=
 Read structural data 
 =#
-W = readdlm("data/W.csv",',')
-W = W[idxs,idxs]
-L = laplacian_out(W)
-LT = transpose(L)  # to use col vecs and Lx, we use the transpose
-N = size(LT,1)
-
+W = readdlm("data/W.csv",',')[idxs,idxs]
+LT = transpose(laplacian_out(W))
 # find seed iCP
-labels = readdlm("data/W_labeled.csv",',')[1,2:end]
-labels = labels[idxs]
+labels = readdlm("data/W_labeled.csv",',')[1,2:end][idxs]
 seed = findall(x->x=="iCP",labels)[1]
+
 #=
 Define, simulate, and plot model
 =#
-
-# Define network diffusion model.
 function aggregation(du,u,p,t;L=LT)
     ρ = p[1]
     α = p[2]
@@ -72,38 +53,38 @@ function aggregation(du,u,p,t;L=LT)
 
     du .= -ρ*L*u .+ α .* u .* (β .- u)  
 end
-
-# Define initial-value problem.
+# ODE settings
 alg = Tsit5()
+tspan = (0.0,9.0)
+# ICs
 u0 = [0. for i in 1:N]  # initial conditions
 u0[seed] = 1e-5  # seed
-ρ = 0.01
-α = 25.
-β = [data[i,end] for i in 1:N]
+# Parameters
+ρ = rand(truncated(Normal(0,2.5),lower=0.))
+α = rand(Normal(50,10))
+β = [rand(truncated(Normal(data[i,end],0.1), lower=0.)) for i in 1:N]
 p = [ρ, α, β...]
-tspan = (0.0,9.0)
-prob = ODEProblem(aggregation, u0, tspan, p)
-sol = solve(prob,alg; abstol=1e-9, reltol=1e-6)
+# setting up, solve, and plot
+prob = ODEProblem(aggregation, u0, tspan, p; alg=alg)
+sol = solve(prob,alg; abstol=1e-9, reltol=1e-6, saveat=timepoints)
 StatsPlots.plot(sol; legend=false, ylim=(0,1))
 
 
+# -----------------------------------------------------------------------------------------------------------------
 #=
 Bayesian estimation of model parameters
 =#
-β0 = [data[i,end] for i in 1:N]
-u0_seed = data[seed,1]
+# Bayesian model input for priors and ODE IC
+β0 = [data[i,end] for i in 1:N]  # β prior average
+u0 = [0. for _ in 1:N]
+u0[seed] = 1e-5
 
-#u0 = [0. for _ in 1:N]
-@model function fitlv(data, prob; alg=alg, timepoints=timepoints, seed=seed)
+@model function fitlv(data, prob; alg=alg, timepoints=timepoints, u0=u0, β0=β0)
     # Prior on model parameters
     σ ~ InverseGamma(2, 3)
     ρ ~ truncated(Normal(0., 2.5); lower=0.)  # (0.,2.5)
-    α ~ truncated(Normal(0., 2.5); lower=0.)  # (0.,2.5)
-    β ~ arraydist([truncated(Normal(β0[i], 0.5); lower=0.) for i in 1:N])  # vector
-    
-    # Prior on initial conditions 
-    u0 = [0. for _ in 1:N]
-    u0[seed] = 1e-5  # (seed) 
+    α ~ truncated(Normal(50, 10); lower=0.)  # (0.,2.5)
+    β ~ arraydist([truncated(Normal(β0[i], 0.1); lower=0.) for i in 1:N])  # vector
 
     # Simulate diffusion model 
     p = [ρ,α,β...]
@@ -132,49 +113,7 @@ benchmark_model(
 
 # Sample to approximate posterior
 chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
-#chain_plot = StatsPlots.plot(chain)
-#save("figures/aggregation_inference/aggregation_data/chain_plot.png",chain_plot)
 
-# plot individual posterior
-N_pars = size(chain)[2]
-vars = chain.info.varname_to_symbol
-i = 1
-for (key,value) in vars
-    chain_i = Chains(chain[:,i,:], [value])
-    chain_plot_i = StatsPlots.plot(chain_i)
-    save("figures/aggregation_inference/aggregation_data/chains/chain_$(key).png",chain_plot_i)
-    i += 1
-end
-
-#=
-Data retrodiciton
-=#
-fs = Any[NaN for i in 1:N]
-axs = Any[NaN for i in 1:N]
-for i in 1:N
-    f = Figure()
-    ax = Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0.,1.))
-    fs[i] = f
-    axs[i] = ax
-end
-posterior_samples = sample(chain, 300; replace=false)
-for sample in eachrow(Array(posterior_samples))
-    # samples
-    ρ = sample[2]
-    α = sample[3]
-    β = sample[4:end]
-    # IC
-    u0 = [0. for _ in 1:N]
-    u0[seed] = 1e-5
-    # solve
-    sol_p = solve(prob, alg; p=[ρ,α,β...], u0=u0, saveat=0.1)
-    for i in 1:N
-        lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
-    end
-end
-
-# Plot simulation and noisy observations.
-for i in 1:N
-    scatter!(axs[i], timepoints, data[i,:]; colormap=:tab10)
-    save("figures/aggregation_inference/aggregation_data/retrodiction/retrodiction_region_$(i).png", fs[i])
-end
+# plot posterior distributions and retrodiction
+plot_chains(chain, "figures/aggregation_inference/aggregation_data/chains")
+plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path="figures/aggregation_inference/aggregation_data/retrodiction")
