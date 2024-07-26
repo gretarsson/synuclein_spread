@@ -114,9 +114,11 @@ function plot_chains(chain, path)
     vars = chain.info.varname_to_symbol
     i = 1
     for (key,value) in vars
+        println(value)
         chain_i = Chains(chain[:,i,:], [value])
         chain_plot_i = StatsPlots.plot(chain_i)
-        save(path * "/chain_$(key).png",chain_plot_i)
+        #savefig(chain_plot_i,path * "/chain_$(key).png")
+        savefig(chain_plot_i,path * "/chain_$(value).png")
         i += 1
     end
 end
@@ -128,9 +130,9 @@ function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=noth
     N = size(data)[1]
     fs = Any[NaN for _ in 1:N]
     axs = Any[NaN for _ in 1:N]
-        for i in 1:N
-        f = Figure()
-            ax = Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
+    for i in 1:N
+        f = CairoMakie.Figure()
+        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
         fs[i] = f
         axs[i] = ax
     end
@@ -149,14 +151,14 @@ function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=noth
         # solve
         sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
         for i in 1:N
-            lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
+            CairoMakie.lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
         end
     end
 
     # Plot simulation and noisy observations.
     for i in 1:N
-        scatter!(axs[i], timepoints, data[i,:]; colormap=:tab10)
-        save(path * "/retrodiction_region_$(i).png", fs[i])
+        CairoMakie.scatter!(axs[i], timepoints, data[i,:]; colormap=:tab10)
+        CairoMakie.save(path * "/retrodiction_region_$(i).png", fs[i])
     end
 end
 

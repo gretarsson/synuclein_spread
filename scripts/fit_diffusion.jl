@@ -1,33 +1,25 @@
 using Turing
-using DifferentialEquations
-using OrdinaryDiffEq
-using BenchmarkTools
 using DelimitedFiles
-using Serialization
-
-# Load StatsPlots for visualizations and diagnostics.
-using CairoMakie
-using Colors
-import StatsPlots
-Makie.inline!(true)
-
-using LinearAlgebra
-using ReverseDiff
-using Zygote
-using SciMLSensitivity
+using StatsPlots
+using DifferentialEquations
+using Distributions
 using TuringBenchmarking  # only version 0.5.1 works for Mac
-
-# Set a seed for reproducibility.
-using Random
-Random.seed!(16);
-
+using ReverseDiff
+using SciMLSensitivity
+using LinearAlgebra
+using Serialization
+using CairoMakie
+using ParetoSmooth
+# add helper functions
 include("helpers.jl")
-simulation_code = "diffusion"
+
+# Set name for files to be saved in figures/ and simulations/
+simulation_code = "total_diffusion"
 
 #=
 read pathology data
 =#
-data, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.)
+data, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.16)
 timepoints = vec(readdlm("data/timepoints.csv", ','))
 plt = StatsPlots.plot()
 for i in axes(data,1)
@@ -75,10 +67,10 @@ Bayesian estimation of model parameters
 priors = Dict( 
             "σ" => InverseGamma(2,3), 
             "ρ" => Uniform(0,1), 
-            "seed" => Uniform(0,15) 
+            "seed" => Normal(0.5,0.1) 
             )
-@model function fitlv(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
-    # Prior on model parameters
+@model function fitlv(data, prob=prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
+    # Priors and initial conditions 
     u0 = [0. for _ in 1:N]
     σ ~ priors["σ"]
     ρ ~ priors["ρ"]  # (0.,2.5)
@@ -101,14 +93,22 @@ end
 model = fitlv(data, prob)
 
 # benchmarking 
-benchmark_model(model;check=true,adbackends=[:reversediff])
+suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
+run(suite)
 
 # Sample to approximate posterior, and save
-chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
-inference = Dict("chain" => chain, "priors" => priors)
+chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 2; progress=true)
+inference = Dict("chain" => chain, "priors" => priors, "model" => model)
 serialize("simulations/"*simulation_code*".jls", inference)
+
+# load inference results
+inference = deserialize("simulations/"*simulation_code*".jls")
+chain = inference["chain"]
 
 # plot posterior distributions and retrodiction
 save_folder = "figures/"*simulation_code
-plot_chains(new_chain, save_folder*"/chains")
-plot_retrodiction(data=data,prob=prob,chain=new_chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed)
+plot_chains(chain, save_folder*"/chains")
+plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed)
+
+# compute leave-one-out cross validation
+loo = psis_loo(model, chain)
