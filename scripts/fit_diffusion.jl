@@ -3,6 +3,7 @@ using DifferentialEquations
 using OrdinaryDiffEq
 using BenchmarkTools
 using DelimitedFiles
+using Serialization
 
 # Load StatsPlots for visualizations and diagnostics.
 using CairoMakie
@@ -21,7 +22,7 @@ using Random
 Random.seed!(16);
 
 include("helpers.jl")
-save_folder = "figures/diffusion_inference/diffusion_data"
+simulation_code = "diffusion"
 
 #=
 read pathology data
@@ -39,10 +40,9 @@ N = size(data)[1]
 Read structural data 
 =#
 W = readdlm("data/W.csv",',')[idxs,idxs]
-LT = transpose(laplacian_out(W))
-# find seed iCP
+LT = transpose(laplacian_out(W))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
 labels = readdlm("data/W_labeled.csv",',')[1,2:end][idxs]
-seed = findall(x->x=="iCP",labels)[1]
+seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
 
 #=
 Define, simulate, and plot model
@@ -57,15 +57,14 @@ alg = Tsit5()
 tspan = (0.0,9.0)
 # ICs
 u0 = [0. for i in 1:N]  # initial conditions
-u0[seed] = rand(Uniform(0,1))  # seed
+u0[seed] = rand(Uniform(0,1))  # seed, past seed=15 some regions go beyond 1.
 # Parameters
 ρ = rand(truncated(Normal(0,2.5),lower=0.))
 p = [ρ]
 # setting up, solve, and plot
-sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)) 
 prob = ODEProblem(diffusion, u0, tspan, p; alg=alg)
-sol = solve(prob,alg; abstol=1e-9, reltol=1e-9, sensealg=sensealg)
-StatsPlots.plot(sol; legend=false)
+sol = solve(prob,alg; abstol=1e-9, reltol=1e-9)
+StatsPlots.plot(sol; legend=false, ylim=(0,1))
 
 
 # -----------------------------------------------------------------------------------------------------------------
@@ -73,12 +72,17 @@ StatsPlots.plot(sol; legend=false)
 Bayesian estimation of model parameters
 =#
 # Bayesian model input for priors and ODE IC
-@model function fitlv(data, prob; alg=alg, timepoints=timepoints, seed=seed)
+priors = Dict( 
+            "σ" => InverseGamma(2,3), 
+            "ρ" => Uniform(0,1), 
+            "seed" => Uniform(0,15) 
+            )
+@model function fitlv(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
     # Prior on model parameters
     u0 = [0. for _ in 1:N]
-    σ ~ InverseGamma(2, 3)
-    ρ ~ Uniform(0, 1)  # (0.,2.5)
-    u0[seed] ~ Uniform(0.,1.)  
+    σ ~ priors["σ"]
+    ρ ~ priors["ρ"]  # (0.,2.5)
+    u0[seed] ~ priors["seed"]  
 
     # Simulate diffusion model 
     p = [ρ]
@@ -97,17 +101,14 @@ end
 model = fitlv(data, prob)
 
 # benchmarking 
-benchmark_model(
-    model;
-    # Check correctness of computations
-    check=true,
-        # Automatic differentiation backends to check and benchmark
-        adbackends=[:reversediff]
-)
+benchmark_model(model;check=true,adbackends=[:reversediff])
 
-# Sample to approximate posterior
+# Sample to approximate posterior, and save
 chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
+inference = Dict("chain" => chain, "priors" => priors)
+serialize("simulations/"*simulation_code*".jls", inference)
 
 # plot posterior distributions and retrodiction
-plot_chains(chain, save_folder*"/chains")
-plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed)
+save_folder = "figures/"*simulation_code
+plot_chains(new_chain, save_folder*"/chains")
+plot_retrodiction(data=data,prob=prob,chain=new_chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed)
