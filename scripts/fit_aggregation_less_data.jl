@@ -184,3 +184,4 @@ end
 for i in 1:N
     scatter!(axs[i], timepoints, data[i,:], colormap=:tab10)
     save("figures/aggregation_inference/aggregation_data/retrodiction/retrodiction_region_$(i).png", fs[i])
+end

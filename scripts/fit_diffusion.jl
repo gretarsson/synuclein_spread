@@ -110,4 +110,4 @@ chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
 
 # plot posterior distributions and retrodiction
 plot_chains(chain, save_folder*"/chains")
-plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction")
+plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed)

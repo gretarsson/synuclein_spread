@@ -124,7 +124,8 @@ end
 #=
 Plot retrodiction of chain compared to data
 =#
-function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=nothing, timepoints=nothing)
+function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=nothing, timepoints=nothing, seed=false)
+    N = size(data)[1]
     fs = Any[NaN for _ in 1:N]
     axs = Any[NaN for _ in 1:N]
         for i in 1:N
@@ -136,9 +137,17 @@ function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=noth
     posterior_samples = sample(chain, 300; replace=false)
     for sample in eachrow(Array(posterior_samples))
         # samples
-        p = sample[2:end]
+        if seed  # means IC at seed region has posterior
+            p = sample[2:(end-1)]
+            u0 = [0. for _ in 1:N]
+            u0[seed] = sample[end]
+        else
+            p = sample[2:end]
+            u0 = [0. for _ in 1:N]
+        end
+        
         # solve
-        sol_p = solve(prob,Tsit5(); p=p, saveat=0.1, abstol=1e-9, reltol=1e-6)
+        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
         for i in 1:N
             lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
         end
