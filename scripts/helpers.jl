@@ -127,9 +127,9 @@ Plot retrodiction of chain compared to data
 function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=nothing, timepoints=nothing)
     fs = Any[NaN for _ in 1:N]
     axs = Any[NaN for _ in 1:N]
-    for i in 1:N
+        for i in 1:N
         f = Figure()
-        ax = Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0.,1.))
+            ax = Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
         fs[i] = f
         axs[i] = ax
     end

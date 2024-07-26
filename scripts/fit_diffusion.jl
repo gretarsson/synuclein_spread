@@ -58,10 +58,8 @@ tspan = (0.0,9.0)
 # ICs
 u0 = [0. for i in 1:N]  # initial conditions
 u0[seed] = rand(Uniform(0,1))  # seed
-u0[seed] = 0.1  # seed
 # Parameters
 ρ = rand(truncated(Normal(0,2.5),lower=0.))
-ρ = 1
 p = [ρ]
 # setting up, solve, and plot
 sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)) 
