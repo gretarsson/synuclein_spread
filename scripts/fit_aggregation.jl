@@ -1,31 +1,26 @@
 using Turing
-using DifferentialEquations
-using OrdinaryDiffEq
-using BenchmarkTools
 using DelimitedFiles
-
-# Load StatsPlots for visualizations and diagnostics.
-using CairoMakie
-using Colors
-import StatsPlots
-Makie.inline!(true)
-
-using LinearAlgebra
+using StatsPlots
+using DifferentialEquations
+using Distributions
+using TuringBenchmarking  
 using ReverseDiff
-using Zygote
 using SciMLSensitivity
-using TuringBenchmarking  # only version 0.5.1 works for Mac
-
-# Set a seed for reproducibility.
-using Random
-Random.seed!(16);
-
+using LinearAlgebra
+using Serialization
+using CairoMakie
+using ParetoSmooth
+# add helper functions
 include("helpers.jl")
+
+# Set name for files to be saved in figures/ and simulations/
+simulation_code = "total_aggregation"
+data_threshold = 0.16
 
 #=
 read pathology data
 =#
-data = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.)
+data, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=data_threshold)
 timepoints = vec(readdlm("data/timepoints.csv", ','))
 plt = StatsPlots.plot()
 for i in axes(data,1)
@@ -38,10 +33,9 @@ N = size(data)[1]
 Read structural data 
 =#
 W = readdlm("data/W.csv",',')[idxs,idxs]
-LT = transpose(laplacian_out(W))
-# find seed iCP
+LT = transpose(laplacian_out(W))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
 labels = readdlm("data/W_labeled.csv",',')[1,2:end][idxs]
-seed = findall(x->x=="iCP",labels)[1]
+seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
 
 #=
 Define, simulate, and plot model
@@ -61,7 +55,7 @@ u0 = [0. for i in 1:N]  # initial conditions
 u0[seed] = 1e-5  # seed
 # Parameters
 ρ = rand(truncated(Normal(0,2.5),lower=0.))
-α = rand(Normal(50,10))
+α = rand(Normal(0,2.5))
 β = [rand(truncated(Normal(data[i,end],0.1), lower=0.)) for i in 1:N]
 p = [ρ, α, β...]
 # setting up, solve, and plot
@@ -75,16 +69,22 @@ StatsPlots.plot(sol; legend=false, ylim=(0,1))
 Bayesian estimation of model parameters
 =#
 # Bayesian model input for priors and ODE IC
-β0 = [data[i,end] for i in 1:N]  # β prior average
-u0 = [0. for _ in 1:N]
-u0[seed] = 1e-5
-
-@model function fitlv(data, prob; alg=alg, timepoints=timepoints, u0=u0, β0=β0)
-    # Prior on model parameters
-    σ ~ InverseGamma(2, 3)
-    ρ ~ truncated(Normal(0., 2.5); lower=0.)  # (0.,2.5)
-    α ~ truncated(Normal(50, 10); lower=0.)  # (0.,2.5)
-    β ~ arraydist([truncated(Normal(β0[i], 0.1); lower=0.) for i in 1:N])  # vector
+priors = Dict( 
+            "σ" => InverseGamma(2,3), 
+            "ρ" => truncated(Normal(0,0.1),lower=0.), 
+            "seed" => truncated(Normal(0.0,0.1),lower=0.),
+            "α" => truncated(Normal(10,2.5), lower=0.),
+            "β" => arraydist([truncated(Normal(data[i,end], 0.05); lower=0.) for i in 1:N])  # vector
+            )
+@model function fitlv(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
+    # Priors and initial conditions 
+    u0 = [0. for _ in 1:N]
+    u0[seed] = 1e-5
+    σ ~ priors["σ"]
+    ρ ~ priors["ρ"]  # (0.,2.5)
+    α ~ priors["α"]
+    β ~ priors["β"]
+    #u0[seed] ~ priors["seed"]  
 
     # Simulate diffusion model 
     p = [ρ,α,β...]
@@ -103,17 +103,22 @@ end
 model = fitlv(data, prob)
 
 # benchmarking 
-benchmark_model(
-    model;
-    # Check correctness of computations
-    check=true,
-        # Automatic differentiation backends to check and benchmark
-        adbackends=[:reversediff]
-)
+suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
+run(suite)
 
-# Sample to approximate posterior
-chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
+# Sample to approximate posterior, and save
+chain = sample(model, NUTS(), 1000; progress=true)
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "data_threshold" => data_threshold)
+serialize("simulations/"*simulation_code*".jls", inference)
+
+# load inference results
+inference = deserialize("simulations/"*simulation_code*".jls")
+chain = inference["chain"]
 
 # plot posterior distributions and retrodiction
-plot_chains(chain, "figures/aggregation_inference/aggregation_data/chains")
-plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path="figures/aggregation_inference/aggregation_data/retrodiction")
+save_folder = "figures/"*simulation_code
+plot_chains(chain, save_folder*"/chains")
+plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction")
+
+# hypothesis testing
+#loo = psis_loo(model, chain)

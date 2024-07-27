@@ -69,7 +69,7 @@ priors = Dict(
             "ρ" => Uniform(0,1), 
             "seed" => Normal(0.5,0.1) 
             )
-@model function fitlv(data, prob=prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
+@model function fitlv(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
     # Priors and initial conditions 
     u0 = [0. for _ in 1:N]
     σ ~ priors["σ"]
@@ -97,7 +97,8 @@ suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:rev
 run(suite)
 
 # Sample to approximate posterior, and save
-chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 2; progress=true)
+#chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 2; progress=true)
+chain = sample(model, NUTS(), MCMCThreads(), 1000, 2; progress=false)
 inference = Dict("chain" => chain, "priors" => priors, "model" => model)
 serialize("simulations/"*simulation_code*".jls", inference)
 
