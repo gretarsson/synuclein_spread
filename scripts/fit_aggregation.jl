@@ -10,12 +10,16 @@ using LinearAlgebra
 using Serialization
 using CairoMakie
 using ParetoSmooth
+using KernelDensity
+using Interpolations
+using Distributions
+using StatsPlots
 # add helper functions
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "total_aggregation"
-data_threshold = 0.16
+simulation_code = "total_aggregation_N=174"
+data_threshold = 0.01
 
 #=
 read pathology data
@@ -73,7 +77,7 @@ priors = Dict(
             "σ" => InverseGamma(2,3), 
             "ρ" => truncated(Normal(0,0.1),lower=0.), 
             "seed" => truncated(Normal(0.0,0.1),lower=0.),
-            "α" => truncated(Normal(10,2.5), lower=0.),
+            "α" => truncated(Normal(0.,2.5), lower=0.),
             "β" => arraydist([truncated(Normal(data[i,end], 0.05); lower=0.) for i in 1:N])  # vector
             )
 @model function fitlv(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
@@ -84,7 +88,7 @@ priors = Dict(
     ρ ~ priors["ρ"]  # (0.,2.5)
     α ~ priors["α"]
     β ~ priors["β"]
-    #u0[seed] ~ priors["seed"]  
+    u0[seed] ~ priors["seed"]  
 
     # Simulate diffusion model 
     p = [ρ,α,β...]
@@ -106,19 +110,20 @@ model = fitlv(data, prob)
 suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
 run(suite)
 
-# Sample to approximate posterior, and save
-chain = sample(model, NUTS(), 1000; progress=true)
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "data_threshold" => data_threshold)
-serialize("simulations/"*simulation_code*".jls", inference)
-
-# load inference results
-inference = deserialize("simulations/"*simulation_code*".jls")
-chain = inference["chain"]
+# Sample to approximate posterior
+chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
 
 # plot posterior distributions and retrodiction
 save_folder = "figures/"*simulation_code
 plot_chains(chain, save_folder*"/chains")
-plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction")
+plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed,seed_bayesian=true)
 
 # hypothesis testing
-#loo = psis_loo(model, chain)
+prior_alpha = priors["α"]
+posterior_alpha = KernelDensity.kde(vec(chain[:α]), boundary=(0,40))
+savage_dickey_density = pdf(posterior_alpha,0.) / pdf(prior_alpha, 0.)
+println("Probability of aggregation model: $(1 - savage_dickey_density / (savage_dickey_density+1))")
+
+# save chain, model, priors, data threshold, and hypothesis test 
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density)
+serialize("simulations/"*simulation_code*".jls", inference)
