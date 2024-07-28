@@ -18,8 +18,8 @@ using StatsPlots
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "total_aggregation_N=174"
-data_threshold = 0.01
+simulation_code = "total_aggregation_N=366"
+data_threshold = 0.00
 
 #=
 read pathology data
