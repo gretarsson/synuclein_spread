@@ -1,57 +1,49 @@
 using Turing
-using DifferentialEquations
-using OrdinaryDiffEq
-using BenchmarkTools
 using DelimitedFiles
-
-# Load StatsPlots for visualizations and diagnostics.
-using CairoMakie
-using Colors
-import StatsPlots
-Makie.inline!(true)
-
-using LinearAlgebra
+using StatsPlots
+using DifferentialEquations
+using Distributions
+using TuringBenchmarking  
 using ReverseDiff
-using Zygote
 using SciMLSensitivity
-using TuringBenchmarking  # only version 0.5.1 works for Mac
-
-# Set a seed for reproducibility.
-using Random
-Random.seed!(16);
-
+using LinearAlgebra
+using Serialization
+using CairoMakie
+using ParetoSmooth
+using KernelDensity
+using Interpolations
+using Distributions
+using StatsPlots
+# add helper functions
 include("helpers.jl")
 
-#=
-Read data 
-=#
-W = readdlm("data/W.csv",',')
-L = laplacian_out(W)
-LT = transpose(L)  # to use col vecs and Lx, we use the transpose
-N = size(LT,1)
-
-# find seed iCP
-labels = readdlm("data/W_labeled.csv",',')[1,:]
-seed = findall(x->x=="iCP",labels)[1]
+# Set name for files to be saved in figures/ and simulations/
+simulation_code = "total_death_N=40"
+data_threshold = 0.16
 
 #=
-read data
+read pathology data
 =#
-file_data = "data/avg_total_path.csv"
-file_time = "data/timepoints.csv"
-data = readdlm(file_data, ',')
-timepoints = vec(readdlm(file_time, ','))
+data, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=data_threshold)
+timepoints = vec(readdlm("data/timepoints.csv", ','))
 plt = StatsPlots.plot()
-for i in 1:N
+for i in axes(data,1)
     StatsPlots.plot!(plt,timepoints, data[i,:], legend=false)
 end
 plt
+N = size(data)[1]
+
+#=
+Read structural data 
+=#
+W = readdlm("data/W.csv",',')[idxs,idxs]
+LT = transpose(laplacian_out(W))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+labels = readdlm("data/W_labeled.csv",',')[1,2:end][idxs]
+seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
 
 #=
 Define, simulate, and plot model
 =#
-
-# Define network diffusion model.
 function dad(du,u,p,t;L=LT)  # diffusion-aggregation-death
     # unpack variables
     x = u[1:N]  # protein concentration / pathology
@@ -61,155 +53,93 @@ function dad(du,u,p,t;L=LT)  # diffusion-aggregation-death
     α = p[2]
     β = p[3:N+2]
     γ = p[N+3]
-    κ = p[N+4]
-
+    κ = p[(N+4):end]
     # rhs
     du[1:N] .= -ρ*L*x .+ α .* x .* (β.*y .- x)  
-    du[N+1:2*N] .= -γ .* (y .- (1 .-κ.*x))  
+    du[N+1:2*N] .= -γ .* (y .- (1 .- κ.*x))  
 end
-
-# Define initial-value problem.
+# ODE settings
 alg = Tsit5()
-x0 = [0. for i in 1:N]  # initial conditions
-x0[80] = 0.1  # seed
-y0 = [0.1 for i in 1:N]
-u0 = [x0..., y0...]
-ρ = 0.01
-α = 10.
-γ = 1
-κ = 1.
-β = Array{Float64}(undef,N)
-for i in 1:N
-    if isnan(data[i,end]) || data[i,end] < 1e-3 
-        β[i] = 0.01
-    else
-        β[i] = data[i,end]/(1-κ*data[i,end]) 
-    end
-end
-p = [ρ, α, β..., γ, κ]
 tspan = (0.0,9.0)
-prob = ODEProblem(dad, u0, tspan, p)
-sol = solve(prob,alg)
+# ICs
+x0 = [0. for i in 1:N]  # initial conditions
+x0[seed] = 1e-5  # seed
+y0 = [1. for i in 1:N]
+u0 = [x0...,y0...]
+# Parameters
+ρ = rand(truncated(Normal(0.01,0.001),lower=0.))
+α = rand(Normal(20,2.5))
+β = [rand(truncated(Normal(data[i,end],0.05), lower=0.)) for i in 1:N]
+γ = rand(truncated(Normal(1.,0.1),lower=0.))
+κ = [rand(truncated(Normal(data[i,end],0.05), lower=0.)) for i in 1:N]
+p = [ρ, α, β..., γ, κ...]
+# setting up, solve, and plot
+prob = ODEProblem(dad, u0, tspan, p; alg=alg)
+sol = solve(prob,alg; abstol=1e-9, reltol=1e-6)
 StatsPlots.plot(sol; legend=false, ylim=(0,1), idxs=1:N)
 
+
+# -----------------------------------------------------------------------------------------------------------------
 #=
 Bayesian estimation of model parameters
 =#
-# priors (some data points are NaN, set them to zero at t=0)
-u0_prior_avg = data[:,1]
-for i in 1:N
-    if isnan(u0_prior_avg[i])
-        u0_prior_avg[i] = 0.
-    end
-end
-# create map for indices that are not NaN
-proper_idxs = [[] for _ in 1:length(timepoints)]
-for j in axes(data,2), i in axes(data,1)
-    if !isnan(data[i,j])
-        append!(proper_idxs[j], i)
-    end
-end
-# std of IC prior
-u0_prior_std = [0.1 for i in 1:N]
-u0_prior_avg = [0. for i in 1:N]
-u0_prior_avg[seed] = 1.
-u0_prior_std[seed] = 0.2
-
-# prior for beta based on SS
-β0 = β
-
-#u0 = [0. for _ in 1:N]
-@model function fitlv(data, prob; alg=alg, u0_prior_avg=u0_prior_avg, u0_prior_std=u0_prior_std, timepoints=timepoints, proper_idxs=proper_idxs, seed=seed)
-    # Prior on model parameters
-    σ ~ InverseGamma(2, 3)
-    ρ ~ truncated(Normal(0., 0.1); lower=0.)
-    α ~ truncated(Normal(10., 0.5); lower=0.)  # scalar
-    #β ~ truncated(Normal(1.0, 0.1); lower=0.)  # scalar
-    #α ~ arraydist([truncated(Normal(1., 0.5); lower=0.) for i in 1:N])  # vector
-    β ~ arraydist([truncated(Normal(β0[i], 0.1); lower=0.) for i in 1:N])  # vector
-    γ ~ truncated(Normal(1.0, 0.1); lower=0.)  # scalar
-    κ ~ truncated(Normal(1.0, 0.1); lower=0.)  # scalar
-    
-    # Prior on initial conditions 
+# Bayesian model input for priors and ODE IC
+priors = Dict( 
+            "σ" => InverseGamma(2,3), 
+            "ρ" => truncated(Normal(0,0.1),lower=0.), 
+            "seed" => truncated(Normal(0.0,0.1),lower=0.),
+            "α" => truncated(Normal(0.,2.5), lower=0.),
+            "β" => arraydist([truncated(Normal(0., 0.5); lower=0.) for i in 1:N]),  
+            "γ" => truncated(Normal(0.,0.5), lower=0.),
+            "κ" => arraydist([truncated(Normal(0., 0.5); lower=0.) for i in 1:N]),  
+            )
+@model function bayesian_model(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors, N=N)
+    # Priors and initial conditions 
     x0 = [0. for _ in 1:N]
     y0 = [1. for _ in 1:N]
-    x0[seed] ~ truncated(Normal(0.,0.1), lower=0., upper=1.)  # scalar (seed) 
-
+    σ ~ priors["σ"]
+    ρ ~ priors["ρ"]  
+    α ~ priors["α"]
+    β ~ priors["β"]
+    γ ~ priors["γ"]
+    κ ~ priors["κ"]
+    x0[seed] ~ priors["seed"]  
 
     # Simulate diffusion model 
-    p = [ρ,α,β...,γ,κ]
+    p = [ρ,α,β...,γ,κ...]
     u0 = [x0...,y0...]
     sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)) 
     predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, sensealg=sensealg, abstol=1e-9, reltol=1e-6)
 
     # Observations.
-    for j in axes(data,2)  # 1.2s / 2.1s 
-        for i in proper_idxs[j]  # using pre-defined indices is quicker
-            data[i,j] ~ Normal(predicted[i,j], σ^2)
-        end
+    for i in 1:N
+        data[i, :] ~ MvNormal(predicted[i,:], σ^2 * I)
     end
 
     return nothing
 end
 
 # define Turing model
-model = fitlv(data, prob)
+model = bayesian_model(data, prob)
 
 # benchmarking 
-TuringBenchmarking.benchmark_model(
-    model;
-    # Check correctness of computations
-    check=true,
-        # Automatic differentiation backends to check and benchmark
-        adbackends=[:reversediff]
-)
+suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
+run(suite)
 
 # Sample to approximate posterior
 chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
-#chain_plot = StatsPlots.plot(chain)
-#save("figures/aggregation_inference/aggregation_data/chain_plot.png",chain_plot)
 
-# plot individual posterior
-N_pars = size(chain)[2]
-vars = chain.info.varname_to_symbol
-i = 1
-for (key,value) in vars
-    chain_i = Chains(chain[:,i,:], [value])
-    chain_plot_i = StatsPlots.plot(chain_i)
-    save("figures/dad_inference/chains/chain_$(key).png",chain_plot_i)
-    i += 1
-end
+# plot posterior distributions and retrodiction
+save_folder = "figures/"*simulation_code
+plot_chains(chain, save_folder*"/chains")
+plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed,seed_bayesian=true, u0=u0)
 
-#=
-Data retrodiciton
-=#
-fs = Any[NaN for i in 1:N]
-axs = Any[NaN for i in 1:N]
-for i in 1:N
-    f = Figure()
-    ax = Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
-    fs[i] = f
-    axs[i] = ax
-end
-posterior_samples = sample(chain, 300; replace=false)
-for sample in eachrow(Array(posterior_samples))
-    # samples
-    ρ = sample[2]
-    α = sample[3]
-    β = sample[4:(3+N)]
-    u0_seed = sample[end]
-    # IC
-    u0 = [0. for _ in 1:N]
-    u0[seed] = u0_seed
-    # solve
-    sol_p = solve(prob, alg; p=[ρ,α,β...], u0=u0, saveat=0.1)
-    for i in 1:N
-        lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
-    end
-end
+# hypothesis testing
+prior_interest = priors["γ"]
+posterior_interest = KernelDensity.kde(vec(chain[:γ]), boundary=(0,40))
+savage_dickey_density = pdf(posterior_interest,0.) / pdf(prior_interest, 0.)
+println("Probability of model: $(1 - savage_dickey_density / (savage_dickey_density+1))")
 
-# Plot simulation and noisy observations.
-for i in 1:N
-    scatter!(axs[i], timepoints, data[i,:], colormap=:tab10)
-    save("figures/dad_inference/retrodiction/retrodiction_region_$(i).png", fs[i])
-end
+# save chain, model, priors, data threshold, and hypothesis test 
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density)
+serialize("simulations/"*simulation_code*".jls", inference)

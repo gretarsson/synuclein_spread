@@ -126,7 +126,7 @@ end
 #=
 Plot retrodiction of chain compared to data
 =#
-function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=nothing, timepoints=nothing, seed=0, seed_bayesian=false)
+function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=nothing, timepoints=nothing, seed=0, seed_bayesian=false, u0=nothing)
     N = size(data)[1]
     fs = Any[NaN for _ in 1:N]
     axs = Any[NaN for _ in 1:N]
@@ -141,12 +141,9 @@ function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=noth
         # samples
         if seed_bayesian  # means IC at seed region has posterior
             p = sample[2:(end-1)]
-            u0 = [0. for _ in 1:N]
             u0[seed] = sample[end]
         else
             p = sample[2:end]
-            u0 = [0. for _ in 1:N]
-            u0[seed] = 1e-5
         end
         
         # solve
