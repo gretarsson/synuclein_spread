@@ -109,16 +109,24 @@ end
 #=
 Plot the chains and posterior dist of each estimated parameter
 =#
-function plot_chains(chain, path)
-    N_pars = size(chain)[2]
+function plot_chains(chain, path; priors=nothing)
     vars = chain.info.varname_to_symbol
+    master_fig = StatsPlots.plot(chain) 
     i = 1
-    for (key,value) in vars
-        println(value)
-        chain_i = Chains(chain[:,i,:], [value])
-        chain_plot_i = StatsPlots.plot(chain_i)
-        #savefig(chain_plot_i,path * "/chain_$(key).png")
-        savefig(chain_plot_i,path * "/chain_$(value).png")
+    for (key,value) in vars  # iterate through parameters
+        prior = priors["$(value)"]
+        # plot Markov chain
+        chain_i = StatsPlots.plot(master_fig[i,1])
+        savefig(chain_i,path * "/chain_$(value).png")
+        # plot prior alone
+        prior_i = StatsPlots.plot(prior)
+        savefig(prior_i,path * "/prior_$(value).png")
+        # plot posterior alone
+        posterior_i = StatsPlots.plot(master_fig[i,2])
+        savefig(posterior_i,path * "/posterior_$(value).png")
+        # plot posterior and prior together
+        StatsPlots.plot!(posterior_i, prior, color=:grey)  # add prior to posterior plot
+        savefig(posterior_i,path * "/prior_posterior_$(value).png")
         i += 1
     end
 end
@@ -160,4 +168,14 @@ function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=noth
     end
 end
 
-
+#=
+Compute ParetoSmooth.psis_loo from a model and chain
+This requirse finding pointwise loglikelihoods and some formatting
+=#
+function compute_psis_loo(model,chain)
+    n_pars = length(chain.info[1])
+    loglikelihoods_dict = Turing.pointwise_loglikelihoods(model,chain[:,1:n_pars,:])
+    loglikelihoods = permutedims(stack(collect(values(loglikelihoods_dict))),[3,1,2])
+    elpd = psis_loo(loglikelihoods, source="mcmc")
+    return elpd
+end

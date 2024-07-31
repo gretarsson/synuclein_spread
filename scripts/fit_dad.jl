@@ -18,7 +18,7 @@ using StatsPlots
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "total_death_N=40"
+simulation_code = "total_death_N=40_wo_beta"
 data_threshold = 0.16
 
 #=
@@ -88,10 +88,10 @@ priors = Dict(
             "σ" => InverseGamma(2,3), 
             "ρ" => truncated(Normal(0,0.1),lower=0.), 
             "seed" => truncated(Normal(0.0,0.1),lower=0.),
-            "α" => truncated(Normal(0.,2.5), lower=0.),
-            "β" => arraydist([truncated(Normal(0., 0.5); lower=0.) for i in 1:N]),  
+            "α" => truncated(Normal(10.,5), lower=0.),
+            "β" => arraydist([truncated(Normal(1., 0.); lower=0.) for i in 1:N]),  
             "γ" => truncated(Normal(0.,0.5), lower=0.),
-            "κ" => arraydist([truncated(Normal(0., 0.5); lower=0.) for i in 1:N]),  
+            "κ" => arraydist([truncated(Normal(0.5, 0.25); lower=0.) for i in 1:N]),  
             )
 @model function bayesian_model(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors, N=N)
     # Priors and initial conditions 
