@@ -18,8 +18,8 @@ using StatsPlots
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "total_aggregation_N=366"
-data_threshold = 0.00
+simulation_code = "total_aggregation_N=40"
+data_threshold = 0.16
 
 #=
 read pathology data
@@ -76,19 +76,19 @@ Bayesian estimation of model parameters
 priors = Dict( 
             "σ" => InverseGamma(2,3), 
             "ρ" => truncated(Normal(0,0.1),lower=0.), 
-            "seed" => truncated(Normal(0.0,0.1),lower=0.),
-            "α" => truncated(Normal(0.,2.5), lower=0.),
-            "β" => arraydist([truncated(Normal(data[i,end], 0.05); lower=0.) for i in 1:N])  # vector
+            "u0[$(seed)]" => truncated(Normal(0.0,0.1),lower=0.),
+            "α" => Normal(0.,2.5),
+            #"β" => arraydist([truncated(Normal(data[i,end], 0.05); lower=0.) for i in 1:N])  # vector
+            "β" => arraydist([Uniform(0,1) for i in 1:N])  # vector
             )
-@model function fitlv(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
+@model function bayesian_model(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
     # Priors and initial conditions 
     u0 = [0. for _ in 1:N]
-    u0[seed] = 1e-5
     σ ~ priors["σ"]
     ρ ~ priors["ρ"]  # (0.,2.5)
     α ~ priors["α"]
     β ~ priors["β"]
-    u0[seed] ~ priors["seed"]  
+    u0[seed] ~ priors["u0[$(seed)]"]  
 
     # Simulate diffusion model 
     p = [ρ,α,β...]
@@ -96,27 +96,34 @@ priors = Dict(
     predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, sensealg=sensealg, abstol=1e-9, reltol=1e-6)
 
     # Observations.
-    for i in axes(predicted,1)
-        data[i, :] ~ MvNormal(predicted[i,:], σ^2 * I)
+    #for i in axes(predicted,1)
+    #    data[i, :] ~ MvNormal(predicted[i,:], σ^2 * I)
+    #end
+    for i in axes(predicted,1), j in axes(predicted,2)
+        data[i,j] ~ Normal(predicted[i,j], σ^2)
     end
 
     return nothing
 end
 
 # define Turing model
-model = fitlv(data, prob)
+model = bayesian_model(data, prob)
 
 # benchmarking 
 suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
 run(suite)
 
-# Sample to approximate posterior
-chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
+# Sample to approximate posterior, and save
+#chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
+#chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 4; progress=true)
 
 # plot posterior distributions and retrodiction
 save_folder = "figures/"*simulation_code
-plot_chains(chain, save_folder*"/chains")
-plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed,seed_bayesian=true)
+plot_chains(chain, save_folder*"/chains"; priors=priors)
+plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed, seed_bayesian=true, u0=u0)
+
+# compute elpd (expected log predictive density)
+elpd = compute_psis_loo(model,chain)
 
 # hypothesis testing
 prior_alpha = priors["α"]
@@ -124,6 +131,6 @@ posterior_alpha = KernelDensity.kde(vec(chain[:α]), boundary=(0,40))
 savage_dickey_density = pdf(posterior_alpha,0.) / pdf(prior_alpha, 0.)
 println("Probability of aggregation model: $(1 - savage_dickey_density / (savage_dickey_density+1))")
 
-# save chain, model, priors, data threshold, and hypothesis test 
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density)
+# save  
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density)
 serialize("simulations/"*simulation_code*".jls", inference)

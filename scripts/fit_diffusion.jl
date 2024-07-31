@@ -14,8 +14,8 @@ using ParetoSmooth
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "total_diffusion_N=40"
-threshold = 0.16
+simulation_code = "total_diffusion_N=174"
+threshold = 0.01
 
 #=
 read pathology data
@@ -46,7 +46,7 @@ function diffusion(du,u,p,t;L=LT)
     du .= -ρ*L*u 
 end
 # ODE settings
-alg = Rosenbrock23()
+alg = Tsit5()
 tspan = (0.0,9.0)
 # ICs
 u0 = [0. for i in 1:N]  # initial conditions
@@ -68,8 +68,8 @@ Bayesian estimation of model parameters
 # Bayesian model input for priors and ODE IC
 priors = Dict( 
             "σ" => LogNormal(0,1), 
-            "ρ" => truncated(Normal(0,1.), lower=0.), 
-            "u0[$(seed)]" => Uniform(0,1) 
+            "ρ" => truncated(Normal(0,0.5), lower=0.), 
+            "u0[$(seed)]" => truncated(Normal(0,0.1), lower=0.) 
             )
 @model function bayesian_model(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
     # Priors and initial conditions 
@@ -99,6 +99,7 @@ suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:rev
 run(suite)
 
 # Sample to approximate posterior, and save
+#chain = sample(model, NUTS(;adtype=AutoForwardDiff()), 1000; progress=true)
 chain = sample(model, NUTS(;adtype=AutoForwardDiff()), MCMCThreads(), 1000, 4; progress=true)
 
 # plot posterior distributions and retrodiction
@@ -110,5 +111,5 @@ plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=sav
 elpd = compute_psis_loo(model,chain)
 
 # save
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "threshold" => threshold)
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => threshold)
 serialize("simulations/"*simulation_code*".jls", inference)

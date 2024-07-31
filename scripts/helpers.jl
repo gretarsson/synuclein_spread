@@ -114,19 +114,19 @@ function plot_chains(chain, path; priors=nothing)
     master_fig = StatsPlots.plot(chain) 
     i = 1
     for (key,value) in vars  # iterate through parameters
-        prior = priors["$(value)"]
+        #prior = priors["$(value)"]
         # plot Markov chain
         chain_i = StatsPlots.plot(master_fig[i,1])
         savefig(chain_i,path * "/chain_$(value).png")
         # plot prior alone
-        prior_i = StatsPlots.plot(prior)
-        savefig(prior_i,path * "/prior_$(value).png")
+        #prior_i = StatsPlots.plot(prior)
+        #savefig(prior_i,path * "/prior_$(value).png")
         # plot posterior alone
         posterior_i = StatsPlots.plot(master_fig[i,2])
         savefig(posterior_i,path * "/posterior_$(value).png")
         # plot posterior and prior together
-        StatsPlots.plot!(posterior_i, prior, color=:grey)  # add prior to posterior plot
-        savefig(posterior_i,path * "/prior_posterior_$(value).png")
+        #StatsPlots.plot!(posterior_i, prior, color=:grey)  # add prior to posterior plot
+        #savefig(posterior_i,path * "/prior_posterior_$(value).png")
         i += 1
     end
 end
@@ -140,7 +140,7 @@ function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=noth
     axs = Any[NaN for _ in 1:N]
     for i in 1:N
         f = CairoMakie.Figure()
-        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
+        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0,1))
         fs[i] = f
         axs[i] = ax
     end
