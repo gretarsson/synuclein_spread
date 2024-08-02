@@ -14,8 +14,8 @@ using ParetoSmooth
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "total_diffusion_N=174"
-threshold = 0.01
+simulation_code = "total_diffusion_N=366"
+threshold = 0.0
 
 #=
 read pathology data

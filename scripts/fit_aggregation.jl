@@ -18,8 +18,8 @@ using StatsPlots
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "total_aggregation_N=40"
-data_threshold = 0.16
+simulation_code = "total_aggregation_N=174"
+data_threshold = 0.01
 
 #=
 read pathology data
@@ -56,15 +56,17 @@ alg = Tsit5()
 tspan = (0.0,9.0)
 # ICs
 u0 = [0. for i in 1:N]  # initial conditions
-u0[seed] = 1e-5  # seed
+u0[seed] = rand(Normal(0.,0.01))  # seed
 # Parameters
-ρ = rand(truncated(Normal(0,2.5),lower=0.))
+ρ = rand(truncated(Normal(0,0.01),lower=0.))
 α = rand(Normal(0,2.5))
-β = [rand(truncated(Normal(data[i,end],0.1), lower=0.)) for i in 1:N]
+#α = [rand(truncated(Normal(10.,0.5))) for _ in 1:N]
+β = [rand(truncated(Normal(0.5,0.25), lower=0., upper=1.)) for i in 1:N]
+#p = [ρ, α..., β...]
 p = [ρ, α, β...]
 # setting up, solve, and plot
 prob = ODEProblem(aggregation, u0, tspan, p; alg=alg)
-sol = solve(prob,alg; abstol=1e-9, reltol=1e-6, saveat=timepoints)
+sol = solve(prob,alg; abstol=1e-9, reltol=1e-6)
 StatsPlots.plot(sol; legend=false, ylim=(0,1))
 
 
@@ -74,12 +76,12 @@ Bayesian estimation of model parameters
 =#
 # Bayesian model input for priors and ODE IC
 priors = Dict( 
-            "σ" => InverseGamma(2,3), 
-            "ρ" => truncated(Normal(0,0.1),lower=0.), 
-            "u0[$(seed)]" => truncated(Normal(0.0,0.1),lower=0.),
-            "α" => Normal(0.,2.5),
-            #"β" => arraydist([truncated(Normal(data[i,end], 0.05); lower=0.) for i in 1:N])  # vector
-            "β" => arraydist([Uniform(0,1) for i in 1:N])  # vector
+            "σ" => LogNormal(0.,1.), 
+            "ρ" => truncated(Normal(0,0.01),lower=0.), 
+            "u0[$(seed)]" => truncated(Normal(0.0,0.01),lower=0., upper=1.),
+            "α" => truncated(Normal(0.,2.5),lower=0.),
+            #"α" => arraydist([truncated(Normal(10.,5.), lower=0.) for _ in 1:N]),
+            "β" => arraydist([truncated(Normal(0.0,0.25), lower=0., upper=1.) for _ in 1:N])
             )
 @model function bayesian_model(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
     # Priors and initial conditions 
@@ -91,14 +93,12 @@ priors = Dict(
     u0[seed] ~ priors["u0[$(seed)]"]  
 
     # Simulate diffusion model 
+    #p = [ρ,α...,β...]
     p = [ρ,α,β...]
     sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)) 
-    predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, sensealg=sensealg, abstol=1e-9, reltol=1e-6)
+    predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, sensealg=sensealg, abstol=1e-6, reltol=1e-3)
 
     # Observations.
-    #for i in axes(predicted,1)
-    #    data[i, :] ~ MvNormal(predicted[i,:], σ^2 * I)
-    #end
     for i in axes(predicted,1), j in axes(predicted,2)
         data[i,j] ~ Normal(predicted[i,j], σ^2)
     end
@@ -110,12 +110,12 @@ end
 model = bayesian_model(data, prob)
 
 # benchmarking 
-suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
+suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:reversediff])
 run(suite)
 
 # Sample to approximate posterior, and save
-#chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
-#chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 4; progress=true)
+#chain = sample(model, NUTS(0.65;adtype=AutoReverseDiff()), 1000; progress=true)
+chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 5; progress=true)
 
 # plot posterior distributions and retrodiction
 save_folder = "figures/"*simulation_code
@@ -132,5 +132,6 @@ savage_dickey_density = pdf(posterior_alpha,0.) / pdf(prior_alpha, 0.)
 println("Probability of aggregation model: $(1 - savage_dickey_density / (savage_dickey_density+1))")
 
 # save  
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density)
+#inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density)
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold)
 serialize("simulations/"*simulation_code*".jls", inference)
