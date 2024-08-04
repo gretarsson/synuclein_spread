@@ -14,20 +14,21 @@ using ParetoSmooth
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "retro_total_diffusion_N=40"
+simulation_code = "total_diffusion_N=40"
 threshold = 0.15
-retro = true
+retro = false
 
 #=
 read pathology data
 =#
 data, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=threshold)
 timepoints = vec(readdlm("data/timepoints.csv", ','))
-plt = StatsPlots.plot()
+plt = StatsPlots.plot(;ylabel="total pathology", xlabel="time (month)")
 for i in axes(data,1)
     StatsPlots.plot!(plt,timepoints, data[i,:], legend=false)
 end
-plt
+
+save("figures/total_path/all_regions.png",plt)
 N = size(data)[1]
 
 #=
@@ -70,7 +71,7 @@ Bayesian estimation of model parameters
 priors = Dict( 
             "σ" => LogNormal(0,1), 
             "ρ" => truncated(Normal(0,0.1), lower=0.), 
-            "u0[$(seed)]" => truncated(Normal(0.,5.), lower=0.) 
+            "u0[$(seed)]" => truncated(Normal(0.,10.), lower=0.) 
             )
 @model function bayesian_model(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
     # Priors and initial conditions 
