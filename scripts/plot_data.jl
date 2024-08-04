@@ -99,7 +99,7 @@ for i in axes(average_total_path, 1)
     using GLMakie: scatter!
     f = Figure()
     ax = Axis(f[1,1], title="$(total_path_rois[i])", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.2,nothing,nothing))
-    lines!(timepoints, average_total_path[i,:])
+    CairoMakie.lines!(timepoints, average_total_path[i,:])
     scatter!(timepoints, average_total_path[i,:])
     filename = "figures/total_path/total_path_region_$(string(i)).jpeg"
     save(filename,f)
@@ -124,7 +124,7 @@ end
 plt = StatsPlots.plot()
 portion_regions
 plot = StatsPlots.plot(ps, portion_regions, legend=false, ylim=(0,N))
-save(plot,"figures/thresholding/threshold_total_path.png")
+save("figures/thresholding/threshold_total_path.png",plot)
 
 
 

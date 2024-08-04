@@ -18,8 +18,8 @@ using StatsPlots
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "total_aggregation_N=174"
-data_threshold = 0.01
+simulation_code = "total_aggregation_N=40"
+data_threshold = 0.15
 
 #=
 read pathology data
@@ -133,5 +133,5 @@ savage_dickey_density = pdf(posterior_alpha,0.) / pdf(prior_alpha, 0.)
 println("Probability of aggregation model: $(1 - savage_dickey_density / (savage_dickey_density+1))")
 
 # save  
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density, "data" => data, "waic" => waic)
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density, "data" => data, "waic" => waic, "prob" => aggregation)
 serialize("simulations/"*simulation_code*".jls", inference)

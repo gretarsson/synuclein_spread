@@ -110,6 +110,7 @@ plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=sav
 
 # compute elpd (expected log predictive density)
 elpd = compute_psis_loo(model,chain)
+waic = elpd.estimates[2,1] - elpd.estimates[3,1]  # naive elpd - p_eff
 
 # save
 inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => threshold, "data" => data, "prob" => diffusion, "retro" => retro)
