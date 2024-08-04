@@ -115,7 +115,7 @@ run(suite)
 
 # Sample to approximate posterior, and save
 #chain = sample(model, NUTS(0.65;adtype=AutoReverseDiff()), 1000; progress=true)
-chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 5; progress=true)
+chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 4; progress=true)
 
 # plot posterior distributions and retrodiction
 save_folder = "figures/"*simulation_code
@@ -124,6 +124,7 @@ plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=sav
 
 # compute elpd (expected log predictive density)
 elpd = compute_psis_loo(model,chain)
+waic = elpd.estimates[2,1] - elpd.estimates[3,1]  # naive elpd - p_eff
 
 # hypothesis testing
 prior_alpha = priors["α"]
@@ -132,6 +133,5 @@ savage_dickey_density = pdf(posterior_alpha,0.) / pdf(prior_alpha, 0.)
 println("Probability of aggregation model: $(1 - savage_dickey_density / (savage_dickey_density+1))")
 
 # save  
-#inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density)
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold)
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density, "data" => data, "waic" => waic)
 serialize("simulations/"*simulation_code*".jls", inference)

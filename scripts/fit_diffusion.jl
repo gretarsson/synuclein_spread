@@ -3,7 +3,7 @@ using DelimitedFiles
 using StatsPlots
 using DifferentialEquations
 using Distributions
-using TuringBenchmarking  # only version 0.5.1 works for Mac
+using TuringBenchmarking  
 using ReverseDiff
 using SciMLSensitivity
 using LinearAlgebra
@@ -14,8 +14,9 @@ using ParetoSmooth
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "total_diffusion_N=366"
-threshold = 0.0
+simulation_code = "retro_total_diffusion_N=40"
+threshold = 0.15
+retro = true
 
 #=
 read pathology data
@@ -33,7 +34,7 @@ N = size(data)[1]
 Read structural data 
 =#
 W = readdlm("data/W.csv",',')[idxs,idxs]
-LT = transpose(laplacian_out(W))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+LT = transpose(laplacian_out(W; self_loops=false, retro=retro))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
 labels = readdlm("data/W_labeled.csv",',')[1,2:end][idxs]
 seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
 
@@ -46,13 +47,13 @@ function diffusion(du,u,p,t;L=LT)
     du .= -ρ*L*u 
 end
 # ODE settings
-alg = Tsit5()
+alg = Rodas5P()
 tspan = (0.0,9.0)
 # ICs
 u0 = [0. for i in 1:N]  # initial conditions
-u0[seed] = rand(Uniform(0,1))  # seed, past seed=15 some regions go beyond 1.
+u0[seed] = 1 # seed, past seed=15 some regions go beyond 1.
 # Parameters
-ρ = rand(truncated(Normal(0,2.5),lower=0.))
+ρ = 0.2
 p = [ρ]
 # setting up, solve, and plot
 sensealg = ForwardDiffSensitivity()
@@ -68,8 +69,8 @@ Bayesian estimation of model parameters
 # Bayesian model input for priors and ODE IC
 priors = Dict( 
             "σ" => LogNormal(0,1), 
-            "ρ" => truncated(Normal(0,0.5), lower=0.), 
-            "u0[$(seed)]" => truncated(Normal(0,0.1), lower=0.) 
+            "ρ" => truncated(Normal(0,0.1), lower=0.), 
+            "u0[$(seed)]" => truncated(Normal(0.,5.), lower=0.) 
             )
 @model function bayesian_model(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
     # Priors and initial conditions 
@@ -99,8 +100,8 @@ suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:rev
 run(suite)
 
 # Sample to approximate posterior, and save
-#chain = sample(model, NUTS(;adtype=AutoForwardDiff()), 1000; progress=true)
-chain = sample(model, NUTS(;adtype=AutoForwardDiff()), MCMCThreads(), 1000, 4; progress=true)
+chain = sample(model, NUTS(;adtype=AutoForwardDiff()), 1000; progress=true)
+#chain = sample(model, NUTS(;adtype=AutoForwardDiff()), MCMCThreads(), 1000, 4; progress=true)
 
 # plot posterior distributions and retrodiction
 save_folder = "figures/"*simulation_code
@@ -111,5 +112,5 @@ plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=sav
 elpd = compute_psis_loo(model,chain)
 
 # save
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => threshold)
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => threshold, "data" => data, "prob" => diffusion, "retro" => retro)
 serialize("simulations/"*simulation_code*".jls", inference)

@@ -6,15 +6,19 @@ Helper functions for the project
 #=
 create Laplacian matrix based on out degrees
 =#
-function laplacian_out(W)
+function laplacian_out(W; self_loops=false, retro=false)
+    if retro
+        W = transpose(W)
+    end
     N = length(W[1,:])
-    for i in N  # removing self-loops
-        W[i,i] = 0
+    if !self_loops
+        for i in 1:N  # removing self-loops
+            W[i,i] = 0
+        end
     end
     # create Laplacian from struct. connectome
     D = zeros(N,N)  # out-degree matrix
     for i in 1:N
-        W[i,i] = 0
         D[i,i] = sum(W[i,:])
     end
     L = D - W 
@@ -134,8 +138,9 @@ end
 #=
 Plot retrodiction of chain compared to data
 =#
-function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=nothing, timepoints=nothing, seed=0, seed_bayesian=false, u0=nothing)
+function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=nothing, timepoints=nothing, seed=0, seed_bayesian=false, u0=nothing, N_samples=300)
     N = size(data)[1]
+    M = length(timepoints)
     fs = Any[NaN for _ in 1:N]
     axs = Any[NaN for _ in 1:N]
     for i in 1:N
@@ -144,7 +149,8 @@ function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=noth
         fs[i] = f
         axs[i] = ax
     end
-    posterior_samples = sample(chain, 300; replace=false)
+    posterior_samples = sample(chain, N_samples; replace=false)
+    avg_sol =   zeros(N,M)
     for sample in eachrow(Array(posterior_samples))
         # samples
         if seed_bayesian  # means IC at seed region has posterior
@@ -156,9 +162,12 @@ function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=noth
         
         # solve
         sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
+        sol_p_timepoints = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
         for i in 1:N
             CairoMakie.lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
         end
+        # add to average
+        avg_sol = avg_sol .+ (Array(sol_p_timepoints[1:N,:]) ./ N_samples)
     end
 
     # Plot simulation and noisy observations.
@@ -166,6 +175,31 @@ function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=noth
         CairoMakie.scatter!(axs[i], timepoints, data[i,:]; colormap=:tab10)
         CairoMakie.save(path * "/retrodiction_region_$(i).png", fs[i])
     end
+    # plot predicted vs data
+    f = CairoMakie.Figure()
+    ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", aspect=1)
+    CairoMakie.scatter!(ax,vec(data),vec(avg_sol), alpha=0.5)
+    maxl = max(maximum(data), maximum(avg_sol))
+    CairoMakie.lines!([0,maxl],[0,maxl], color=:grey, alpha=0.5)
+    CairoMakie.save(path * "/predicted_observed_average.png", f)
+    # plot mode prediction
+    n_pars = length(chain.info[1])
+    _, argmax = findmax(chain[:lp])
+    mode_pars = Array(chain[argmax[1], 2:n_pars, argmax[2]])
+    if seed_bayesian
+        p = mode_pars[1:(end-1)]
+        u0[seed] = mode_pars[end]
+    else
+        p = mode_pars
+    end
+    println(p)
+    sol = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
+    f = CairoMakie.Figure()
+    ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", aspect=1)
+    CairoMakie.scatter!(ax,vec(data),vec(Array(sol[1:N,:])), alpha=0.5)
+    maxl = max(maximum(data), maximum(sol))
+    CairoMakie.lines!([0,maxl],[0,maxl], color=:grey, alpha=0.5)
+    CairoMakie.save(path * "/predicted_observed_mode.png", f)
 end
 
 #=

@@ -18,8 +18,8 @@ using StatsPlots
 include("helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
-simulation_code = "total_death_N=40_wo_beta"
-data_threshold = 0.16
+simulation_code = "total_death_N=40"
+data_threshold = 0.15
 
 #=
 read pathology data
@@ -56,7 +56,7 @@ function dad(du,u,p,t;L=LT)  # diffusion-aggregation-death
     κ = p[(N+4):end]
     # rhs
     du[1:N] .= -ρ*L*x .+ α .* x .* (β.*y .- x)  
-    du[N+1:2*N] .= -γ .* (y .- (1 .- κ.*x))  
+    du[N+1:2*N] .= -1/γ .* (y .- (1 .- κ.*x))  
 end
 # ODE settings
 alg = Tsit5()
@@ -86,12 +86,12 @@ Bayesian estimation of model parameters
 # Bayesian model input for priors and ODE IC
 priors = Dict( 
             "σ" => InverseGamma(2,3), 
-            "ρ" => truncated(Normal(0,0.1),lower=0.), 
-            "seed" => truncated(Normal(0.0,0.1),lower=0.),
-            "α" => truncated(Normal(10.,5), lower=0.),
-            "β" => arraydist([truncated(Normal(1., 0.); lower=0.) for i in 1:N]),  
+            "ρ" => truncated(Normal(0,0.01),lower=0.), 
+            "seed" => truncated(Normal(0.0,0.01),lower=0.),
+            "α" => truncated(Normal(0.,2.5), lower=0.),
+            "β" => arraydist([truncated(Normal(0., 0.25); lower=0.) for i in 1:N]),  
             "γ" => truncated(Normal(0.,0.5), lower=0.),
-            "κ" => arraydist([truncated(Normal(0.5, 0.25); lower=0.) for i in 1:N]),  
+            "κ" => arraydist([truncated(Normal(0.0, 1.); lower=0.) for i in 1:N]),  
             )
 @model function bayesian_model(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors, N=N)
     # Priors and initial conditions 
@@ -123,23 +123,29 @@ end
 model = bayesian_model(data, prob)
 
 # benchmarking 
-suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
+suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:reversediff])
 run(suite)
 
-# Sample to approximate posterior
-chain = sample(model, NUTS(;adtype=AutoReverseDiff()), 1000; progress=true)
+# Sample to approximate posterior, and save
+#chain = sample(model, NUTS(0.65;adtype=AutoReverseDiff()), 1000; progress=true)
+chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 4; progress=true)
 
 # plot posterior distributions and retrodiction
+include("helpers.jl")
 save_folder = "figures/"*simulation_code
-plot_chains(chain, save_folder*"/chains")
-plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed,seed_bayesian=true, u0=u0)
+plot_chains(chain, save_folder*"/chains"; priors=priors)
+plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=save_folder*"/retrodiction",seed=seed, seed_bayesian=true, u0=u0)
+
+# compute elpd (expected log predictive density)
+elpd = compute_psis_loo(model,chain)
+waic = elpd.estimates[2,1] - elpd.estimates[3,1]  # naive elpd - p_eff
 
 # hypothesis testing
-prior_interest = priors["γ"]
-posterior_interest = KernelDensity.kde(vec(chain[:γ]), boundary=(0,40))
-savage_dickey_density = pdf(posterior_interest,0.) / pdf(prior_interest, 0.)
+prior_alpha = priors["γ"]
+posterior_alpha = KernelDensity.kde(vec(chain[:α]), boundary=(0,40))
+savage_dickey_density = pdf(posterior_alpha,0.) / pdf(prior_alpha, 0.)
 println("Probability of model: $(1 - savage_dickey_density / (savage_dickey_density+1))")
 
-# save chain, model, priors, data threshold, and hypothesis test 
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density)
+# save  
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density, "data" => data, "waic" => waic)
 serialize("simulations/"*simulation_code*".jls", inference)
