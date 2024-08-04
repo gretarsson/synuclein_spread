@@ -123,7 +123,8 @@ for (i,p) in enumerate(ps)
 end
 plt = StatsPlots.plot()
 portion_regions
-StatsPlots.plot(ps, portion_regions, legend=false, ylim=(0,N))
+plot = StatsPlots.plot(ps, portion_regions, legend=false, ylim=(0,N))
+save(plot,"figures/thresholding/threshold_total_path.png")
 
 
 
