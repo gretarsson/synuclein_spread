@@ -117,5 +117,5 @@ plot_retrodiction(data=data,prob=prob,chain=chain,timepoints=timepoints,path=sav
 elpd = compute_psis_loo(model,chain)
 
 # save
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => threshold, "data" => data, "prob" => both_diffusion, "retro" => 2)
+inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => threshold, "data" => data, "retro" => 2)
 serialize("simulations/"*simulation_code*".jls", inference)

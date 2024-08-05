@@ -44,7 +44,7 @@ seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
 #=
 Define, simulate, and plot model
 =#
-function aggregation(du,u,p,t;L=LT)
+function aggregation2(du,u,p,t;L=LT)
     ρ = p[1]
     α = p[2]
     β = p[3:end]
@@ -65,7 +65,7 @@ u0[seed] = rand(Normal(0.,0.01))  # seed
 #p = [ρ, α..., β...]
 p = [ρ, α, β...]
 # setting up, solve, and plot
-prob = ODEProblem(aggregation, u0, tspan, p; alg=alg)
+prob = ODEProblem(aggregation2, u0, tspan, p; alg=alg)
 sol = solve(prob,alg; abstol=1e-9, reltol=1e-6)
 StatsPlots.plot(sol; legend=false, ylim=(0,1))
 
@@ -133,5 +133,5 @@ savage_dickey_density = pdf(posterior_alpha,0.) / pdf(prior_alpha, 0.)
 println("Probability of aggregation model: $(1 - savage_dickey_density / (savage_dickey_density+1))")
 
 # save  
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density, "data" => data, "waic" => waic, "prob" => aggregation)
+inference = Dict("chain" => chain, "priors" => priors, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density, "data" => data, "waic" => waic)
 serialize("simulations/"*simulation_code*".jls", inference)

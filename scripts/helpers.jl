@@ -1,6 +1,18 @@
 #=
 Helper functions for the project
 =#
+using Turing
+using DelimitedFiles
+using StatsPlots
+using DifferentialEquations
+using Distributions
+using TuringBenchmarking  
+using ReverseDiff
+using SciMLSensitivity
+using LinearAlgebra
+using Serialization
+using CairoMakie
+using ParetoSmooth
 
 
 #=
@@ -78,7 +90,7 @@ find rows with maximum larger than a
 function larger_rows(A,a)
     larger_idxs = [false for _ in 1:size(A)[1]]
     for i in axes(A,1)
-        if maximum(A[i,:]) >= a
+        if maximum(filter(!isnan,A[i,:])) >= a
             larger_idxs[i] = true
         end
     end
@@ -212,4 +224,102 @@ function compute_psis_loo(model,chain)
     loglikelihoods = permutedims(stack(collect(values(loglikelihoods_dict))),[3,1,2])
     elpd = psis_loo(loglikelihoods, source="mcmc")
     return elpd
+end
+
+# ----------------------------------------------------
+# ODEs
+# ----------------------------------------------------
+function diffusion(du,u,p,t;L=L)
+    ρ = p[1]
+
+    du .= -ρ*L*u 
+end
+function aggregation(du,u,p,t;L=LT)
+    ρ = p[1]
+    α = p[2]
+    β = p[3:end]
+
+    du .= -ρ*L*u .+ α .* u .* (β .- u)  
+end
+
+
+
+# ----------------------------------------------------
+# Run whole simulations in one place
+# ----------------------------------------------------
+
+function infer(ode, priors, data_file, timepoints_file, W_file; retro=false, alg=Tsit5(), sensealg=ForwardDiffSensitivity(), adtype=AutoForwardDiff(), threshold=0., abstol=1e-10, reltol=1e-10)
+    # read empirical data
+    data, idxs = read_data(data_file, remove_nans=true, threshold=threshold)
+    timepoints = vec(readdlm(timepoints_file, ','))
+
+    # read structural data 
+    W_labelled = readdlm(W_file,',')
+    W = W_labelled[2:end,2:end]
+    W = W[idxs,idxs]
+    L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=retro)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+    labels = W_labelled[1,2:end][idxs]
+    seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
+    N = size(L)[1]
+    N_pars = length(priors)-2  # minus sigma and IC prior
+
+    #=
+    Define, simulate, and plot model
+    =#
+    # ODE settings
+    #tspan = (timepoints[0],timepoints[-1])
+    ## ICs
+    #u0 = [0. for i in 1:N]  # initial conditions
+    #u0[seed] = rand(prior[end]) # seed, past seed=15 some regions go beyond 1.
+    ## Parameters
+    #p = [rand(priors[i+1]) for i in 1:N_pars]
+    ## setting up, solve, and plot
+    #prob = ODEProblem(ode, u0, tspan, p; alg=alg)
+    #sol = solve(prob,alg; abstol=1e-6, reltol=1e-3)
+    #plt = StatsPlots.plot(sol; legend=false, ylim=(0,1))
+
+    # -----------------------------------------------------------------------------------------------------------------
+    #=
+    Bayesian estimation of model parameters
+    =#
+    # Define prob
+    u0 = [0. for _ in 1:N]
+    p = zeros(Float64, N_pars)
+    tspan = (timepoints[1],timepoints[end])
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
+    prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
+
+    @model function bayesian_model(data, prob; priors=priors, alg=alg, timepoints=timepoints, seed=seed)
+        # initializations 
+        p = zeros(Float64, N_pars)
+        u0 = [0. for _ in 1:N]
+
+        # priors
+        σ ~ priors[1]
+        for i in 1:N_pars
+            p[i] ~ priors[1+i]  
+        end
+        u0[seed] ~ priors[end]  
+
+        # Simulate diffusion model 
+        predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, sensealg=sensealg, abstol=abstol, reltol=reltol)
+
+        # Observations.
+        for i in axes(predicted,1), j in axes(predicted,2)
+            data[i,j] ~ Normal(predicted[i,j], σ^2)
+        end
+
+        return nothing
+    end
+
+    # define Turing model
+    model = bayesian_model(data, prob)
+
+    # benchmark
+    suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
+    println(run(suite))
+
+    # Sample to approximate posterior, and save
+    chain = sample(model, NUTS(;adtype=adtype), 1000; progress=true)
+    return chain
 end

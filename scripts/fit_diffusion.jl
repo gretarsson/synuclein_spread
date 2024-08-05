@@ -27,28 +27,28 @@ plt = StatsPlots.plot(;ylabel="total pathology", xlabel="time (month)")
 for i in axes(data,1)
     StatsPlots.plot!(plt,timepoints, data[i,:], legend=false)
 end
-
-save("figures/total_path/all_regions.png",plt)
+plt
 N = size(data)[1]
+save("figures/total_path/all_$(N)_regions.png",plt)
 
 #=
 Read structural data 
 =#
 W = readdlm("data/W.csv",',')[idxs,idxs]
-LT = transpose(laplacian_out(W; self_loops=false, retro=retro))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=retro)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
 labels = readdlm("data/W_labeled.csv",',')[1,2:end][idxs]
 seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
 
 #=
 Define, simulate, and plot model
 =#
-function diffusion(du,u,p,t;L=LT)
+function diffusion2(du,u,p,t;L=L)
     ρ = p[1]
 
     du .= -ρ*L*u 
 end
 # ODE settings
-alg = Rodas5P()
+alg = Tsit5()
 tspan = (0.0,9.0)
 # ICs
 u0 = [0. for i in 1:N]  # initial conditions
@@ -57,11 +57,9 @@ u0[seed] = 1 # seed, past seed=15 some regions go beyond 1.
 ρ = 0.2
 p = [ρ]
 # setting up, solve, and plot
-sensealg = ForwardDiffSensitivity()
-prob = ODEProblem(diffusion, u0, tspan, p; alg=alg)
+prob = ODEProblem(diffusion2, u0, tspan, p; alg=alg)
 sol = solve(prob,alg; abstol=1e-6, reltol=1e-3)
 StatsPlots.plot(sol; legend=false, ylim=(0,1))
-
 
 # -----------------------------------------------------------------------------------------------------------------
 #=
@@ -71,9 +69,9 @@ Bayesian estimation of model parameters
 priors = Dict( 
             "σ" => LogNormal(0,1), 
             "ρ" => truncated(Normal(0,0.1), lower=0.), 
-            "u0[$(seed)]" => truncated(Normal(0.,10.), lower=0.) 
+            "u0[$(seed)]" => truncated(Normal(0.,2.5), lower=0.) 
             )
-@model function bayesian_model(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors)
+@model function bayesian_model(data, prob; alg=alg, timepoints=timepoints, seed=seed, priors=priors, L=L)
     # Priors and initial conditions 
     u0 = [0. for _ in 1:N]
     σ ~ priors["σ"]
@@ -104,6 +102,10 @@ run(suite)
 chain = sample(model, NUTS(;adtype=AutoForwardDiff()), 1000; progress=true)
 #chain = sample(model, NUTS(;adtype=AutoForwardDiff()), MCMCThreads(), 1000, 4; progress=true)
 
+# save chain
+inference = Dict("chain" => chain, "priors" => priors, "data_threshold" => threshold, "data" => data, "retro" => retro)
+serialize("simulations/"*simulation_code*".jls", inference)
+
 # plot posterior distributions and retrodiction
 save_folder = "figures/"*simulation_code
 plot_chains(chain, save_folder*"/chains"; priors=priors)
@@ -114,5 +116,5 @@ elpd = compute_psis_loo(model,chain)
 waic = elpd.estimates[2,1] - elpd.estimates[3,1]  # naive elpd - p_eff
 
 # save
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => threshold, "data" => data, "prob" => diffusion, "retro" => retro)
+inference = Dict("chain" => chain, "priors" => priors, "elpd" => elpd, "data_threshold" => threshold, "data" => data, "retro" => retro)
 serialize("simulations/"*simulation_code*".jls", inference)

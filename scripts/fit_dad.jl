@@ -147,5 +147,5 @@ savage_dickey_density = pdf(posterior_alpha,0.) / pdf(prior_alpha, 0.)
 println("Probability of model: $(1 - savage_dickey_density / (savage_dickey_density+1))")
 
 # save  
-inference = Dict("chain" => chain, "priors" => priors, "model" => model, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density, "data" => data, "waic" => waic)
+inference = Dict("chain" => chain, "priors" => priors, "elpd" => elpd, "data_threshold" => data_threshold, "savage_dickey_density" => savage_dickey_density, "data" => data, "waic" => waic)
 serialize("simulations/"*simulation_code*".jls", inference)
