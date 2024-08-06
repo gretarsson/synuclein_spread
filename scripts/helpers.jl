@@ -254,17 +254,17 @@ end
 # ----------------------------------------------------
 # Run whole simulations in one place
 # ----------------------------------------------------
-function infer(ode, priors, data_file, timepoints_file, W_file; 
-    n_threads=1,
-    retro_and_antero=false,
-    alg=Tsit5(), 
-    sensealg=ForwardDiffSensitivity(), 
-    adtype=AutoForwardDiff(), 
-    threshold=0., 
-    abstol=1e-10, 
-    reltol=1e-10,
-    benchmark=false
-    )
+function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file; 
+               n_threads=1,
+               retro_and_antero=false,
+               alg=Tsit5(), 
+               sensealg=ForwardDiffSensitivity(), 
+               adtype=AutoForwardDiff(), 
+               threshold=0., 
+               abstol=1e-10, 
+               reltol=1e-10,
+               benchmark=false
+               )
     # read empirical data
     data, idxs = read_data(data_file, remove_nans=true, threshold=threshold)
     timepoints = vec(readdlm(timepoints_file, ','))
@@ -290,8 +290,11 @@ function infer(ode, priors, data_file, timepoints_file, W_file;
     tspan = (timepoints[1],timepoints[end])
     rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
+    
+    # prior vector from ordered dic
+    priors_vec = collect(values(priors))
 
-    @model function bayesian_model(data, prob; priors=priors, alg=alg, timepoints=timepoints, seed=seed)
+    @model function bayesian_model(data, prob; priors=priors_vec, alg=alg, timepoints=timepoints, seed=seed)
         # initializations 
         p = zeros(Float64, N_pars)
         u0 = [0. for _ in 1:N]
@@ -330,6 +333,8 @@ function infer(ode, priors, data_file, timepoints_file, W_file;
     else
         chain = sample(model, NUTS(;adtype=adtype), MCMCThreads(), 1000, n_threads; progress=true)
     end
+    display(chain)  
+
     # save chains and metadata to a dictionary
     inference = Dict("chain" => chain, 
                      "priors" => priors, 
@@ -339,5 +344,6 @@ function infer(ode, priors, data_file, timepoints_file, W_file;
                      "seed_idx" => seed,
                      "ode" => string(ode)  # store var name of ode (functions cannot be saved)
                      )
+
     return inference
 end
