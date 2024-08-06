@@ -516,3 +516,23 @@ function plot_priors(inference; save_path="")
     end
     return 
 end
+
+#=
+plot priors and posteriors together from inference result
+=#
+function plot_prior_and_posterior(inference; save_path="")
+    chain = inference["chain"]
+    priors = inference["priors"]
+    vars = collect(keys(priors))
+    master_fig = StatsPlots.plot(chain) 
+    prior_and_posterior_figs = []
+    for (i,var) in enumerate(vars)
+        plot_i = StatsPlots.plot(master_fig[i,2], title=var)
+        StatsPlots.plot!(plot_i, priors[var])
+        if !isempty(save_path)
+            savefig(plot_i, save_path*"/prior_and_posterior_$(var).png")
+        end
+        push!(prior_and_posterior_figs,plot_i)
+    end
+    return prior_and_posterior_figs
+end
