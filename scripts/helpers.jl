@@ -1,6 +1,3 @@
-#=
-Helper functions for the project
-=#
 using Turing
 using DelimitedFiles
 using StatsPlots
@@ -13,6 +10,9 @@ using LinearAlgebra
 using Serialization
 using CairoMakie
 using ParetoSmooth
+#=
+Helper functions for the project
+=#
 
 
 #=
@@ -241,14 +241,30 @@ function aggregation(du,u,p,t;L=LT)
 
     du .= -ρ*L*u .+ α .* u .* (β .- u)  
 end
+function diffusion2(du,u,p,t;L=(La, Lr))
+    La, Lr = L
+    ρa = p[1]
+    ρr = p[2]
+
+    du .= -(ρa*La+ρr*Lr)*u 
+end
 
 
 
 # ----------------------------------------------------
 # Run whole simulations in one place
 # ----------------------------------------------------
-
-function infer(ode, priors, data_file, timepoints_file, W_file; retro=false, alg=Tsit5(), sensealg=ForwardDiffSensitivity(), adtype=AutoForwardDiff(), threshold=0., abstol=1e-10, reltol=1e-10)
+function infer(ode, priors, data_file, timepoints_file, W_file; 
+    n_threads=1,
+    retro_and_antero=false,
+    alg=Tsit5(), 
+    sensealg=ForwardDiffSensitivity(), 
+    adtype=AutoForwardDiff(), 
+    threshold=0., 
+    abstol=1e-10, 
+    reltol=1e-10,
+    benchmark=false
+    )
     # read empirical data
     data, idxs = read_data(data_file, remove_nans=true, threshold=threshold)
     timepoints = vec(readdlm(timepoints_file, ','))
@@ -257,31 +273,17 @@ function infer(ode, priors, data_file, timepoints_file, W_file; retro=false, alg
     W_labelled = readdlm(W_file,',')
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
-    L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=retro)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+    L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
     N = size(L)[1]
     N_pars = length(priors)-2  # minus sigma and IC prior
+    if retro_and_antero  # include both Laplacians, if told to
+        La = L
+        Lr = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  
+        L = (La,Lr)
+    end
 
-    #=
-    Define, simulate, and plot model
-    =#
-    # ODE settings
-    #tspan = (timepoints[0],timepoints[-1])
-    ## ICs
-    #u0 = [0. for i in 1:N]  # initial conditions
-    #u0[seed] = rand(prior[end]) # seed, past seed=15 some regions go beyond 1.
-    ## Parameters
-    #p = [rand(priors[i+1]) for i in 1:N_pars]
-    ## setting up, solve, and plot
-    #prob = ODEProblem(ode, u0, tspan, p; alg=alg)
-    #sol = solve(prob,alg; abstol=1e-6, reltol=1e-3)
-    #plt = StatsPlots.plot(sol; legend=false, ylim=(0,1))
-
-    # -----------------------------------------------------------------------------------------------------------------
-    #=
-    Bayesian estimation of model parameters
-    =#
     # Define prob
     u0 = [0. for _ in 1:N]
     p = zeros(Float64, N_pars)
@@ -316,10 +318,26 @@ function infer(ode, priors, data_file, timepoints_file, W_file; retro=false, alg
     model = bayesian_model(data, prob)
 
     # benchmark
-    suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
-    println(run(suite))
+    if benchmark
+        suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
+        println(run(suite))
+        return nothing
+    end
 
-    # Sample to approximate posterior, and save
-    chain = sample(model, NUTS(;adtype=adtype), 1000; progress=true)
-    return chain
+    # Sample to approximate posterior
+    if n_threads == 1
+        chain = sample(model, NUTS(;adtype=adtype), 1000; progress=true)  # time estimated is shown
+    else
+        chain = sample(model, NUTS(;adtype=adtype), MCMCThreads(), 1000, n_threads; progress=true)
+    end
+    # save chains and metadata to a dictionary
+    inference = Dict("chain" => chain, 
+                     "priors" => priors, 
+                     "data" => data,
+                     "timepoints" => timepoints,
+                     "threshold" => threshold, 
+                     "seed_idx" => seed,
+                     "ode" => string(ode)  # store var name of ode (functions cannot be saved)
+                     )
+    return inference
 end
