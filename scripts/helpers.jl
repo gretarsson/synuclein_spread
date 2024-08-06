@@ -125,7 +125,7 @@ end
 #=
 Plot the chains and posterior dist of each estimated parameter
 =#
-function plot_chains(chain, path; priors=nothing)
+function plot_chains_old(chain, path; priors=nothing)
     vars = chain.info.varname_to_symbol
     master_fig = StatsPlots.plot(chain) 
     i = 1
@@ -248,6 +248,10 @@ function diffusion2(du,u,p,t;L=(La, Lr))
 
     du .= -(ρa*La+ρr*Lr)*u 
 end
+#=
+a dictionary containing the ODE functions
+=#
+odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "aggregation" => aggregation)
 
 
 
@@ -342,8 +346,173 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                      "timepoints" => timepoints,
                      "threshold" => threshold, 
                      "seed_idx" => seed,
-                     "ode" => string(ode)  # store var name of ode (functions cannot be saved)
+                     "ode" => string(ode),  # store var name of ode (functions cannot be saved)
+                     "L" => L
                      )
 
     return inference
+end
+
+
+#=
+plot predicted vs observed plot for inference, parameters chosen from posterior mode
+=#
+using Makie
+function predicted_observed(inference; save_path="")
+    # unpack from simulation
+    chain = inference["chain"]
+    data = inference["data"]
+    timepoints = inference["timepoints"]
+    seed = inference["seed_idx"]
+    L = inference["L"]
+    ode = odes[inference["ode"]]
+    N = size(data)[1]
+
+    # simulate ODE from posterior mode
+    # initialize
+    tspan = (0., timepoints[end])
+    u0 = [0. for _ in 1:N]
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
+    prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+
+    # find posterior mode
+    n_pars = length(chain.info[1])
+    _, argmax = findmax(chain[:lp])
+    mode_pars = Array(chain[argmax[1], 2:n_pars, argmax[2]])
+    p = mode_pars[1:(end-1)]
+    u0[seed] = mode_pars[end]
+
+    # solve ODE
+    sol = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
+
+    # plot
+    f = CairoMakie.Figure()
+    plotscale = log10
+    ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale)
+
+    # as we are plotting log-log, we account for zeros in the data
+    x = vec(copy(data))
+    y = vec(copy(sol[1:N,:]))
+    if (sum(x .== 0) + sum(y .== 0)) > 0  # if zeros present, add the smallest number in plot
+        minx = minimum(x[x.>0])
+        miny = minimum(y[y.>0])
+        minxy = min(minx, miny)
+        x = x .+ minxy
+        y = y .+ minxy
+    end
+
+    CairoMakie.scatter!(ax,x,y, alpha=0.5)
+    maxxy = max(maximum(x), maximum(y))
+    CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
+    if !isempty(save_path)
+        CairoMakie.save(save_path * "/predicted_observed_mode.png", f)
+    end
+    return f
+end
+
+#=
+plot chains of each parameter from inference
+=#
+function plot_chains(inference; save_path="")
+    chain = inference["chain"]
+    vars = collect(keys(inference["priors"]))
+    master_fig = StatsPlots.plot(chain) 
+    chain_figs = []
+    for (i,var) in enumerate(vars)
+        chain_i = StatsPlots.plot(master_fig[i,1], title=var)
+        if !isempty(save_path)
+            savefig(chain_i, save_path*"/chain_$(var).png")
+        end
+        push!(chain_figs,chain_i)
+    end
+    return chain_figs
+end
+
+#=
+plot posteriors of each parameter from inference
+=#
+function plot_posteriors(inference; save_path="")
+    chain = inference["chain"]
+    vars = collect(keys(inference["priors"]))
+    master_fig = StatsPlots.plot(chain) 
+    posterior_figs = []
+    for (i,var) in enumerate(vars)
+        posterior_i = StatsPlots.plot(master_fig[i,2], title=var)
+        if !isempty(save_path)
+            savefig(posterior_i, save_path*"/posterior_$(var).png")
+        end
+        push!(posterior_figs,posterior_i)
+    end
+    return posterior_figs
+end
+
+#=
+plot retrodictino from inference result
+=#
+function plot_retrodiction(inference; save_path=nothing, N_samples=300)
+    # unload from simulation
+    data = inference["data"]
+    chain = inference["chain"]
+    timepoints = inference["timepoints"]
+    seed = inference["seed_idx"]
+    L = inference["L"]
+    ode = odes[inference["ode"]]
+    N = size(data)[1]
+    M = length(timepoints)
+
+    # define ODE problem 
+    u0 = [0. for _ in 1:N]
+    tspan = (0, timepoints[end])
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
+    prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+
+    fs = Any[NaN for _ in 1:N]
+    axs = Any[NaN for _ in 1:N]
+    for i in 1:N
+        f = CairoMakie.Figure()
+        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0,1))
+        fs[i] = f
+        axs[i] = ax
+    end
+    posterior_samples = sample(chain, N_samples; replace=false)
+    avg_sol = zeros(N,M)
+    for sample in eachrow(Array(posterior_samples))
+        # samples
+        p = sample[2:(end-1)]  # first index is σ and last index is seed
+        u0[seed] = sample[end]
+        
+        # solve
+        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
+        sol_p_timepoints = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
+        for i in 1:N
+            CairoMakie.lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
+        end
+        # add to average
+        avg_sol = avg_sol .+ (Array(sol_p_timepoints[1:N,:]) ./ N_samples)
+    end
+
+    # Plot simulation and noisy observations.
+    for i in 1:N
+        CairoMakie.scatter!(axs[i], timepoints, data[i,:]; colormap=:tab10)
+        CairoMakie.save(save_path * "/retrodiction_region_$(i).png", fs[i])
+    end
+
+    # we're done
+    return fs
+end
+
+#=
+plot priors from inference result
+=#
+function plot_priors(inference; save_path="")
+    priors = inference["priors"]
+    prior_figs = []
+    for (var, dist) in priors
+        prior_i = StatsPlots.plot(dist, title=var, ylabel="Density", xlabel="Sample value", legend=false)
+        if !isempty(save_path)
+            savefig(prior_i, save_path*"/prior_$(var).png")
+        end
+        push!(prior_figs, prior_i)
+    end
+    return 
 end
