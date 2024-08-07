@@ -4,7 +4,7 @@ using MCMCChains
 include("helpers.jl");
 
 # load inference simulation 
-simulation = "total_diffusion_N=40";
+simulation = "total_diffusion2_N=40";
 inference = deserialize("simulations/"*simulation*".jls")
 
 # plot pred. vs obsv., chains, posterior distributions, and retrodiction

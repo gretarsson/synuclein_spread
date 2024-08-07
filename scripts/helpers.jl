@@ -10,6 +10,7 @@ using LinearAlgebra
 using Serialization
 using CairoMakie
 using ParetoSmooth
+using Random
 #=
 Helper functions for the project
 =#
@@ -234,7 +235,7 @@ function diffusion(du,u,p,t;L=L)
 
     du .= -ρ*L*u 
 end
-function aggregation(du,u,p,t;L=LT)
+function aggregation(du,u,p,t;L=L)
     ρ = p[1]
     α = p[2]
     β = p[3:end]
@@ -246,7 +247,8 @@ function diffusion2(du,u,p,t;L=(La, Lr))
     ρa = p[1]
     ρr = p[2]
 
-    du .= -(ρa*La+ρr*Lr)*u 
+    #du .= -(ρa*La+ρr*Lr)*u 
+    du .= -ρa*La*u - ρr*Lr*u 
 end
 #=
 a dictionary containing the ODE functions
@@ -260,15 +262,25 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "aggregation" 
 # ----------------------------------------------------
 function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file; 
                n_threads=1,
-               retro_and_antero=false,
                alg=Tsit5(), 
                sensealg=ForwardDiffSensitivity(), 
                adtype=AutoForwardDiff(), 
                threshold=0., 
                abstol=1e-10, 
                reltol=1e-10,
-               benchmark=false
+               benchmark=false,
+               benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled]
                )
+
+    # verify that choice of ODE is correct wrp to retro- and anterograde
+    if string(ode)[end] == '2'
+        retro_and_antero = true 
+        display("Model includes both retrograde and anterograde transport.")
+    else 
+        retro_and_antero = false
+        display("Model includes only anterograde transport.")
+    end
+
     # read empirical data
     data, idxs = read_data(data_file, remove_nans=true, threshold=threshold)
     timepoints = vec(readdlm(timepoints_file, ','))
@@ -298,9 +310,9 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     # prior vector from ordered dic
     priors_vec = collect(values(priors))
 
-    @model function bayesian_model(data, prob; priors=priors_vec, alg=alg, timepoints=timepoints, seed=seed)
+    @model function bayesian_model(data, prob; priors=priors_vec, alg=alg, timepoints=timepoints::Vector{Float64}, seed=seed::Int)
         # initializations 
-        p = zeros(Float64, N_pars)
+        p = zeros(Float64, N_pars)  # this is not type stable, unsure if it affects performance
         u0 = [0. for _ in 1:N]
 
         # priors
@@ -323,10 +335,18 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
 
     # define Turing model
     model = bayesian_model(data, prob)
+    #@code_warntype model.f(
+    #    model,
+    #    Turing.VarInfo(model),
+    #    Turing.SamplingContext(
+    #        Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
+    #    ),
+    #    model.args...,
+    #)
 
     # benchmark
     if benchmark
-        suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:forwarddiff,:reversediff])
+        suite = TuringBenchmarking.make_turing_suite(model;adbackends=benchmark_ad)
         println(run(suite))
         return nothing
     end
