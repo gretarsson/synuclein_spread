@@ -269,7 +269,8 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                abstol=1e-10, 
                reltol=1e-10,
                benchmark=false,
-               benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled]
+               benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
+               test_typestable=false
                )
 
     # verify that choice of ODE is correct wrp to retro- and anterograde
@@ -283,7 +284,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
 
     # read empirical data
     data, idxs = read_data(data_file, remove_nans=true, threshold=threshold)
-    timepoints = vec(readdlm(timepoints_file, ','))
+    timepoints = vec(readdlm(timepoints_file, ','))::Vector{Float64}
 
     # read structural data 
     W_labelled = readdlm(W_file,',')
@@ -291,7 +292,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     W = W[idxs,idxs]
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
-    seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
+    seed = findall(x->x=="iCP",labels)[1]::Int  # find index of seed region
     N = size(L)[1]
     N_pars = length(priors)-2  # minus sigma and IC prior
     if retro_and_antero  # include both Laplacians, if told to
@@ -310,39 +311,38 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     # prior vector from ordered dic
     priors_vec = collect(values(priors))
 
-    @model function bayesian_model(data, prob; priors=priors_vec, alg=alg, timepoints=timepoints::Vector{Float64}, seed=seed::Int)
+    @model function bayesian_model(data, prob; priors=priors_vec, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int)
         # initializations 
-        p = zeros(Float64, N_pars)  # this is not type stable, unsure if it affects performance
         u0 = [0. for _ in 1:N]
 
         # priors
         σ ~ priors[1]
-        for i in 1:N_pars
-            p[i] ~ priors[1+i]  
-        end
-        u0[seed] ~ priors[end]  
+        p ~ arraydist([priors[1+i] for i in 1:N_pars])
+        u0[seedd] ~ priors[end]  
 
         # Simulate diffusion model 
-        predicted = solve(prob, alg; u0=u0, p=p, saveat=timepoints, sensealg=sensealg, abstol=abstol, reltol=reltol)
+        predicted = solve(prob, alg; u0=u0, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
 
         # Observations.
-        for i in axes(predicted,1), j in axes(predicted,2)
-            data[i,j] ~ Normal(predicted[i,j], σ^2)
-        end
+        data ~ MvNormal(vec(predicted), σ^2 * I)  # this gives quicker evals (but recommended by TuringLang developers). For large N, this appears superior
 
         return nothing
     end
 
     # define Turing model
-    model = bayesian_model(data, prob)
-    #@code_warntype model.f(
-    #    model,
-    #    Turing.VarInfo(model),
-    #    Turing.SamplingContext(
-    #        Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
-    #    ),
-    #    model.args...,
-    #)
+    model = bayesian_model(vec(data), prob)
+
+    # test if typestable if told to, red marking in read-out means something is unstable
+    if test_typestable
+        @code_warntype model.f(
+            model,
+            Turing.VarInfo(model),
+            Turing.SamplingContext(
+                Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
+            ),
+            model.args...,
+        )
+    end
 
     # benchmark
     if benchmark
