@@ -261,11 +261,15 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "aggregation" 
 # Run whole simulations in one place
 # ----------------------------------------------------
 function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file; 
+               u0=[]::Vector{Float64},
                n_threads=1,
                alg=Tsit5(), 
                sensealg=ForwardDiffSensitivity(), 
                adtype=AutoForwardDiff(), 
                threshold=0., 
+               bayesian_seed=false,
+               seed_region="iCP"::String,
+               seed_value=1.::Float64,
                abstol=1e-10, 
                reltol=1e-10,
                benchmark=false,
@@ -281,6 +285,11 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         retro_and_antero = false
         display("Model includes only anterograde transport.")
     end
+    if bayesian_seed
+        display("Model is inferring seeding initial conditions")
+    else
+        display("Model has constant initial conditions")
+    end
 
     # read empirical data
     data, idxs = read_data(data_file, remove_nans=true, threshold=threshold)
@@ -292,7 +301,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     W = W[idxs,idxs]
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
-    seed = findall(x->x=="iCP",labels)[1]::Int  # find index of seed region
+    seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
     N = size(L)[1]
     N_pars = length(priors)-2  # minus sigma and IC prior
     if retro_and_antero  # include both Laplacians, if told to
@@ -302,7 +311,6 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     end
 
     # Define prob
-    u0 = [0. for _ in 1:N]
     p = zeros(Float64, N_pars)
     tspan = (timepoints[1],timepoints[end])
     rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
@@ -311,17 +319,20 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     # prior vector from ordered dic
     priors_vec = collect(values(priors))
 
-    @model function bayesian_model(data, prob; priors=priors_vec, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int)
-        # initializations 
-        u0 = [0. for _ in 1:N]
 
+    @model function bayesian_model(data, prob; priors=priors_vec, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u00=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value)
+        u00 = u0  # IC needs to be defined within model to work
         # priors
         σ ~ priors[1]
         p ~ arraydist([priors[1+i] for i in 1:N_pars])
-        u0[seedd] ~ priors[end]  
+        if bayesian_seed
+            u00[seedd] ~ priors[end]  
+        else
+            u00[seedd] = seed_value
+        end
 
         # Simulate diffusion model 
-        predicted = solve(prob, alg; u0=u0, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
+        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
 
         # Observations.
         data ~ MvNormal(vec(predicted), σ^2 * I)  # this gives quicker evals (but recommended by TuringLang developers). For large N, this appears superior
