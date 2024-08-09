@@ -6,6 +6,7 @@ Infer parameters of ODE using Bayesian framework
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
 thresholds = [0.15, 0.05, 0.01, 0.0];
+thresholds = [0.05, 0.01, 0.0]
 Ns = Dict(0.15 => 40, 0.05 => 95, 0.01 => 174, 0.0 => 366);
 for i in eachindex(thresholds)
     N = Ns[thresholds[i]]
