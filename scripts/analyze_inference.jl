@@ -1,24 +1,12 @@
-using Serialization
-using Distributions, Turing  # required to deserialize priors dictionary and MCMCChains object 
-using MCMCChains
+#=
+here we create a folder of analysis plots of interence results
+=#
 include("helpers.jl");
 
-# load inference simulation 
+
+# simulation to analyze
 simulation = "total_diffusion2_N=40";
+
+# plot 
 inference = deserialize("simulations/"*simulation*".jls")
-inference["chain"]
-
-# create folder
-save_path = "figures/"*simulation;
-try
-    mkdir(save_path);
-catch
-end
-
-# plot
-pred_obsv = predicted_observed(inference; save_path=save_path*"/predicted_observed");
-chain_figs = plot_chains(inference, save_path=save_path*"/chains");
-prior_figs = plot_priors(inference; save_path=save_path*"/priors");
-posterior_figs = plot_posteriors(inference, save_path=save_path*"/posteriors");
-retrodiction_figs = plot_retrodiction(inference; save_path=save_path*"/retrodiction");
-prior_and_posterior_figs = plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
+plot_inference(inference,"figures/"*simulation)

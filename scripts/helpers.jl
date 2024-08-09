@@ -262,6 +262,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                sensealg=ForwardDiffSensitivity(), 
                adtype=AutoForwardDiff(), 
                threshold=0., 
+               W_factor=1.::Float64,
                bayesian_seed=false,
                seed_region="iCP"::String,
                seed_value=1.::Float64,
@@ -299,13 +300,14 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     W_labelled = readdlm(W_file,',')
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
+    W = W ./ W_factor
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
     N = size(L)[1]
     N_pars = length(priors)-2  # minus sigma and IC prior
     if retro_and_antero  # include both Laplacians, if told to
-        La = L
+        La = copy(L)
         Lr = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  
         L = (La,Lr)
     end
@@ -392,6 +394,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                      "bayesian_seed" => bayesian_seed,
                      "transform_observable" => transform_observable,
                      "ode" => string(ode),  # store var name of ode (functions cannot be saved)
+                     "W_factor" => W_factor,
                      "L" => L
                      )
 
@@ -408,8 +411,6 @@ function predicted_observed(inference; save_path="")
     try
         mkdir(save_path) 
     catch
-        display("Could not create directory $(save_path).")
-        return nothing
     end
 
     # unpack from simulation
@@ -511,8 +512,6 @@ function plot_chains(inference; save_path="")
     try
         mkdir(save_path) 
     catch
-        display("Could not create directory $(save_path).")
-        return nothing
     end
     chain = inference["chain"]
     vars = collect(keys(inference["priors"]))
@@ -536,8 +535,6 @@ function plot_posteriors(inference; save_path="")
     try
         mkdir(save_path) 
     catch
-        display("Could not create directory $(save_path).")
-        return nothing
     end
     chain = inference["chain"]
     vars = collect(keys(inference["priors"]))
@@ -561,8 +558,6 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     try
         mkdir(save_path) 
     catch
-        display("Could not create directory $(save_path).")
-        return nothing
     end
     # unload from simulation
     data = inference["data"]
@@ -623,8 +618,6 @@ function plot_priors(inference; save_path="")
     try
         mkdir(save_path) 
     catch
-        display("Could not create directory $(save_path).")
-        return nothing
     end
     priors = inference["priors"]
     prior_figs = []
@@ -646,8 +639,6 @@ function plot_prior_and_posterior(inference; save_path="")
     try
         mkdir(save_path) 
     catch
-        display("Could not create directory $(save_path).")
-        return nothing
     end
     chain = inference["chain"]
     priors = inference["priors"]
@@ -663,4 +654,27 @@ function plot_prior_and_posterior(inference; save_path="")
         push!(prior_and_posterior_figs,plot_i)
     end
     return prior_and_posterior_figs
+end
+
+#=
+master plotting function (plot everything relevant to inference)
+=#
+function plot_inference(inference, save_path)
+    # load inference simulation 
+    display(inference["chain"])
+
+    # create folder
+    try
+        mkdir(save_path);
+    catch
+    end
+
+    # plot
+    predicted_observed(inference; save_path=save_path*"/predicted_observed");
+    plot_chains(inference, save_path=save_path*"/chains");
+    plot_priors(inference; save_path=save_path*"/priors");
+    plot_posteriors(inference, save_path=save_path*"/posteriors");
+    plot_retrodiction(inference; save_path=save_path*"/retrodiction");
+    plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
+    return nothing
 end
