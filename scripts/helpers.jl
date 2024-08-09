@@ -122,32 +122,6 @@ function read_data(path; remove_nans=false, threshold=0.)
     return A[idxs,:], idxs
 end
 
-
-#=
-Plot the chains and posterior dist of each estimated parameter
-=#
-function plot_chains_old(chain, path; priors=nothing)
-    vars = chain.info.varname_to_symbol
-    master_fig = StatsPlots.plot(chain) 
-    i = 1
-    for (key,value) in vars  # iterate through parameters
-        #prior = priors["$(value)"]
-        # plot Markov chain
-        chain_i = StatsPlots.plot(master_fig[i,1])
-        savefig(chain_i,path * "/chain_$(value).png")
-        # plot prior alone
-        #prior_i = StatsPlots.plot(prior)
-        #savefig(prior_i,path * "/prior_$(value).png")
-        # plot posterior alone
-        posterior_i = StatsPlots.plot(master_fig[i,2])
-        savefig(posterior_i,path * "/posterior_$(value).png")
-        # plot posterior and prior together
-        #StatsPlots.plot!(posterior_i, prior, color=:grey)  # add prior to posterior plot
-        #savefig(posterior_i,path * "/prior_posterior_$(value).png")
-        i += 1
-    end
-end
-
 #=
 Plot retrodiction of chain compared to data
 =#
@@ -430,6 +404,14 @@ plot predicted vs observed plot for inference, parameters chosen from posterior 
 =#
 using Makie
 function predicted_observed(inference; save_path="")
+    # try creating folder to save in
+    try
+        mkdir(save_path) 
+    catch
+        display("Could not create directory $(save_path).")
+        return nothing
+    end
+
     # unpack from simulation
     fs = []  # storing figures
     chain = inference["chain"]
@@ -525,6 +507,13 @@ end
 plot chains of each parameter from inference
 =#
 function plot_chains(inference; save_path="")
+    # try creating folder to save in
+    try
+        mkdir(save_path) 
+    catch
+        display("Could not create directory $(save_path).")
+        return nothing
+    end
     chain = inference["chain"]
     vars = collect(keys(inference["priors"]))
     master_fig = StatsPlots.plot(chain) 
@@ -543,6 +532,13 @@ end
 plot posteriors of each parameter from inference
 =#
 function plot_posteriors(inference; save_path="")
+    # try creating folder to save in
+    try
+        mkdir(save_path) 
+    catch
+        display("Could not create directory $(save_path).")
+        return nothing
+    end
     chain = inference["chain"]
     vars = collect(keys(inference["priors"]))
     master_fig = StatsPlots.plot(chain) 
@@ -561,6 +557,13 @@ end
 plot retrodictino from inference result
 =#
 function plot_retrodiction(inference; save_path=nothing, N_samples=300)
+    # try creating folder to save in
+    try
+        mkdir(save_path) 
+    catch
+        display("Could not create directory $(save_path).")
+        return nothing
+    end
     # unload from simulation
     data = inference["data"]
     chain = inference["chain"]
@@ -616,6 +619,13 @@ end
 plot priors from inference result
 =#
 function plot_priors(inference; save_path="")
+    # try creating folder to save in
+    try
+        mkdir(save_path) 
+    catch
+        display("Could not create directory $(save_path).")
+        return nothing
+    end
     priors = inference["priors"]
     prior_figs = []
     for (var, dist) in priors
@@ -632,6 +642,13 @@ end
 plot priors and posteriors together from inference result
 =#
 function plot_prior_and_posterior(inference; save_path="")
+    # try creating folder to save in
+    try
+        mkdir(save_path) 
+    catch
+        display("Could not create directory $(save_path).")
+        return nothing
+    end
     chain = inference["chain"]
     priors = inference["priors"]
     vars = collect(keys(priors))
