@@ -235,6 +235,34 @@ function diffusion(du,u,p,t;L=L)
 
     du .= -ρ*L*u 
 end
+function diffusion2(du,u,p,t;L=(La, Lr))
+    La, Lr = L
+    ρa = p[1]
+    ρr = p[2]
+
+    #du .= -(ρa*La+ρr*Lr)*u   # this gives very slow gradient computation
+    du .= -ρa*La*u - ρr*Lr*u   # quick gradient computation
+end
+function diffusion3(du,u,p,t;L=L,N=1::Int)
+    ρ = p[1]
+    γ = p[2]
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+
+    du[1:N] .= -ρ*L*x
+    du[(N+1):(2*N)] .= γ .* tanh.(x) .-  1/γ .* y
+end
+function diffusion4(du,u,p,t;L=(La,Lr),N=1::Int)
+    La, Lr = L
+    ρa = p[1]
+    ρr = p[2]
+    γ = p[3]
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+
+    du[1:N] .= -ρa*La*x-ρr*Lr*x
+    du[(N+1):(2*N)] .= γ .* tanh.(x) .-  1/γ .* y
+end
 function aggregation(du,u,p,t;L=L)
     ρ = p[1]
     α = p[2]
@@ -242,24 +270,17 @@ function aggregation(du,u,p,t;L=L)
 
     du .= -ρ*L*u .+ α .* u .* (β .- u)  
 end
-function diffusion2(du,u,p,t;L=(La, Lr))
-    La, Lr = L
-    ρa = p[1]
-    ρr = p[2]
-
-    #du .= -(ρa*La+ρr*Lr)*u 
-    du .= -ρa*La*u - ρr*Lr*u 
-end
 #=
 a dictionary containing the ODE functions
 =#
-odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "aggregation" => aggregation)
+odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion4" => diffusion4, "aggregation" => aggregation)
 
 
 
-# ----------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------------------
 # Run whole simulations in one place
-# ----------------------------------------------------
+# the Priors dict must contains σ in its first key and seed in its last (independent whether seed is actually uncertain or not)
+# ----------------------------------------------------------------------------------------------------------------------------------
 function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file; 
                u0=[]::Vector{Float64},
                n_threads=1,
@@ -270,19 +291,21 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                bayesian_seed=false,
                seed_region="iCP"::String,
                seed_value=1.::Float64,
+               pred_idxs=[1]::Vector{Int},
                abstol=1e-10, 
                reltol=1e-10,
                benchmark=false,
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
-               test_typestable=false
+               test_typestable=false,
+               transform_observable=false
                )
 
     # verify that choice of ODE is correct wrp to retro- and anterograde
+    retro_and_antero = false
     if string(ode)[end] == '2'
         retro_and_antero = true 
         display("Model includes both retrograde and anterograde transport.")
     else 
-        retro_and_antero = false
         display("Model includes only anterograde transport.")
     end
     if bayesian_seed
@@ -294,6 +317,9 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     # read empirical data
     data, idxs = read_data(data_file, remove_nans=true, threshold=threshold)
     timepoints = vec(readdlm(timepoints_file, ','))::Vector{Float64}
+    # read only part of data
+    data = data[:,5:end]
+    timepoints = timepoints[5:end]
 
     # read structural data 
     W_labelled = readdlm(W_file,',')
@@ -313,14 +339,18 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     # Define prob
     p = zeros(Float64, N_pars)
     tspan = (timepoints[1],timepoints[end])
+    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,N=N)  # for diffusion3
     rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
     priors_vec = collect(values(priors))
+    if pred_idxs == [1]
+        pred_idxs = [i for i in 1:N]
+    end
 
 
-    @model function bayesian_model(data, prob; priors=priors_vec, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u00=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value)
+    @model function bayesian_model(data, prob; priors=priors_vec, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value)
         u00 = u0  # IC needs to be defined within model to work
         # priors
         σ ~ priors[1]
@@ -330,12 +360,20 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         else
             u00[seedd] = seed_value
         end
+        #k ~ truncated(Normal(1.,0.1), lower=0)
 
         # Simulate diffusion model 
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
 
+        # Transform prediction
+        predicted = vec(predicted[pred_idxs,:])
+        if transform_observable
+            #predicted = k .* predicted
+            predicted = tanh.(predicted)
+        end
+
         # Observations.
-        data ~ MvNormal(vec(predicted), σ^2 * I)  # this gives quicker evals (but recommended by TuringLang developers). For large N, this appears superior
+        data ~ MvNormal(predicted, σ^2 * I)  # this gives quicker evals (but recommended by TuringLang developers). For large N, this appears superior
 
         return nothing
     end
@@ -377,6 +415,8 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                      "timepoints" => timepoints,
                      "threshold" => threshold, 
                      "seed_idx" => seed,
+                     "bayesian_seed" => bayesian_seed,
+                     "transform_observable" => transform_observable,
                      "ode" => string(ode),  # store var name of ode (functions cannot be saved)
                      "L" => L
                      )
@@ -391,6 +431,7 @@ plot predicted vs observed plot for inference, parameters chosen from posterior 
 using Makie
 function predicted_observed(inference; save_path="")
     # unpack from simulation
+    fs = []  # storing figures
     chain = inference["chain"]
     data = inference["data"]
     timepoints = inference["timepoints"]
@@ -403,7 +444,11 @@ function predicted_observed(inference; save_path="")
     # initialize
     tspan = (0., timepoints[end])
     u0 = [0. for _ in 1:N]
+    # newthing
+    #u0 = [0. for _ in 1:2*N]
     rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
+    # newthing
+    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L, N=N)
     prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
 
     # find posterior mode
@@ -415,6 +460,12 @@ function predicted_observed(inference; save_path="")
 
     # solve ODE
     sol = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
+    if inference["transform_observable"]
+        sol = tanh.(sol)
+    end
+
+    # new thing
+    #sol = sol[(N+1):end,:]
 
     # plot
     f = CairoMakie.Figure()
@@ -438,7 +489,36 @@ function predicted_observed(inference; save_path="")
     if !isempty(save_path)
         CairoMakie.save(save_path * "/predicted_observed_mode.png", f)
     end
-    return f
+    push!(fs,f)
+
+    # plot at different time points
+    for i in eachindex(timepoints)
+        f = CairoMakie.Figure()
+        plotscale = log10
+        ax = CairoMakie.Axis(f[1,1], title="t = $(timepoints[i])", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale)
+
+        # as we are plotting log-log, we account for zeros in the data
+        x = vec(copy(data[:,i]))
+        y = vec(copy(sol[1:N,i]))
+        if (sum(x .== 0) + sum(y .== 0)) > 0  # if zeros present, add the smallest number in plot
+            minx = minimum(x[x.>0])
+            miny = minimum(y[y.>0])
+            minxy = min(minx, miny)
+            x = x .+ minxy
+            y = y .+ minxy
+        end
+
+        CairoMakie.scatter!(ax,x,y, alpha=0.5)
+        maxxy = max(maximum(x), maximum(y))
+        minxy = min(minimum(x), minimum(y))
+        CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
+        if !isempty(save_path)
+            CairoMakie.save(save_path * "/predicted_observed_mode_$(i).png", f)
+        end
+        push!(fs,f)
+    end
+
+    return fs
 end
 
 #=
@@ -506,7 +586,6 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
         axs[i] = ax
     end
     posterior_samples = sample(chain, N_samples; replace=false)
-    avg_sol = zeros(N,M)
     for sample in eachrow(Array(posterior_samples))
         # samples
         p = sample[2:(end-1)]  # first index is σ and last index is seed
@@ -514,12 +593,13 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
         
         # solve
         sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
-        sol_p_timepoints = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
-        for i in 1:N
-            CairoMakie.lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
+        t = sol_p.t
+        if inference["transform_observable"]
+            sol_p = tanh.(sol_p)
         end
-        # add to average
-        avg_sol = avg_sol .+ (Array(sol_p_timepoints[1:N,:]) ./ N_samples)
+        for i in 1:N
+            CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.3, color=:grey)
+        end
     end
 
     # Plot simulation and noisy observations.
