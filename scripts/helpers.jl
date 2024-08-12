@@ -215,7 +215,7 @@ function diffusion2(du,u,p,t;L=(La, Lr))
     ρr = p[2]
 
     #du .= -(ρa*La+ρr*Lr)*u   # this gives very slow gradient computation
-    du .= -ρa*La*u - ρr*Lr*u   # quick gradient computation
+    du .= -ρa*ρr*La*u - ρa*Lr*u   # quick gradient computation
 end
 function diffusion3(du,u,p,t;L=L,N=1::Int)
     ρ = p[1]
@@ -244,10 +244,19 @@ function aggregation(du,u,p,t;L=L)
 
     du .= -ρ*L*u .+ α .* u .* (β .- u)  
 end
+function aggregation2(du,u,p,t;L=L)
+    La, Lr = L
+    ρa = p[1]
+    ρr = p[2]
+    α = p[3]
+    β = p[4:end]
+
+    du .= -ρa*ρr*La*u .- ρa*Lr*u .+ α .* u .* (β .- u)   # quick gradient computation
+end
 #=
 a dictionary containing the ODE functions
 =#
-odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion4" => diffusion4, "aggregation" => aggregation)
+odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion4" => diffusion4, "aggregation" => aggregation, "aggregation2" => aggregation2)
 
 
 
@@ -378,9 +387,11 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
 
     # Sample to approximate posterior
     if n_threads == 1
-        chain = sample(model, NUTS(;adtype=adtype), 1000; progress=true)  # time estimated is shown
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  # time estimated is shown
+        #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
-        chain = sample(model, NUTS(;adtype=adtype), MCMCThreads(), 1000, n_threads; progress=true)
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCThreads(), 1000, n_threads; progress=true)
+        #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
     end
     display(chain)  
 
