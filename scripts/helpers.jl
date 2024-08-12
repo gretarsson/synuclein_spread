@@ -641,7 +641,7 @@ function plot_priors(inference; save_path="")
     prior_figs = []
     i = 1
     for (var, dist) in priors
-        prior_i = StatsPlots.plot(dist / factors[i], title=var, ylabel="Density", xlabel="Sample value", legend=false)
+        prior_i = StatsPlots.plot(dist * factors[i], title=var, ylabel="Density", xlabel="Sample value", legend=false)
         if !isempty(save_path)
             savefig(prior_i, save_path*"/prior_$(var).png")
         end
@@ -670,7 +670,7 @@ function plot_prior_and_posterior(inference; save_path="")
     prior_and_posterior_figs = []
     for (i,var) in enumerate(vars)
         plot_i = StatsPlots.plot(master_fig[i,2], title=var)
-        StatsPlots.plot!(plot_i, priors[var]/factors[i])
+        StatsPlots.plot!(plot_i, priors[var]*factors[i])
         if !isempty(save_path)
             savefig(plot_i, save_path*"/prior_and_posterior_$(var).png")
         end
