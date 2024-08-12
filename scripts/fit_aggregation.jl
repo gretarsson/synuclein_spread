@@ -114,8 +114,8 @@ suite = TuringBenchmarking.make_turing_suite(model;adbackends=[:reversediff])
 run(suite)
 
 # Sample to approximate posterior, and save
-#chain = sample(model, NUTS(0.65;adtype=AutoReverseDiff()), 1000; progress=true)
-chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 4; progress=true)
+chain = sample(model, NUTS(0.65;adtype=AutoReverseDiff()), 1000; progress=true)
+#chain = sample(model, NUTS(;adtype=AutoReverseDiff()), MCMCThreads(), 1000, 4; progress=true)
 
 # plot posterior distributions and retrodiction
 save_folder = "figures/"*simulation_code

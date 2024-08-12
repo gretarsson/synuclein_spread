@@ -204,12 +204,12 @@ end
 # ----------------------------------------------------
 # ODEs
 # ----------------------------------------------------
-function diffusion(du,u,p,t;L=L)
+function diffusion(du,u,p,t;L=L,factors=nothing)
     ρ = p[1]
 
     du .= -ρ*L*u 
 end
-function diffusion2(du,u,p,t;L=(La, Lr))
+function diffusion2(du,u,p,t;L=(La, Lr),factors=nothing)
     La, Lr = L
     ρa = p[1]
     ρr = p[2]
@@ -217,7 +217,7 @@ function diffusion2(du,u,p,t;L=(La, Lr))
     #du .= -(ρa*La+ρr*Lr)*u   # this gives very slow gradient computation
     du .= -ρa*ρr*La*u - ρa*Lr*u   # quick gradient computation
 end
-function diffusion3(du,u,p,t;L=L,N=1::Int)
+function diffusion3(du,u,p,t;L=L,N=1::Int, factors=nothing)
     ρ = p[1]
     γ = p[2]
     x = u[1:N]
@@ -226,7 +226,7 @@ function diffusion3(du,u,p,t;L=L,N=1::Int)
     du[1:N] .= -ρ*L*x
     du[(N+1):(2*N)] .= γ .* tanh.(x) .-  1/γ .* y
 end
-function diffusion4(du,u,p,t;L=(La,Lr),N=1::Int)
+function diffusion4(du,u,p,t;L=(La,Lr),N=1::Int, factors=nothing)
     La, Lr = L
     ρa = p[1]
     ρr = p[2]
@@ -237,15 +237,17 @@ function diffusion4(du,u,p,t;L=(La,Lr),N=1::Int)
     du[1:N] .= -ρa*La*x-ρr*Lr*x
     du[(N+1):(2*N)] .= γ .* tanh.(x) .-  1/γ .* y
 end
-function aggregation(du,u,p,t;L=L)
+function aggregation(du,u,p,t;L=L,factors=(1.,1.))
+    kα,kβ = factors 
     ρ = p[1]
-    α = p[2]
-    β = p[3:end]
+    α = kα * p[2]
+    β = kβ .* p[3:end]
 
     du .= -ρ*L*u .+ α .* u .* (β .- u)  
 end
-function aggregation2(du,u,p,t;L=L)
+function aggregation2(du,u,p,t;L=L,factors=(1.,1.))
     La, Lr = L
+    p = factors .* p
     ρa = p[1]
     ρr = p[2]
     α = p[3]
@@ -271,7 +273,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                sensealg=ForwardDiffSensitivity(), 
                adtype=AutoForwardDiff(), 
                threshold=0., 
-               W_factor=1.::Float64,
+               factors=[1.]::Vector{Float64},
                bayesian_seed=false,
                seed_region="iCP"::String,
                seed_value=1.::Float64,
@@ -302,14 +304,14 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     data, idxs = read_data(data_file, remove_nans=true, threshold=threshold)
     timepoints = vec(readdlm(timepoints_file, ','))::Vector{Float64}
     # read only part of data
-    data = data[:,5:end]
-    timepoints = timepoints[5:end]
+    #data = data[:,5:end]
+    #timepoints = timepoints[5:end]
 
     # read structural data 
     W_labelled = readdlm(W_file,',')
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
-    W = W ./ W_factor
+    #W = W .* W_factor
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
@@ -325,7 +327,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     p = zeros(Float64, N_pars)
     tspan = (timepoints[1],timepoints[end])
     #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,N=N)  # for diffusion3
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
@@ -405,7 +407,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                      "bayesian_seed" => bayesian_seed,
                      "transform_observable" => transform_observable,
                      "ode" => string(ode),  # store var name of ode (functions cannot be saved)
-                     "W_factor" => W_factor,
+                     "factors" => factors,
                      "L" => L
                      )
 
@@ -431,6 +433,7 @@ function predicted_observed(inference; save_path="")
     timepoints = inference["timepoints"]
     seed = inference["seed_idx"]
     L = inference["L"]
+    factors = [1. for _ in 1:(length(inference["priors"])-2)]
     ode = odes[inference["ode"]]
     N = size(data)[1]
 
@@ -440,7 +443,7 @@ function predicted_observed(inference; save_path="")
     u0 = [0. for _ in 1:N]
     # newthing
     #u0 = [0. for _ in 1:2*N]
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     # newthing
     #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L, N=N)
     prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
@@ -576,6 +579,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     timepoints = inference["timepoints"]
     seed = inference["seed_idx"]
     L = inference["L"]
+    factors = [1. for _ in 1:(length(inference["priors"])-2)]
     ode = odes[inference["ode"]]
     N = size(data)[1]
     M = length(timepoints)
@@ -583,7 +587,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     # define ODE problem 
     u0 = [0. for _ in 1:N]
     tspan = (0, timepoints[end])
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
 
     fs = Any[NaN for _ in 1:N]
@@ -630,14 +634,19 @@ function plot_priors(inference; save_path="")
         mkdir(save_path) 
     catch
     end
+    # rescale the parameters according to the factor
+    factors = [1., inference["factors"]..., 1.]  # add factor one for σ and seed
     priors = inference["priors"]
+
     prior_figs = []
+    i = 1
     for (var, dist) in priors
-        prior_i = StatsPlots.plot(dist, title=var, ylabel="Density", xlabel="Sample value", legend=false)
+        prior_i = StatsPlots.plot(dist / factors[i], title=var, ylabel="Density", xlabel="Sample value", legend=false)
         if !isempty(save_path)
             savefig(prior_i, save_path*"/prior_$(var).png")
         end
         push!(prior_figs, prior_i)
+        i += 1
     end
     return 
 end
@@ -651,6 +660,9 @@ function plot_prior_and_posterior(inference; save_path="")
         mkdir(save_path) 
     catch
     end
+    # rescale the priors
+    factors = [1.,inference["factors"]...,1.]  # add 1 scaling for σ and seed
+
     chain = inference["chain"]
     priors = inference["priors"]
     vars = collect(keys(priors))
@@ -658,7 +670,7 @@ function plot_prior_and_posterior(inference; save_path="")
     prior_and_posterior_figs = []
     for (i,var) in enumerate(vars)
         plot_i = StatsPlots.plot(master_fig[i,2], title=var)
-        StatsPlots.plot!(plot_i, priors[var])
+        StatsPlots.plot!(plot_i, priors[var]/factors[i])
         if !isempty(save_path)
             savefig(plot_i, save_path*"/prior_and_posterior_$(var).png")
         end
@@ -678,6 +690,14 @@ function plot_inference(inference, save_path)
     try
         mkdir(save_path);
     catch
+    end
+    # rescale the parameters according to the factor
+    chain = inference["chain"]
+    factors = inference["factors"]
+    factor_matrix = diagm(factors)
+    n_chains = size(new_chain)[3]
+    for i in 1:n_chains
+        chain[:,2:(end-13),i] = Array(chain[:,2:(end-13),i]) * factor_matrix
     end
 
     # plot

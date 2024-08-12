@@ -5,7 +5,7 @@ include("helpers.jl");
 
 
 # simulation to analyze
-simulation = "total_diffusion2_N=174_ratio";
+simulation = "total_aggregation2_N=40_ratio";
 
 # plot 
 inference = deserialize("simulations/"*simulation*".jls")
