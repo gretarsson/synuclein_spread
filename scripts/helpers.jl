@@ -263,10 +263,10 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
 
 
 
-# ----------------------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------------------------------------------------------
 # Run whole simulations in one place
-# the Priors dict must contains σ in its first key and seed in its last (independent whether seed is actually uncertain or not)
-# ----------------------------------------------------------------------------------------------------------------------------------
+# the Priors dict must contain the ODE parameters in order first, and then σ. Other priors can then follow after, with seed always last.
+# ----------------------------------------------------------------------------------------------------------------------------------------
 function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file; 
                u0=[]::Vector{Float64},
                n_threads=1,
@@ -317,12 +317,15 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
     N = size(L)[1]
-    N_pars = length(priors)-2  # minus sigma and IC prior
     if retro_and_antero  # include both Laplacians, if told to
         La = copy(L)
         Lr = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  
         L = (La,Lr)
     end
+
+    # find number of ode parameters by looking at prior dictionary
+    ks = collect(keys(priors))
+    N_pars = findall(x->x=="σ",ks)[1] - 1
 
     # Define prob
     p = zeros(Float64, N_pars)
@@ -338,17 +341,16 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     end
 
 
-    @model function bayesian_model(data, prob; priors=priors_vec, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value)
+    @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value)
         u00 = u0  # IC needs to be defined within model to work
         # priors
-        σ ~ priors[1]
-        p ~ arraydist([priors[1+i] for i in 1:N_pars])
+        p ~ arraydist([ode_priors[i] for i in 1:N_pars])
+        σ ~ priors["σ"]
         if bayesian_seed
-            u00[seedd] ~ priors[end]  
+            u00[seedd] ~ priors["seed"]  
         else
             u00[seedd] = seed_value
         end
-        #k ~ truncated(Normal(1.,0.1), lower=0)
 
         # Simulate diffusion model 
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
@@ -356,8 +358,19 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         # Transform prediction
         predicted = vec(predicted[pred_idxs,:])
         if transform_observable
-            #predicted = k .* predicted
-            predicted = tanh.(predicted)
+            if haskey(priors,"c")
+                c ~ priors["c"]
+                amplitude = 1 .- c*predicted
+            else
+                amplitude = 1
+            end
+            if haskey(priors,"k")
+                k ~ priors["k"]
+                input = k*predicted
+            else
+                input = predicted
+            end
+            predicted = amplitude .* tanh.(input)
         end
 
         # Observations.
@@ -396,9 +409,25 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCThreads(), 1000, n_threads; progress=true)
         #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
     end
-    display(chain)  
+
+    # rescale the parameters in the chain and prior distributions
+    factor_matrix = diagm(factors)
+    n_chains = size(chain)[3]
+    for i in 1:n_chains
+        chain[:,1:N_pars,i] = Array(chain[:,1:N_pars,i]) * factor_matrix
+    end
+    i = 1
+    for (key,value) in priors
+        if i <= N_pars
+            priors[key] = value * factors[i]
+            i += 1
+        else
+            break
+        end
+    end
 
     # save chains and metadata to a dictionary
+    display(chain)  
     inference = Dict("chain" => chain, 
                      "priors" => priors, 
                      "data" => data,
@@ -434,7 +463,11 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     timepoints = inference["timepoints"]
     seed = inference["seed_idx"]
     L = inference["L"]
-    factors = [1. for _ in 1:(length(inference["priors"])-2)]
+    priors = inference["priors"]
+
+    ks = collect(keys(priors))
+    N_pars = findall(x->x=="σ",ks)[1] - 1
+    factors = [1. for _ in 1:N_pars]
     ode = odes[inference["ode"]]
     N = size(data)[1]
 
@@ -452,9 +485,9 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     # find posterior mode
     n_pars = length(chain.info[1])
     _, argmax = findmax(chain[:lp])
-    mode_pars = Array(chain[argmax[1], 2:n_pars, argmax[2]])
-    p = mode_pars[1:(end-1)]
-    u0[seed] = mode_pars[end]
+    mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
+    p = mode_pars[1:N_pars]
+    u0[seed] = mode_pars[end]  # TODO find seed index automatically
 
     # solve ODE
     sol = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
@@ -578,7 +611,9 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     timepoints = inference["timepoints"]
     seed = inference["seed_idx"]
     L = inference["L"]
-    factors = [1. for _ in 1:(length(inference["priors"])-2)]
+    ks = collect(keys(inference["priors"]))
+    N_pars = findall(x->x=="σ",ks)[1] - 1
+    factors = [1. for _ in 1:N_pars]
     ode = odes[inference["ode"]]
     N = size(data)[1]
     M = length(timepoints)
@@ -600,8 +635,8 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     posterior_samples = sample(chain, N_samples; replace=false)
     for sample in eachrow(Array(posterior_samples))
         # samples
-        p = sample[2:(end-1)]  # first index is σ and last index is seed
-        u0[seed] = sample[end]
+        p = sample[1:N_pars]  # first index is σ and last index is seed
+        u0[seed] = sample[end]  # TODO: find seed index automatically
         
         # solve
         sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
@@ -634,13 +669,12 @@ function plot_priors(inference; save_path="")
     catch
     end
     # rescale the parameters according to the factor
-    factors = [1., inference["factors"]..., 1.]  # add factor one for σ and seed
     priors = inference["priors"]
 
     prior_figs = []
     i = 1
     for (var, dist) in priors
-        prior_i = StatsPlots.plot(dist * factors[i], title=var, ylabel="Density", xlabel="Sample value", legend=false)
+        prior_i = StatsPlots.plot(dist, title=var, ylabel="Density", xlabel="Sample value", legend=false)
         if !isempty(save_path)
             savefig(prior_i, save_path*"/prior_$(var).png")
         end
@@ -691,13 +725,15 @@ function plot_inference(inference, save_path; plotscale=log10)
     catch
     end
     # rescale the parameters according to the factor
-    chain = inference["chain"]
-    factors = inference["factors"]
-    factor_matrix = diagm(factors)
-    n_chains = size(chain)[3]
-    for i in 1:n_chains
-        chain[:,2:(end-13),i] = Array(chain[:,2:(end-13),i]) * factor_matrix
-    end
+    #chain = inference["chain"]
+    #factors = inference["factors"]
+    #factor_matrix = diagm(factors)
+    #n_chains = size(chain)[3]
+    #ks = collect(keys(inference["priors"]))
+    #N_pars = findall(x->x=="σ",ks)[1] - 1
+    #for i in 1:n_chains
+    #    chain[:,1:N_pars,i] = Array(chain[:,1:N_pars,i]) * factor_matrix
+    #end
 
     # plot
     predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
