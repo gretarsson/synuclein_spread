@@ -5,8 +5,8 @@ include("helpers.jl");
 
 
 # simulation to analyze
-simulation = "total_aggregation2_N=40_ratio";
+simulation = "total_aggregation2_N=174_ratio";
 
 # plot 
 inference = deserialize("simulations/"*simulation*".jls")
-plot_inference(inference,"figures/"*simulation)
+plot_inference(inference,"figures/"*simulation;plotscale=log10)

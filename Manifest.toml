@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "a276a4e2166d6ed1015f43f192c59591f324de3f"
+project_hash = "95b23d9b868b0eb39388ce0b8ad51d903605bd08"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "6778bcc27496dae5723ff37ee30af451db8b35fe"
@@ -1643,6 +1643,18 @@ weakdeps = ["Serialization"]
 
     [deps.LRUCache.extensions]
     SerializationExt = ["Serialization"]
+
+[[deps.LSODA]]
+deps = ["Compat", "DiffEqBase", "LSODA_jll", "LinearAlgebra", "Parameters", "Printf", "SciMLBase"]
+git-tree-sha1 = "49c00ced68a8033b30fb1009b8dea7871aa9e928"
+uuid = "7f56f5a3-f504-529b-bc02-0b1fe5e64312"
+version = "0.7.5"
+
+[[deps.LSODA_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "3c5277e990a9026f31a35ca6c4acddc8a706a38c"
+uuid = "aae0fff6-70f8-51e1-979a-8150c7cc74bd"
+version = "0.1.2+0"
 
 [[deps.LZO_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]

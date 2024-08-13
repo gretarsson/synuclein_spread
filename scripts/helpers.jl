@@ -2,6 +2,7 @@ using Turing
 using DelimitedFiles
 using StatsPlots
 using DifferentialEquations
+using LSODA
 using Distributions
 using TuringBenchmarking  
 using ReverseDiff
@@ -419,7 +420,7 @@ end
 plot predicted vs observed plot for inference, parameters chosen from posterior mode
 =#
 using Makie
-function predicted_observed(inference; save_path="")
+function predicted_observed(inference; save_path="", plotscale=log10)
     # try creating folder to save in
     try
         mkdir(save_path) 
@@ -466,7 +467,6 @@ function predicted_observed(inference; save_path="")
 
     # plot
     f = CairoMakie.Figure()
-    plotscale = log10
     ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale)
 
     # as we are plotting log-log, we account for zeros in the data
@@ -491,7 +491,6 @@ function predicted_observed(inference; save_path="")
     # plot at different time points
     for i in eachindex(timepoints)
         f = CairoMakie.Figure()
-        plotscale = log10
         ax = CairoMakie.Axis(f[1,1], title="t = $(timepoints[i])", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale)
 
         # as we are plotting log-log, we account for zeros in the data
@@ -500,14 +499,14 @@ function predicted_observed(inference; save_path="")
         if (sum(x .== 0) + sum(y .== 0)) > 0  # if zeros present, add the smallest number in plot
             minx = minimum(x[x.>0])
             miny = minimum(y[y.>0])
-            minxy = min(minx, miny)
-            x = x .+ minxy
-            y = y .+ minxy
+            minxy_i = min(minx, miny)
+            x = x .+ minxy_i
+            y = y .+ minxy_i
         end
 
         CairoMakie.scatter!(ax,x,y, alpha=0.5)
-        maxxy = max(maximum(x), maximum(y))
-        minxy = min(minimum(x), minimum(y))
+        #maxxy = max(maximum(x), maximum(y))
+        #minxy = min(minimum(x), minimum(y))
         CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
         if !isempty(save_path)
             CairoMakie.save(save_path * "/predicted_observed_mode_$(i).png", f)
@@ -682,7 +681,7 @@ end
 #=
 master plotting function (plot everything relevant to inference)
 =#
-function plot_inference(inference, save_path)
+function plot_inference(inference, save_path; plotscale=log10)
     # load inference simulation 
     display(inference["chain"])
 
@@ -695,13 +694,13 @@ function plot_inference(inference, save_path)
     chain = inference["chain"]
     factors = inference["factors"]
     factor_matrix = diagm(factors)
-    n_chains = size(new_chain)[3]
+    n_chains = size(chain)[3]
     for i in 1:n_chains
         chain[:,2:(end-13),i] = Array(chain[:,2:(end-13),i]) * factor_matrix
     end
 
     # plot
-    predicted_observed(inference; save_path=save_path*"/predicted_observed");
+    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
     plot_chains(inference, save_path=save_path*"/chains");
     plot_priors(inference; save_path=save_path*"/priors");
     plot_posteriors(inference, save_path=save_path*"/posteriors");
