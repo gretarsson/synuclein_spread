@@ -225,10 +225,10 @@ function diffusion3(du,u,p,t;L=L,N=1::Int, factors=nothing)
     y = u[(N+1):(2*N)]
 
     du[1:N] .= -ρ*L*x
-    du[(N+1):(2*N)] .= γ .* tanh.(x) .-  1/γ .* y
+    du[(N+1):(2*N)] .= γ .* tanh.(x) .-  γ .* y
 end
-function diffusion4(du,u,p,t;L=(La,Lr),N=1::Int, factors=nothing)
-    La, Lr = L
+function diffusion_pop2(du,u,p,t;L=(La,Lr,N), factors=nothing)
+    La, Lr, N = L
     ρa = p[1]
     ρr = p[2]
     γ = p[3]
@@ -236,7 +236,8 @@ function diffusion4(du,u,p,t;L=(La,Lr),N=1::Int, factors=nothing)
     y = u[(N+1):(2*N)]
 
     du[1:N] .= -ρa*La*x-ρr*Lr*x
-    du[(N+1):(2*N)] .= γ .* tanh.(x) .-  1/γ .* y
+    #du[(N+1):(2*N)] .= 1/γ .* tanh.(x) .-  1/γ .* y
+    du[(N+1):(2*N)] .= 1/γ .* x .-  1/γ .* y
 end
 function aggregation(du,u,p,t;L=L,factors=(1.,1.))
     kα,kβ = factors 
@@ -256,10 +257,48 @@ function aggregation2(du,u,p,t;L=L,factors=(1.,1.))
 
     du .= -ρa*ρr*La*u .- ρa*Lr*u .+ α .* u .* (β .- u)   # quick gradient computation
 end
+function aggregation_pop2(du,u,p,t;L=L,factors=(1.,1.))
+    La, Lr, N = L   
+    p = factors .* p
+    ρa = p[1]
+    ρr = p[2]
+    α = p[3]
+    γ = p[4]
+    β = p[5:end]
+
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α .* x .* (β .* (1 .- y) .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (tanh.(x) .- y)  
+end
+function death_local2(du,u,p,t;L=L,factors=(1.,1.))
+    La, Lr, N = L  
+    p = factors .* p
+    ρa = p[1]
+    ρr = p[2]
+    α = p[3]
+    β = p[4:(N+3)]
+    d = p[(N+4):(2*N+3)]
+    γ = p[end]
+    #α = p[3:N+2]
+    #β = p[N+3:(2*N+2)]
+    #γ = p[(2*N+3):(3*N + 2)]
+    #ϵ = p[end-1]
+    #d = p[end]
+
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α .* x .* (β .* (1 .- d.*y) .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (tanh.(x) .- y)  
+    #du[(N+1):(2*N)] .=  ϵ .* (γ .* x .- y)  
+    #du[(N+1):(2*N)] .=  (tanh.(x) .- y) ./ γ
+end
 #=
 a dictionary containing the ODE functions
 =#
-odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion4" => diffusion4, "aggregation" => aggregation, "aggregation2" => aggregation2)
+odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion_pop2" => diffusion_pop2, "aggregation" => aggregation, "aggregation2" => aggregation2, "aggregation_pop2" => aggregation_pop2, "death_local2" => death_local2)
 
 
 
@@ -278,7 +317,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                bayesian_seed=false,
                seed_region="iCP"::String,
                seed_value=1.::Float64,
-               pred_idxs=[1]::Vector{Int},
+               sol_idxs=[1]::Vector{Int},
                abstol=1e-10, 
                reltol=1e-10,
                benchmark=false,
@@ -289,7 +328,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
 
     # verify that choice of ODE is correct wrp to retro- and anterograde
     retro_and_antero = false
-    if string(ode)[end] == '2'
+    if occursin("2",string(ode))
         retro_and_antero = true 
         display("Model includes both retrograde and anterograde transport.")
     else 
@@ -305,8 +344,8 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     data, idxs = read_data(data_file, remove_nans=true, threshold=threshold)
     timepoints = vec(readdlm(timepoints_file, ','))::Vector{Float64}
     # read only part of data
-    #data = data[:,5:end]
-    #timepoints = timepoints[5:end]
+    data = data[:,5:end]
+    timepoints = timepoints[5:end]
 
     # read structural data 
     W_labelled = readdlm(W_file,',')
@@ -320,7 +359,11 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     if retro_and_antero  # include both Laplacians, if told to
         La = copy(L)
         Lr = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  
-        L = (La,Lr)
+        if occursin("death",string(ode)) || occursin("pop",string(ode))
+            L = (La,Lr,N)
+        else
+            L = (La,Lr)
+        end
     end
 
     # find number of ode parameters by looking at prior dictionary
@@ -336,8 +379,8 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     
     # prior vector from ordered dic
     priors_vec = collect(values(priors))
-    if pred_idxs == [1]
-        pred_idxs = [i for i in 1:N]
+    if sol_idxs == [1]
+        sol_idxs = [i for i in 1:N]
     end
 
 
@@ -356,7 +399,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
 
         # Transform prediction
-        predicted = vec(predicted[pred_idxs,:])
+        predicted = vec(predicted[sol_idxs,:])
         if transform_observable
             if haskey(priors,"c")
                 c ~ priors["c"]
@@ -425,6 +468,8 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
             break
         end
     end
+    # rename parameters
+    chain = replacenames(chain, "u00[$(seed)]" => "seed")
 
     # save chains and metadata to a dictionary
     display(chain)  
@@ -438,6 +483,8 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                      "transform_observable" => transform_observable,
                      "ode" => string(ode),  # store var name of ode (functions cannot be saved)
                      "factors" => factors,
+                     "sol_idxs" => sol_idxs,
+                     "u0" => u0,
                      "L" => L
                      )
 
@@ -464,6 +511,7 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     seed = inference["seed_idx"]
     L = inference["L"]
     priors = inference["priors"]
+    sol_idxs = inference["sol_idxs"]
 
     ks = collect(keys(priors))
     N_pars = findall(x->x=="σ",ks)[1] - 1
@@ -474,12 +522,8 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     # simulate ODE from posterior mode
     # initialize
     tspan = (0., timepoints[end])
-    u0 = [0. for _ in 1:N]
-    # newthing
-    #u0 = [0. for _ in 1:2*N]
+    u0 = inference["u0"]
     rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-    # newthing
-    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L, N=N)
     prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
 
     # find posterior mode
@@ -487,16 +531,26 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     _, argmax = findmax(chain[:lp])
     mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
     p = mode_pars[1:N_pars]
-    u0[seed] = mode_pars[end]  # TODO find seed index automatically
+    u0[seed] = chain["seed"][argmax]  
 
     # solve ODE
     sol = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
+    sol = Array(sol[sol_idxs,:])
     if inference["transform_observable"]
-        sol = tanh.(sol)
+        if haskey(priors,"c")
+            c = chain["c"][argmax]
+            amplitude = 1 .- c*sol
+        else
+            amplitude = 1
+        end
+        if haskey(priors,"k")
+            k = chain["k"][argmax]
+            input = k*sol
+        else
+            input = sol
+        end
+        sol = amplitude .* tanh.(input)
     end
-
-    # new thing
-    #sol = sol[(N+1):end,:]
 
     # plot
     f = CairoMakie.Figure()
@@ -538,8 +592,6 @@ function predicted_observed(inference; save_path="", plotscale=log10)
         end
 
         CairoMakie.scatter!(ax,x,y, alpha=0.5)
-        #maxxy = max(maximum(x), maximum(y))
-        #minxy = min(minimum(x), minimum(y))
         CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
         if !isempty(save_path)
             CairoMakie.save(save_path * "/predicted_observed_mode_$(i).png", f)
@@ -608,8 +660,10 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     # unload from simulation
     data = inference["data"]
     chain = inference["chain"]
+    priors = inference["priors"]
     timepoints = inference["timepoints"]
     seed = inference["seed_idx"]
+    sol_idxs = inference["sol_idxs"]
     L = inference["L"]
     ks = collect(keys(inference["priors"]))
     N_pars = findall(x->x=="σ",ks)[1] - 1
@@ -617,9 +671,11 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     ode = odes[inference["ode"]]
     N = size(data)[1]
     M = length(timepoints)
+    par_names = chain.name_map.parameters
+    seed_ch_idx = findall(x->x==:seed,par_names)[1]  # TODO find index of chain programmatically
 
     # define ODE problem 
-    u0 = [0. for _ in 1:N]
+    u0 = inference["u0"]
     tspan = (0, timepoints[end])
     rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
@@ -636,13 +692,29 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     for sample in eachrow(Array(posterior_samples))
         # samples
         p = sample[1:N_pars]  # first index is σ and last index is seed
-        u0[seed] = sample[end]  # TODO: find seed index automatically
+        u0[seed] = sample[seed_ch_idx]  # TODO: find seed index automatically
+        #u0[seed] = sample[end]  # TODO: find seed index automatically
         
         # solve
         sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
         t = sol_p.t
+        sol_p = Array(sol_p[sol_idxs,:])
         if inference["transform_observable"]
-            sol_p = tanh.(sol_p)
+            if haskey(priors,"c")
+                c_ch_idx = findall(x->x==:c,par_names)[1]
+                c = sample[c_ch_idx]
+                amplitude = 1 .- c*sol_p
+            else
+                amplitude = 1
+            end
+            if haskey(priors,"k")
+                k_ch_idx = findall(x->x==:c,par_names)[1]
+                k = sample[k_ch_idx]
+                input = k*sol_p
+            else
+                input = sol_p
+            end
+            sol_p = amplitude .* tanh.(input)
         end
         for i in 1:N
             CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.3, color=:grey)
@@ -694,8 +766,6 @@ function plot_prior_and_posterior(inference; save_path="")
     catch
     end
     # rescale the priors
-    factors = [1.,inference["factors"]...,1.]  # add 1 scaling for σ and seed
-
     chain = inference["chain"]
     priors = inference["priors"]
     vars = collect(keys(priors))
@@ -703,7 +773,7 @@ function plot_prior_and_posterior(inference; save_path="")
     prior_and_posterior_figs = []
     for (i,var) in enumerate(vars)
         plot_i = StatsPlots.plot(master_fig[i,2], title=var)
-        StatsPlots.plot!(plot_i, priors[var]*factors[i])
+        StatsPlots.plot!(plot_i, priors[var])
         if !isempty(save_path)
             savefig(plot_i, save_path*"/prior_and_posterior_$(var).png")
         end
