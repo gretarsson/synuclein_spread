@@ -5,8 +5,9 @@ include("helpers.jl");
 
 
 # simulation to analyze
-simulation = "test";
+simulation = "total_death_N=174";
 
 # plot 
 inference = deserialize("simulations/"*simulation*".jls")
+
 plot_inference(inference,"figures/"*simulation;plotscale=log10)

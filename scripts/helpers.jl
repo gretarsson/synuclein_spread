@@ -257,6 +257,17 @@ function aggregation2(du,u,p,t;L=L,factors=(1.,1.))
 
     du .= -ρa*ρr*La*u .- ρa*Lr*u .+ α .* u .* (β .- u)   # quick gradient computation
 end
+function aggregation2_localα(du,u,p,t;L=L,factors=(1.,1.))
+    La, Lr = L
+    N = length(u)
+    p = factors .* p
+    ρa = p[1]
+    ρr = p[2]
+    α = p[3:(N+2)]
+    β = p[(N+3):end]
+
+    du .= -ρa*ρr*La*u .- ρa*Lr*u .+ α .* u .* (β .- u)   # quick gradient computation
+end
 function aggregation_pop2(du,u,p,t;L=L,factors=(1.,1.))
     La, Lr, N = L   
     p = factors .* p
@@ -279,7 +290,8 @@ function death_local2(du,u,p,t;L=L,factors=(1.,1.))
     ρr = p[2]
     α = p[3]
     β = p[4:(N+3)]
-    d = p[(N+4):(2*N+3)]
+    #d = p[(N+4):(2*N+3)]
+    d = p[N+4]
     γ = p[end]
     #α = p[3:N+2]
     #β = p[N+3:(2*N+2)]
@@ -295,10 +307,38 @@ function death_local2(du,u,p,t;L=L,factors=(1.,1.))
     #du[(N+1):(2*N)] .=  ϵ .* (γ .* x .- y)  
     #du[(N+1):(2*N)] .=  (tanh.(x) .- y) ./ γ
 end
+function death_superlocal2(du,u,p,t;L=L,factors=(1.,1.))
+    La, Lr, N = L  
+    p = factors .* p
+    ρa = p[1]
+    ρr = p[2]
+    α = p[3]
+    #α = p[3:(N+2)]
+    β = p[4:(N+3)]
+    d = p[(N+4):(2*N+3)]
+    #d = p[(2*N+3):(3*N+2)]
+    #γ = p[(3*N+3):end]
+    γ = p[end]
+    #α = p[3:N+2]
+    #β = p[N+3:(2*N+2)]
+    #γ = p[(2*N+3):(3*N + 2)]
+    #ϵ = p[end-1]
+    #d = p[end]
+
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α  .* x .* (β .- d.*y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+    #du[(N+1):(2*N)] .=  ϵ .* (γ .* x .- y)  
+    #du[(N+1):(2*N)] .=  (tanh.(x) .- y) ./ γ
+end
 #=
 a dictionary containing the ODE functions
 =#
-odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion_pop2" => diffusion_pop2, "aggregation" => aggregation, "aggregation2" => aggregation2, "aggregation_pop2" => aggregation_pop2, "death_local2" => death_local2)
+odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion_pop2" => diffusion_pop2, "aggregation" => aggregation, 
+            "aggregation2" => aggregation2, "aggregation_pop2" => aggregation_pop2, "death_local2" => death_local2, "aggregation2_localα" => aggregation2_localα,
+            "death_superlocal2" => death_superlocal2)
 
 
 
