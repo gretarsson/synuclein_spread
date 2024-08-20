@@ -75,7 +75,7 @@ for time in sort(unique(timepoints_map))
     total_path_dict[time] = total_path_t
 end
 serialize("data/total_path_dict.jls", total_path_dict)
-# create 3D array (regions,timepoints,samples) where NaN if not exists
+# create 3D array (regions,timepoints,samples) where missing if not exist
 max_samples = countmap(timepoints_map)[mode(timepoints_map)]
 n_timepoints = length(unique(timepoints_map))
 total_path_3D = Array{Union{Missing,Float64}}(missing,N,n_timepoints,max_samples)
@@ -85,6 +85,15 @@ for (ti,time) in enumerate(sort(unique(timepoints_map)))
     total_path_3D[1:Nt,ti,1:Mt] = total_path_t 
 end
 serialize("data/total_path_3D.jls", total_path_3D)
+total_path_3D
+
+
+# save average total path with missing
+avg_total_path = mean3(total_path_3D)
+avg_total_path = reshape(avg_total_path, (size(avg_total_path)...,1))
+serialize("data/avg_total_path.jls", avg_total_path)
+
+
 
 # the data does not follow the same mice over time
 # we therefore average over the mice at different time points
@@ -101,7 +110,7 @@ for i in 1:N_timepoints
     for k in eachindex(indexes_path) 
         index_path = indexes_path[k]
         for j in 1:N
-            if isnan(rearr_total_path[index_path,j])
+            if ismissing(rearr_total_path[index_path,j])
                 norm_factors[j] = norm_factors[j] - 1
             else
                 average_path_t[j] = average_path_t[j] + rearr_total_path[index_path,j]

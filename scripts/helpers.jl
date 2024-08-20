@@ -57,6 +57,20 @@ function random_laplacian(N)
     return L
 end
 
+
+#=
+find average of 3D matrix from dimension 3 skipping missing
+=#
+function mean3(M)
+    N1,N2,_ = size(M)
+    avg_M = Array{Union{Float64,Missing}}(missing, N1, N2)
+    for j in axes(M,2), i in axes(M,1)
+        avg_M[i,j] = mean(skipmissing(total_path_3D[i,j,:]))
+    end
+    avg_M[isnan.(avg_M)] .= missing
+    return avg_M
+end
+
 #=
 threshold matrix by percentage
 =#
@@ -345,8 +359,9 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
 # Run whole simulations in one place
 # the Priors dict must contain the ODE parameters in order first, and then σ. Other priors can then follow after, with seed always last.
 # ----------------------------------------------------------------------------------------------------------------------------------------
-function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file; 
+function infer(ode, priors::OrderedDict, data::Array{Float64,3}, timepoints::Vector{Float64}, W_file; 
                u0=[]::Vector{Float64},
+               idxs=Vector{Int}()::Vector{Int},
                n_threads=1,
                alg=Tsit5(), 
                sensealg=ForwardDiffSensitivity(), 
@@ -380,18 +395,13 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         display("Model has constant initial conditions")
     end
 
-    # read empirical data
-    data, idxs = read_data(data_file, remove_nans=remove_nans, threshold=threshold)
-    timepoints = vec(readdlm(timepoints_file, ','))::Vector{Float64}
-    # read only part of data
-    data = data[:,5:end]
-    timepoints = timepoints[5:end]
-
     # read structural data 
     W_labelled = readdlm(W_file,',')
+    if isempty(idxs)
+        idxs = [i for i in 1:(size(W_labelled)[1] - 1)]
+    end
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
-    #W = W .* W_factor
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
@@ -405,6 +415,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
             L = (La,Lr)
         end
     end
+    data = data[idxs,:,:]  # subindex data (idxs defaults to all regions unless told otherwise)
 
     # find number of ode parameters by looking at prior dictionary
     ks = collect(keys(priors))
@@ -413,7 +424,6 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     # Define prob
     p = zeros(Float64, N_pars)
     tspan = (timepoints[1],timepoints[end])
-    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,N=N)  # for diffusion3
     rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
@@ -423,7 +433,19 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         sol_idxs = [i for i in 1:N]
     end
 
-    @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value)
+    # reshape data into vector and find indices that are not of type missing
+    if length(size(data)) == 2  # we need data to be (N_variables,N_timepoints,N_samples) 
+        data = reshape(data, (size(data)...,1) )
+    end
+    N_samples = size(data)[3]
+    data = vec(data)
+    nonmissing = findall(data .!== missing)
+    data = data[nonmissing]
+    data = identity.(data)
+
+    @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
+                                    N_samples=N_samples,
+                                    nonmissing=nonmissing)
         u00 = u0  # IC needs to be defined within model to work
         # priors
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
@@ -460,37 +482,17 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         #data ~ MvNormal(predicted, σ^2 * I)  # this gives quicker evals (but recommended by TuringLang developers). For large N, this appears superior
         # trying out using all datapoints, not only averages
         #=
-        using all data points is much slower, the bottleneck seems to be the number of samples
-        i.e. using only one sample takes approximately the same time as using the average for each timepoints & region
+        using all observations
         =#
-        for (ti, timepoint) in enumerate(timepointss)
-            for region in axes(data[timepoint],2), sample in axes(data[timepoint],1)
-                if isnan(data[timepoint][sample,region])
-                    continue
-                end
-                data[timepoint][sample,region] ~ Normal(predicted[region,ti], σ^2) 
-            end
-        end
-        #for (ti, timepoint) in enumerate(timepointss)
-        #    for region in axes(data[timepoint],2)
-        #        good_idxs = data[timepoint][:,region] .!== NaN
-        #        #if isnan(data[timepoint][1,region])
-        #        #    continue
-        #        #end
-        #        display(size(data[timepoint][good_idxs,region]))
-        #        display(size(data[timepoint][good_idxs,region]))
-        #        data[timepoint][good_idxs,region] .~ Normal(predicted[region,ti], σ^2) 
-        #    end
-        #end
+        predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        predicted = predicted[nonmissing]
+        data ~ MvNormal(predicted,σ^2*I)
+
 
         return nothing
     end
 
     # trying out using all datapoints, not only averages
-    data = deserialize("data/total_path_dict.jls")
-    for (key,value) in data
-        data[key] = value[:,idxs]
-    end
     model = bayesian_model(data, prob)
 
     # define Turing model

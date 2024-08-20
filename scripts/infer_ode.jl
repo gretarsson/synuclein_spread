@@ -3,15 +3,18 @@ include("helpers.jl");
 #=
 Infer parameters of ODE using Bayesian framework
 =#
+# read data
+timepoints = vec(readdlm("data/timepoints.csv", ','))::Vector{Float64};
+data = deserialize("data/avg_total_path.jls")
+idxs = [79:89...];
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-#thresholds = [0.15, 0.05, 0.01, 0.0];
-#thresholds = [0.15, 0.05, 0.01, 0.0];
-thresholds = [0.15, 0.05, 0.01];
+thresholds = [0.05];
 Ns = Dict(0.15 => 40, 0.05 => 95, 0.01 => 174, 0.0 => 366);
 for i in eachindex(thresholds)
-    N = Ns[thresholds[i]]
+    #N = Ns[thresholds[i]]
+    N = length(idxs)
     println("Inferring with N=$(N)")
     #seed_m = 0.1*N
     #seed_v = 0.1*seed_m
@@ -51,13 +54,14 @@ for i in eachindex(thresholds)
 
     inference = infer(death_superlocal2, 
                     priors_agg,
-                    "data/avg_total_path.csv",
-                    "data/timepoints.csv", 
+                    data,
+                    timepoints, 
                     "data/W_labeled.csv"; 
                     factors=factors_death,
                     u0=u0_death,
+                    idxs=idxs,
                     sol_idxs=sol_idxs_death,
-                    n_threads=4,
+                    n_threads=1,
                     threshold=thresholds[i],
                     bayesian_seed=true,
                     seed_value=1.,
@@ -77,5 +81,5 @@ for i in eachindex(thresholds)
                     )
 
     # save inference result
-    serialize("simulations/total_death_N=$(N)_datadict.jls", inference)
+    serialize("simulations/test_datadict.jls", inference)
 end
