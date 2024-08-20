@@ -91,6 +91,8 @@ total_path_3D
 # save average total path with missing
 avg_total_path = mean3(total_path_3D)
 avg_total_path = reshape(avg_total_path, (size(avg_total_path)...,1))
+avg_total_path = identity.(avg_total_path)
+
 serialize("data/avg_total_path.jls", avg_total_path)
 
 

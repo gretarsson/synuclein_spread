@@ -359,14 +359,13 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
 # Run whole simulations in one place
 # the Priors dict must contain the ODE parameters in order first, and then σ. Other priors can then follow after, with seed always last.
 # ----------------------------------------------------------------------------------------------------------------------------------------
-function infer(ode, priors::OrderedDict, data::Array{Float64,3}, timepoints::Vector{Float64}, W_file; 
+function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, W_file; 
                u0=[]::Vector{Float64},
                idxs=Vector{Int}()::Vector{Int},
                n_threads=1,
                alg=Tsit5(), 
                sensealg=ForwardDiffSensitivity(), 
                adtype=AutoForwardDiff(), 
-               threshold=0., 
                factors=[1.]::Vector{Float64},
                bayesian_seed=false,
                seed_region="iCP"::String,
@@ -378,7 +377,6 @@ function infer(ode, priors::OrderedDict, data::Array{Float64,3}, timepoints::Vec
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
                transform_observable=false,
-               remove_nans=true
                )
 
     # verify that choice of ODE is correct wrp to retro- and anterograde
@@ -434,14 +432,11 @@ function infer(ode, priors::OrderedDict, data::Array{Float64,3}, timepoints::Vec
     end
 
     # reshape data into vector and find indices that are not of type missing
-    if length(size(data)) == 2  # we need data to be (N_variables,N_timepoints,N_samples) 
-        data = reshape(data, (size(data)...,1) )
-    end
     N_samples = size(data)[3]
-    data = vec(data)
-    nonmissing = findall(data .!== missing)
-    data = data[nonmissing]
-    data = identity.(data)
+    vec_data = vec(data)
+    nonmissing = findall(vec_data .!== missing)
+    vec_data = vec_data[nonmissing]
+    vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
 
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
@@ -493,7 +488,7 @@ function infer(ode, priors::OrderedDict, data::Array{Float64,3}, timepoints::Vec
     end
 
     # trying out using all datapoints, not only averages
-    model = bayesian_model(data, prob)
+    model = bayesian_model(vec_data, prob)
 
     # define Turing model
     #model = bayesian_model(vec(data), prob)
@@ -550,7 +545,7 @@ function infer(ode, priors::OrderedDict, data::Array{Float64,3}, timepoints::Vec
                      "priors" => priors, 
                      "data" => data,
                      "timepoints" => timepoints,
-                     "threshold" => threshold, 
+                     "data_indices" => idxs, 
                      "seed_idx" => seed,
                      "bayesian_seed" => bayesian_seed,
                      "transform_observable" => transform_observable,
