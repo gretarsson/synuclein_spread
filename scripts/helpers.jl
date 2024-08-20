@@ -109,7 +109,6 @@ function prune_data(A,a)
     return A[idxs,:]
 end
 
-
 #=
 read and prune data if told to
 =#
@@ -363,7 +362,8 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
                benchmark=false,
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
-               transform_observable=false
+               transform_observable=false,
+               remove_nans=true
                )
 
     # verify that choice of ODE is correct wrp to retro- and anterograde
@@ -381,7 +381,7 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
     end
 
     # read empirical data
-    data, idxs = read_data(data_file, remove_nans=true, threshold=threshold)
+    data, idxs = read_data(data_file, remove_nans=remove_nans, threshold=threshold)
     timepoints = vec(readdlm(timepoints_file, ','))::Vector{Float64}
     # read only part of data
     data = data[:,5:end]
@@ -423,7 +423,6 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         sol_idxs = [i for i in 1:N]
     end
 
-
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value)
         u00 = u0  # IC needs to be defined within model to work
         # priors
@@ -439,7 +438,8 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
 
         # Transform prediction
-        predicted = vec(predicted[sol_idxs,:])
+        #predicted = vec(predicted[sol_idxs,:])
+        predicted = predicted[sol_idxs,:]
         if transform_observable
             if haskey(priors,"c")
                 c ~ priors["c"]
@@ -457,13 +457,44 @@ function infer(ode, priors::OrderedDict, data_file, timepoints_file, W_file;
         end
 
         # Observations.
-        data ~ MvNormal(predicted, σ^2 * I)  # this gives quicker evals (but recommended by TuringLang developers). For large N, this appears superior
+        #data ~ MvNormal(predicted, σ^2 * I)  # this gives quicker evals (but recommended by TuringLang developers). For large N, this appears superior
+        # trying out using all datapoints, not only averages
+        #=
+        using all data points is much slower, the bottleneck seems to be the number of samples
+        i.e. using only one sample takes approximately the same time as using the average for each timepoints & region
+        =#
+        for (ti, timepoint) in enumerate(timepointss)
+            for region in axes(data[timepoint],2), sample in axes(data[timepoint],1)
+                if isnan(data[timepoint][sample,region])
+                    continue
+                end
+                data[timepoint][sample,region] ~ Normal(predicted[region,ti], σ^2) 
+            end
+        end
+        #for (ti, timepoint) in enumerate(timepointss)
+        #    for region in axes(data[timepoint],2)
+        #        good_idxs = data[timepoint][:,region] .!== NaN
+        #        #if isnan(data[timepoint][1,region])
+        #        #    continue
+        #        #end
+        #        display(size(data[timepoint][good_idxs,region]))
+        #        display(size(data[timepoint][good_idxs,region]))
+        #        data[timepoint][good_idxs,region] .~ Normal(predicted[region,ti], σ^2) 
+        #    end
+        #end
 
         return nothing
     end
 
+    # trying out using all datapoints, not only averages
+    data = deserialize("data/total_path_dict.jls")
+    for (key,value) in data
+        data[key] = value[:,idxs]
+    end
+    model = bayesian_model(data, prob)
+
     # define Turing model
-    model = bayesian_model(vec(data), prob)
+    #model = bayesian_model(vec(data), prob)
 
     # test if typestable if told to, red marking in read-out means something is unstable
     if test_typestable

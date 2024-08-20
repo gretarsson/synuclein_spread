@@ -1,4 +1,5 @@
 using DelimitedFiles
+using Serialization
 using Plots
 using Statistics
 using GLMakie
@@ -64,6 +65,16 @@ for i in 1:N
         end
     end
 end
+# save total path in a dictionary based on timepoints, with regions in the same order as structural connectivity 
+timepoints_map = total_path_labeled[2:end,2]
+total_path_dict = OrderedDict{Any}{Any}()
+for time in sort(unique(timepoints_map))
+    total_path_t = rearr_total_path[timepoints_map .== time,:]
+    total_path_dict[time] = total_path_t
+end
+serialize("data/total_path_dict.jls", total_path_dict)
+# create 3D array (regions,timepoints,samples) where NaN if not exists
+
 
 # the data does not follow the same mice over time
 # we therefore average over the mice at different time points
