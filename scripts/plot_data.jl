@@ -1,4 +1,6 @@
 using DelimitedFiles
+using CSV
+using StatsBase
 using Serialization
 using Plots
 using Statistics
@@ -59,7 +61,7 @@ for i in 1:N
     path_index = region_map[i]
     for k in axes(rearr_total_path,1)
         if total_path[k,path_index] == "NA"
-            rearr_total_path[k,i] = NaN
+            rearr_total_path[k,i] = missing
         else
             rearr_total_path[k,i] = total_path[k, path_index]
         end
@@ -74,7 +76,15 @@ for time in sort(unique(timepoints_map))
 end
 serialize("data/total_path_dict.jls", total_path_dict)
 # create 3D array (regions,timepoints,samples) where NaN if not exists
-
+max_samples = countmap(timepoints_map)[mode(timepoints_map)]
+n_timepoints = length(unique(timepoints_map))
+total_path_3D = Array{Union{Missing,Float64}}(missing,N,n_timepoints,max_samples)
+for (ti,time) in enumerate(sort(unique(timepoints_map)))
+    total_path_t = transpose(rearr_total_path[timepoints_map .== time,:])  # gives total_path (N x samples) array for timepoint time
+    Nt,Mt = size(total_path_t)
+    total_path_3D[1:Nt,ti,1:Mt] = total_path_t 
+end
+serialize("data/total_path_3D.jls", total_path_3D)
 
 # the data does not follow the same mice over time
 # we therefore average over the mice at different time points
