@@ -831,16 +831,6 @@ function plot_inference(inference, save_path; plotscale=log10)
         mkdir(save_path);
     catch
     end
-    # rescale the parameters according to the factor
-    #chain = inference["chain"]
-    #factors = inference["factors"]
-    #factor_matrix = diagm(factors)
-    #n_chains = size(chain)[3]
-    #ks = collect(keys(inference["priors"]))
-    #N_pars = findall(x->x=="σ",ks)[1] - 1
-    #for i in 1:n_chains
-    #    chain[:,1:N_pars,i] = Array(chain[:,1:N_pars,i]) * factor_matrix
-    #end
 
     # plot
     predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
