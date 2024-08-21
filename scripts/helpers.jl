@@ -65,10 +65,22 @@ function mean3(M)
     N1,N2,_ = size(M)
     avg_M = Array{Union{Float64,Missing}}(missing, N1, N2)
     for j in axes(M,2), i in axes(M,1)
-        avg_M[i,j] = mean(skipmissing(total_path_3D[i,j,:]))
+        avg_M[i,j] = mean(skipmissing(M[i,j,:]))
     end
     avg_M[isnan.(avg_M)] .= missing
     return avg_M
+end
+
+#=
+find average of 3D matrix from dimension 3 skipping missing
+=#
+function var3(M)
+    N1,N2,_ = size(M)
+    var_M = Array{Union{Float64,Missing}}(missing, N1, N2)
+    for j in axes(M,2), i in axes(M,1)
+        var_M[i,j] = var(skipmissing(M[i,j,:]))
+    end
+    return var_M
 end
 
 #=
@@ -134,73 +146,6 @@ function read_data(path; remove_nans=false, threshold=0.)
     end
     idxs = idxs .* larger_rows(A,threshold)
     return A[idxs,:], idxs
-end
-
-#=
-Plot retrodiction of chain compared to data
-=#
-function plot_retrodiction(;data=nothing, chain=nothing, prob=nothing, path=nothing, timepoints=nothing, seed=0, seed_bayesian=false, u0=nothing, N_samples=300)
-    N = size(data)[1]
-    M = length(timepoints)
-    fs = Any[NaN for _ in 1:N]
-    axs = Any[NaN for _ in 1:N]
-    for i in 1:N
-        f = CairoMakie.Figure()
-        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0,1))
-        fs[i] = f
-        axs[i] = ax
-    end
-    posterior_samples = sample(chain, N_samples; replace=false)
-    avg_sol =   zeros(N,M)
-    for sample in eachrow(Array(posterior_samples))
-        # samples
-        if seed_bayesian  # means IC at seed region has posterior
-            p = sample[2:(end-1)]
-            u0[seed] = sample[end]
-        else
-            p = sample[2:end]
-        end
-        
-        # solve
-        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
-        sol_p_timepoints = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
-        for i in 1:N
-            CairoMakie.lines!(axs[i],sol_p.t, sol_p[i,:]; alpha=0.3, color=:grey)
-        end
-        # add to average
-        avg_sol = avg_sol .+ (Array(sol_p_timepoints[1:N,:]) ./ N_samples)
-    end
-
-    # Plot simulation and noisy observations.
-    for i in 1:N
-        CairoMakie.scatter!(axs[i], timepoints, data[i,:]; colormap=:tab10)
-        CairoMakie.save(path * "/retrodiction_region_$(i).png", fs[i])
-    end
-    # plot predicted vs data
-    f = CairoMakie.Figure()
-    ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", aspect=1)
-    CairoMakie.scatter!(ax,vec(data),vec(avg_sol), alpha=0.5)
-    maxl = max(maximum(data), maximum(avg_sol))
-    CairoMakie.lines!([0,maxl],[0,maxl], color=:grey, alpha=0.5)
-    CairoMakie.save(path * "/predicted_observed_average.png", f)
-    # plot mode prediction
-    n_pars = length(chain.info[1])
-    _, argmax = findmax(chain[:lp])
-    mode_pars = Array(chain[argmax[1], 2:n_pars, argmax[2]])
-    if seed_bayesian
-        p = mode_pars[1:(end-1)]
-        u0[seed] = mode_pars[end]
-    else
-        p = mode_pars
-    end
-    println(p)
-    sol = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
-    f = CairoMakie.Figure()
-    ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", aspect=1)
-    CairoMakie.scatter!(ax,vec(data),vec(Array(sol[1:N,:])), alpha=0.5)
-    maxl = max(maximum(data), maximum(sol))
-    CairoMakie.lines!([0,maxl],[0,maxl], color=:grey, alpha=0.5)
-    CairoMakie.save(path * "/predicted_observed_mode.png", f)
 end
 
 #=
@@ -625,8 +570,14 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale)
 
     # as we are plotting log-log, we account for zeros in the data
+    if length(size(data)) > 2
+        data = mean3(data)  # find mean of data 
+    end
     x = vec(copy(data))
     y = vec(copy(sol[1:N,:]))
+    nonmissing = findall(x .!== missing)
+    x = x[nonmissing]
+    y = y[nonmissing]
     if (sum(x .== 0) + sum(y .== 0)) > 0  # if zeros present, add the smallest number in plot
         minx = minimum(x[x.>0])
         miny = minimum(y[y.>0])
@@ -651,6 +602,9 @@ function predicted_observed(inference; save_path="", plotscale=log10)
         # as we are plotting log-log, we account for zeros in the data
         x = vec(copy(data[:,i]))
         y = vec(copy(sol[1:N,i]))
+        nonmissing = findall(x .!== missing)
+        x = x[nonmissing]
+        y = y[nonmissing]
         if (sum(x .== 0) + sum(y .== 0)) > 0  # if zeros present, add the smallest number in plot
             minx = minimum(x[x.>0])
             miny = minimum(y[y.>0])
@@ -741,6 +695,11 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     M = length(timepoints)
     par_names = chain.name_map.parameters
     seed_ch_idx = findall(x->x==:seed,par_names)[1]  # TODO find index of chain programmatically
+    # if data is 3D, find mean
+    if length(size(data)) > 2
+        var_data = var3(data)
+        data = mean3(data)
+    end
 
     # define ODE problem 
     u0 = inference["u0"]
@@ -791,7 +750,17 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
 
     # Plot simulation and noisy observations.
     for i in 1:N
-        CairoMakie.scatter!(axs[i], timepoints, data[i,:]; colormap=:tab10)
+        # =-=----
+        nonmissing = findall(data[i,:] .!== missing)
+        data_i = data[i,:][nonmissing]
+        timepoints_i = timepoints[nonmissing]
+        var_data_i = var_data[i,:][nonmissing]
+        indices = findall(x -> isnan(x),var_data_i)
+        var_data_i[indices] .= 0
+        CairoMakie.scatter!(axs[i], timepoints_i, data_i; colormap=:tab10, alpha=0.75)  
+        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, var_data_i; colormap=:tab10)
+        # =-=----
+        #CairoMakie.scatter!(axs[i], timepoints, data[i,:]; colormap=:tab10)
         CairoMakie.save(save_path * "/retrodiction_region_$(i).png", fs[i])
     end
 
