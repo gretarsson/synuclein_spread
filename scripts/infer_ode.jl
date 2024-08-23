@@ -13,8 +13,10 @@ data = deserialize("data/total_path_3D.jls");
 # DIFFUSION, RETRO- AND ANTEROGRADE
 #N = length(idxs)
 N = size(data)[1];
-sol_idxs_death = [i for i in 1:N]
-u0_death = [0. for _ in 1:(2*N)]
+#sol_idxs_death = [i for i in 1:N]
+#u0_death = [0. for _ in 1:(2*N)]
+sol_idxs = [i for i in 1:N]
+u0 = [0. for _ in 1:N]
 
 # INFORM PRIORS
 # find maxima and end-point for each region for a sample, and remove that sample from data
@@ -45,26 +47,27 @@ for i in 1:N
     priors_agg["β[$(i)]"] = truncated(Normal(0,1),lower=0)
     #priors_agg["β[$(i)]"] = truncated(Normal(maxima[i],0.05),lower=0)
 end
-for i in 1:N
-    #priors_agg["d[$(i)]"] = truncated(Normal( maxima[i] - endpoints[i] , 0.05),lower=0)
-    priors_agg["d[$(i)]"] = truncated(Normal( 0 , 1),lower=0)
-end
-priors_agg["γ"] = truncated(Normal(0,1),lower=0)
+#for i in 1:N
+#    #priors_agg["d[$(i)]"] = truncated(Normal( maxima[i] - endpoints[i] , 0.05),lower=0)
+#    priors_agg["d[$(i)]"] = truncated(Normal( 0 , 1),lower=0)
+#end
+#priors_agg["γ"] = truncated(Normal(0,1),lower=0)
 priors_agg["σ"] = InverseGamma(2,3)
 priors_agg["seed"] = truncated(Normal(0,0.1),lower=0)
 
 # parameter refactorization
-factors_death = [1/100, 1., 1., [1 for _ in 1:N]..., [1. for _ in 1:N]..., 1.]
+#factors_death = [1/100, 1., 1., [1 for _ in 1:N]..., [1. for _ in 1:N]..., 1.]
+factors_agg = [1/100, 1., 1., [1 for _ in 1:N]...]
 
-inference = infer(death_superlocal2, 
+inference = infer(aggregation2, 
                 priors_agg,
                 data,
                 timepoints, 
                 "data/W_labeled.csv"; 
-                factors=factors_death,
-                u0=u0_death,
+                factors=factors_agg,
+                u0=u0,
                 #idxs=idxs,
-                sol_idxs=sol_idxs_death,
+                sol_idxs=sol_idxs,
                 n_threads=1,
                 bayesian_seed=true,
                 seed_value=1.,
@@ -80,4 +83,4 @@ inference = infer(death_superlocal2,
                 )
 
 # save inference result
-serialize("simulations/total_death_N=$(N).jls", inference)
+serialize("simulations/total_aggregation_N=$(N).jls", inference)

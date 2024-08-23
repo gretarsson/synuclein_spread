@@ -774,7 +774,18 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
         indices = findall(x -> isnan(x),var_data_i)
         var_data_i[indices] .= 0
         CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1.)  
-        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i); color=RGB(0/255, 0/255, 139/255), whiskerwidth=20, alpha=0.4)
+        # have lower std capped at 0.01 (to be visible in the plots)
+        var_data_i_lower = copy(var_data_i)
+        for (n,var) in enumerate(var_data_i)
+            if sqrt(var) > data_i[n]
+                var_data_i_lower[n] = max(data_i[n]^2-0.01, 0)
+                #var_data_i_lower[n] = data_i[n]^2
+            end
+        end
+
+        #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
+        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i_lower), sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
+        #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, [0. for _ in 1:length(timepoints_i)], sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
     end
     # plot all data points across all samples
     for i in 1:N
