@@ -5,7 +5,7 @@ include("helpers.jl");
 
 
 # simulation to analyze
-simulation = "test_datadict";
+simulation = "total_death_N=448_ultimate";
 
 # plot 
 inference = deserialize("simulations/"*simulation*".jls")

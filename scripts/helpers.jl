@@ -271,25 +271,15 @@ function death_superlocal2(du,u,p,t;L=L,factors=(1.,1.))
     ρa = p[1]
     ρr = p[2]
     α = p[3]
-    #α = p[3:(N+2)]
     β = p[4:(N+3)]
     d = p[(N+4):(2*N+3)]
-    #d = p[(2*N+3):(3*N+2)]
-    #γ = p[(3*N+3):end]
     γ = p[end]
-    #α = p[3:N+2]
-    #β = p[N+3:(2*N+2)]
-    #γ = p[(2*N+3):(3*N + 2)]
-    #ϵ = p[end-1]
-    #d = p[end]
 
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
     du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α  .* x .* (β .- d.*y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (1 .- y)  
-    #du[(N+1):(2*N)] .=  ϵ .* (γ .* x .- y)  
-    #du[(N+1):(2*N)] .=  (tanh.(x) .- y) ./ γ
 end
 #=
 a dictionary containing the ODE functions
@@ -382,7 +372,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     nonmissing = findall(vec_data .!== missing)
     vec_data = vec_data[nonmissing]
     vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
-    display(seed)
 
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
@@ -505,6 +494,23 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     return inference
 end
 
+#=
+find regions with more than n number of measurements, from 3D data array
+=#
+function measured_regions(A,n)
+    regions = [];
+    for region in axes(A,1)
+        region_i = A[region,:,:]
+        nonmissing = findall(region_i .!== missing)
+        N_nonmissing = length(nonmissing)
+        if N_nonmissing > n
+            push!(regions, region)
+        end
+    end
+    return regions
+end
+
+
 
 #=
 plot predicted vs observed plot for inference, parameters chosen from posterior mode
@@ -567,19 +573,30 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     end
 
     # plot
+    xticks = ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e-0], [L"$10^{-6}$", L"$10^{-5}$", L"$10^{-4}$", L"$10^{-3}$", L"$10^{-2}$", L"$10^{-1}$", L"$10^0$"])
+    yticks = xticks
     f = CairoMakie.Figure()
-    ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale)
+    ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=yticks)
 
     # as we are plotting log-log, we account for zeros in the data
+    regions = 1:N
     if length(size(data)) > 2
         data = mean3(data)  # find mean of data 
+        # remove regions with less than 3 measuremnts 
+        region_idxs = measured_regions(data,3)
+        data = data[region_idxs,:,:]
+        regions = copy(region_idxs)
     end
+
+    # set x and y ticks
+
     x = vec(copy(data))
-    y = vec(copy(sol[1:N,:]))
+    y = vec(copy(sol[regions,:]))
     nonmissing = findall(x .!== missing)
     x = x[nonmissing]
     y = y[nonmissing]
-    if (sum(x .== 0) + sum(y .== 0)) > 0  # if zeros present, add the smallest number in plot
+    minxy = 0
+    if plotscale==log10 && ((sum(x .== 0) + sum(y .== 0)) > 0)  # if zeros present, add the smallest number in plot
         minx = minimum(x[x.>0])
         miny = minimum(y[y.>0])
         minxy = min(minx, miny)
@@ -598,20 +615,17 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     # plot at different time points
     for i in eachindex(timepoints)
         f = CairoMakie.Figure()
-        ax = CairoMakie.Axis(f[1,1], title="t = $(timepoints[i])", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale)
+        ax = CairoMakie.Axis(f[1,1], title="t = $(timepoints[i])", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=yticks)
 
         # as we are plotting log-log, we account for zeros in the data
         x = vec(copy(data[:,i]))
-        y = vec(copy(sol[1:N,i]))
+        y = vec(copy(sol[regions,i]))
         nonmissing = findall(x .!== missing)
         x = x[nonmissing]
         y = y[nonmissing]
-        if (sum(x .== 0) + sum(y .== 0)) > 0  # if zeros present, add the smallest number in plot
-            minx = minimum(x[x.>0])
-            miny = minimum(y[y.>0])
-            minxy_i = min(minx, miny)
-            x = x .+ minxy_i
-            y = y .+ minxy_i
+        if plotscale==log10 && ((sum(x .== 0) + sum(y .== 0)) > 0)  # if zeros present, add the smallest number in plot
+            x = x .+ minxy
+            y = y .+ minxy
         end
 
         CairoMakie.scatter!(ax,x,y, alpha=0.5)
@@ -835,10 +849,11 @@ function plot_inference(inference, save_path; plotscale=log10)
 
     # plot
     predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
+    return nothing
     plot_chains(inference, save_path=save_path*"/chains");
     plot_priors(inference; save_path=save_path*"/priors");
     plot_posteriors(inference, save_path=save_path*"/posteriors");
     plot_retrodiction(inference; save_path=save_path*"/retrodiction");
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
-    return nothing
+    #return nothing
 end
