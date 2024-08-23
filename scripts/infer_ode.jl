@@ -18,7 +18,7 @@ u0_death = [0. for _ in 1:(2*N)]
 
 # INFORM PRIORS
 # find maxima and end-point for each region for a sample, and remove that sample from data
-sample_n = 1;  # sample to inform prior
+sample_n = 4;  # sample to inform prior
 maxima = Vector{Float64}(undef,N);
 endpoints = Vector{Float64}(undef,N);
 for region in axes(data,1)
@@ -37,24 +37,24 @@ for region in axes(data,1)
         end
     end
 end
-data = data[:,:,2:end]  # TODO remove sample programmatically
+#data = data[:,:,[1:3..., 5:end...]]  # TODO remove sample programmatically
 
 # aggregation prior
 priors_agg =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" => truncated(Normal(1,0.25), lower=0), "α" => truncated(Normal(0,1),lower=0)); 
 for i in 1:N
-    #priors_agg["β[$(i)]"] = truncated(Normal(0,0.1),lower=0)
-    priors_agg["β[$(i)]"] = truncated(Normal(maxima[i],0.05),lower=0)
+    priors_agg["β[$(i)]"] = truncated(Normal(0,1),lower=0)
+    #priors_agg["β[$(i)]"] = truncated(Normal(maxima[i],0.05),lower=0)
 end
 for i in 1:N
-    priors_agg["d[$(i)]"] = truncated(Normal( maxima[i] - endpoints[i] , 0.05),lower=0)
-    #priors_agg["d[$(i)]"] = truncated(Normal( 0 , 0.1),lower=0)
+    #priors_agg["d[$(i)]"] = truncated(Normal( maxima[i] - endpoints[i] , 0.05),lower=0)
+    priors_agg["d[$(i)]"] = truncated(Normal( 0 , 1),lower=0)
 end
 priors_agg["γ"] = truncated(Normal(0,1),lower=0)
 priors_agg["σ"] = InverseGamma(2,3)
 priors_agg["seed"] = truncated(Normal(0,0.1),lower=0)
 
 # parameter refactorization
-factors_death = [1/100, 1., 5., [1 for _ in 1:N]..., [1. for _ in 1:N]..., 1.]
+factors_death = [1/100, 1., 1., [1 for _ in 1:N]..., [1. for _ in 1:N]..., 1.]
 
 inference = infer(death_superlocal2, 
                 priors_agg,
