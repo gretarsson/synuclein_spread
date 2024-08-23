@@ -9,4 +9,4 @@ simulation = "total_death_N=448_ultimate";
 
 # plot 
 inference = deserialize("simulations/"*simulation*".jls")
-plot_inference(inference,"figures/"*simulation;plotscale=log10) 
+plot_inference(inference,"figures/"*simulation;plotscale=log10)  
