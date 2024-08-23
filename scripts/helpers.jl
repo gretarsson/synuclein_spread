@@ -713,7 +713,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     # if data is 3D, find mean
     if length(size(data)) > 2
         var_data = var3(data)
-        data = mean3(data)
+        mean_data = mean3(data)
     end
 
     # define ODE problem 
@@ -764,18 +764,28 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     end
 
     # Plot simulation and noisy observations.
+    # plot mean and variance
     for i in 1:N
         # =-=----
-        nonmissing = findall(data[i,:] .!== missing)
-        data_i = data[i,:][nonmissing]
+        nonmissing = findall(mean_data[i,:] .!== missing)
+        data_i = mean_data[i,:][nonmissing]
         timepoints_i = timepoints[nonmissing]
         var_data_i = var_data[i,:][nonmissing]
         indices = findall(x -> isnan(x),var_data_i)
         var_data_i[indices] .= 0
-        CairoMakie.scatter!(axs[i], timepoints_i, data_i; colormap=:tab10, alpha=0.75)  
-        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, var_data_i; colormap=:tab10)
-        # =-=----
-        #CairoMakie.scatter!(axs[i], timepoints, data[i,:]; colormap=:tab10)
+        CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1.)  
+        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i); color=RGB(0/255, 0/255, 139/255), whiskerwidth=20, alpha=0.4)
+    end
+    # plot all data points across all samples
+    for i in 1:N
+        jiggle = rand(Normal(0,0.01),size(data)[3])
+        for k in axes(data,3)
+            # =-=----
+            nonmissing = findall(data[i,:,k] .!== missing)
+            data_i = data[i,:,k][nonmissing]
+            timepoints_i = timepoints[nonmissing] .+ jiggle[k]
+            CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 71/255, 171/255), alpha=0.4)  
+        end
         CairoMakie.save(save_path * "/retrodiction_region_$(i).png", fs[i])
     end
 
@@ -848,12 +858,11 @@ function plot_inference(inference, save_path; plotscale=log10)
     end
 
     # plot
-    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
-    return nothing
-    plot_chains(inference, save_path=save_path*"/chains");
-    plot_priors(inference; save_path=save_path*"/priors");
-    plot_posteriors(inference, save_path=save_path*"/posteriors");
+    #predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
+    #plot_chains(inference, save_path=save_path*"/chains");
+    #plot_priors(inference; save_path=save_path*"/priors");
+    #plot_posteriors(inference, save_path=save_path*"/posteriors");
     plot_retrodiction(inference; save_path=save_path*"/retrodiction");
-    plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
-    #return nothing
+    #plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
+    return nothing
 end
