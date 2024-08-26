@@ -869,11 +869,11 @@ function plot_inference(inference, save_path; plotscale=log10)
     end
 
     # plot
-    #predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
-    #plot_chains(inference, save_path=save_path*"/chains");
-    #plot_priors(inference; save_path=save_path*"/priors");
-    #plot_posteriors(inference, save_path=save_path*"/posteriors");
+    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
+    plot_chains(inference, save_path=save_path*"/chains");
+    plot_priors(inference; save_path=save_path*"/priors");
+    plot_posteriors(inference, save_path=save_path*"/posteriors");
     plot_retrodiction(inference; save_path=save_path*"/retrodiction");
-    #plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
+    plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     return nothing
 end
