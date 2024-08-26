@@ -305,7 +305,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                bayesian_seed=false,
                seed_region="iCP"::String,
                seed_value=1.::Float64,
-               sol_idxs=[1]::Vector{Int},
+               sol_idxs=Vector{Int}()::Vector{Int},
                abstol=1e-10, 
                reltol=1e-10,
                benchmark=false,
@@ -362,7 +362,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     
     # prior vector from ordered dic
     priors_vec = collect(values(priors))
-    if sol_idxs == [1]
+    if isempty(sol_idxs)
         sol_idxs = [i for i in 1:N]
     end
 
@@ -876,4 +876,32 @@ function plot_inference(inference, save_path; plotscale=log10)
     plot_retrodiction(inference; save_path=save_path*"/retrodiction");
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     return nothing
+end
+
+#=
+inform beta and d priors
+=#
+function inform_priors(data,sample_n)
+    sample_n = 4;  # sample to inform prior
+    maxima = Vector{Float64}(undef,N);
+    endpoints = Vector{Float64}(undef,N);
+    for region in axes(data,1)
+        region_timeseries = data[region,:,sample_n]
+        nonmissing = findall(region_timeseries .!== missing)
+        region_timeseries = identity.(region_timeseries[nonmissing])
+        if isempty(region_timeseries)
+            maxima[region] = 0
+            endpoints[region] = 0
+        else
+            maxima[region] = maximum(region_timeseries)
+            if ismissing(region_timeseries[end])
+                endpoints[region] = 0
+            else
+                endpoints[region] = region_timeseries[end]
+            end
+        end
+    end
+    sample_inds = filter(x->x!==sample_n,1:size(data)[3])
+    data = data[:,:,sample_inds]  
+    return data, maxima, endpoints
 end

@@ -3,6 +3,9 @@ include("helpers.jl");
 #=
 Infer parameters of ODE using Bayesian framework
 =#
+# pick ode
+ode = diffusion2
+
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
@@ -13,61 +16,42 @@ data = deserialize("data/total_path_3D.jls");
 # DIFFUSION, RETRO- AND ANTEROGRADE
 #N = length(idxs)
 N = size(data)[1];
-#sol_idxs_death = [i for i in 1:N]
-#u0_death = [0. for _ in 1:(2*N)]
-sol_idxs = [i for i in 1:N]
 u0 = [0. for _ in 1:N]
 
 # INFORM PRIORS
-# find maxima and end-point for each region for a sample, and remove that sample from data
-sample_n = 4;  # sample to inform prior
-maxima = Vector{Float64}(undef,N);
-endpoints = Vector{Float64}(undef,N);
-for region in axes(data,1)
-    region_timeseries = data[region,:,sample_n]
-    nonmissing = findall(region_timeseries .!== missing)
-    region_timeseries = identity.(region_timeseries[nonmissing])
-    if isempty(region_timeseries)
-        maxima[region] = 0
-        endpoints[region] = 0
-    else
-        maxima[region] = maximum(region_timeseries)
-        if ismissing(region_timeseries[end])
-            endpoints[region] = 0
-        else
-            endpoints[region] = region_timeseries[end]
-        end
-    end
-end
-#data = data[:,:,[1:3..., 5:end...]]  # TODO remove sample programmatically
+#data2, maxima2, endpoints2 = inform_priors(data,4)
 
-# aggregation prior
-priors_agg =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" => truncated(Normal(1,0.25), lower=0), "α" => truncated(Normal(0,1),lower=0)); 
-for i in 1:N
-    priors_agg["β[$(i)]"] = truncated(Normal(0,1),lower=0)
-    #priors_agg["β[$(i)]"] = truncated(Normal(maxima[i],0.05),lower=0)
-end
+# DEFINE PRIORS
+priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" => truncated(Normal(1,0.25), lower=0)); 
+#priors["α"] = truncated(Normal(0,1),lower=0)
 #for i in 1:N
-#    #priors_agg["d[$(i)]"] = truncated(Normal( maxima[i] - endpoints[i] , 0.05),lower=0)
-#    priors_agg["d[$(i)]"] = truncated(Normal( 0 , 1),lower=0)
+#    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0)
 #end
-#priors_agg["γ"] = truncated(Normal(0,1),lower=0)
-priors_agg["σ"] = InverseGamma(2,3)
-priors_agg["seed"] = truncated(Normal(0,0.1),lower=0)
+#for i in 1:N
+#    #priors["d[$(i)]"] = truncated(Normal( maxima[i] - endpoints[i] , 0.05),lower=0)
+#    priors["d[$(i)]"] = truncated(Normal( 0 , 1),lower=0)
+#end
+#priors["γ"] = truncated(Normal(0,1),lower=0)
+priors["σ"] = InverseGamma(2,3)
+#priors["seed"] = truncated(Normal(0,0.1),lower=0)
+seed_m = 0.1*N
+seed_v = 0.1*seed_m
+priors["seed"] = truncated(Normal(seed_m,seed_v),lower=0)
 
 # parameter refactorization
-#factors_death = [1/100, 1., 1., [1 for _ in 1:N]..., [1. for _ in 1:N]..., 1.]
-factors_agg = [1/100, 1., 1., [1 for _ in 1:N]...]
+#factors = [1/100, 1., 1., [1 for _ in 1:N]..., [1. for _ in 1:N]..., 1.]
+#factors = [1/100, 1., 1., [1 for _ in 1:N]...]
+factors = [1/100, 1., 1.]
 
-inference = infer(aggregation2, 
-                priors_agg,
+# INFER
+inference = infer(ode, 
+                priors,
                 data,
                 timepoints, 
                 "data/W_labeled.csv"; 
-                factors=factors_agg,
+                factors=factors,
                 u0=u0,
                 #idxs=idxs,
-                sol_idxs=sol_idxs,
                 n_threads=1,
                 bayesian_seed=true,
                 seed_value=1.,
@@ -82,5 +66,5 @@ inference = infer(aggregation2,
                 test_typestable=false
                 )
 
-# save inference result
-serialize("simulations/total_aggregation_N=$(N).jls", inference)
+# SAVE
+serialize("simulations/total_$(ode)_N=$(N).jls", inference)
