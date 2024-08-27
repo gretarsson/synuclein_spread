@@ -34,14 +34,16 @@ priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" =
 #priors["γ"] = truncated(Normal(0,1),lower=0)
 priors["σ"] = InverseGamma(2,3)
 #priors["seed"] = truncated(Normal(0,0.1),lower=0)
-seed_m = 0.1*N
-seed_v = 0.1*seed_m
+# diffusion seed prior
+seed_m = round(0.05*N,digits=2)
+seed_v = round(0.1*seed_m,digits=2)
 priors["seed"] = truncated(Normal(seed_m,seed_v),lower=0)
 
 # parameter refactorization
 #factors = [1/100, 1., 1., [1 for _ in 1:N]..., [1. for _ in 1:N]..., 1.]
+#factors = [1/100, 1., 1.]
 #factors = [1/100, 1., 1., [1 for _ in 1:N]...]
-factors = [1/100, 1., 1.]
+factors = [1/100, 1.]
 
 # INFER
 inference = infer(ode, 
@@ -56,6 +58,7 @@ inference = infer(ode,
                 bayesian_seed=true,
                 seed_value=1.,
                 transform_observable=true,
+                #alg=Tsit5(),
                 alg=Tsit5(),
                 abstol=1e-6,
                 reltol=1e-3,

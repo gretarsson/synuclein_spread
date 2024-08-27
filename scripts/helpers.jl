@@ -373,6 +373,12 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     vec_data = vec_data[nonmissing]
     vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
 
+    # check if N_pars and length(factors) 
+    if N_pars !== length(factors)
+        display("Warning: The factor vector has length $(length(factors)) but the number of parameters is $(N_pars) according to the prior dictionary. Quitting...")
+        return nothing
+    end
+
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
                                     nonmissing=nonmissing)
@@ -417,7 +423,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
         data ~ MvNormal(predicted,σ^2*I)
-
 
         return nothing
     end
