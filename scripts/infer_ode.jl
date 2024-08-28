@@ -2,6 +2,10 @@ using Serialization
 include("helpers.jl");
 #=
 Infer parameters of ODE using Bayesian framework
+NOTE:
+the diffusion-only model does not do well when
+trained on all the data. It does much better when trained
+on t=1,3,6,9 skipping the first four timepoints.
 =#
 # pick ode
 ode = diffusion2
@@ -9,13 +13,15 @@ ode = diffusion2
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
-_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-idxs = findall(idxs);
+data = data[:,5:end,:]
+timepoints = timepoints[5:end]
+#_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+#idxs = findall(idxs);
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-N = length(idxs)
-#N = size(data)[1];
+#N = length(idxs)
+N = size(data)[1];
 u0 = [0. for _ in 1:N]
 
 # INFORM PRIORS
@@ -35,7 +41,7 @@ priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" =
 priors["σ"] = InverseGamma(2,3)
 #priors["seed"] = truncated(Normal(0,0.1),lower=0)
 # diffusion seed prior
-seed_m = round(0.01*N,digits=2)
+seed_m = round(0.1*N,digits=2)
 seed_v = round(0.1*seed_m,digits=2)
 priors["seed"] = truncated(Normal(seed_m,seed_v),lower=0)
 
