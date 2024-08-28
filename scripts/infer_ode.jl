@@ -59,7 +59,7 @@ inference = infer(ode,
                 "data/W_labeled.csv"; 
                 factors=factors,
                 u0=u0,
-                idxs=idxs,
+                #idxs=idxs,
                 n_threads=1,
                 bayesian_seed=true,
                 seed_value=1.,
