@@ -910,3 +910,14 @@ function inform_priors(data,sample_n)
     data = data[:,:,sample_inds]  
     return data, maxima, endpoints
 end
+
+#=
+give a dictionary of key to index
+=#
+function dictionary_map(vec)
+    dict_map = Dict()
+    for i in eachindex(vec)
+        dict_map[vec[i][2:end]] = i
+    end
+    return dict_map
+end
