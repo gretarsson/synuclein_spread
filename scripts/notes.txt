@@ -23,7 +23,12 @@ diffusion
     they give the same posterior.
 
     perhaps the only way to make the bayesian inference prefer a proper spreading is to fit to sample-averaged data points. 
-    this did indeed work better, though I am still not satisfied
+    this did indeed work better, predicted vs obseerved looks way more reasonable
+
+    However!! if we are to compare the model with other models, we should fit them to the same data points at least...
+    maybe we have to change the priors, but the data should stay the same
+
+    So I will try to fit the diffusion2 again but with rho_ratio prior centered at 0
 
 
 

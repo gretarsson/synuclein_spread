@@ -13,9 +13,9 @@ ode = diffusion2
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
-data = data[:,5:end,:]
-data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)))
-timepoints = timepoints[5:end]
+#data = data[:,5:end,:]
+#data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)))
+#timepoints = timepoints[5:end]
 #_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 #idxs = findall(idxs);
 
