@@ -143,4 +143,4 @@ r2(ols)
 
 gene_labels[p_inds[1:10]]
 # TODO (1) clean this messy code up (2) should the data be preprossed before regression? Normalize by mean? 
-# (3) what is a good fit?
+# (3) what is a good fit? (4) plot the most significant correlations to see whether there might be nonlinear correlation

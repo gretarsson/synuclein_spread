@@ -29,7 +29,7 @@ u0 = [0. for _ in 1:N]
 #data2, maxima2, endpoints2 = inform_priors(data,4)
 
 # DEFINE PRIORS
-priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" => truncated(Normal(0,0.25), lower=0)); 
+priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" => truncated(Normal(1,0.5), lower=0)); 
 #priors["α"] = truncated(Normal(0,1),lower=0)
 #for i in 1:N
 #    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0)
@@ -77,4 +77,4 @@ inference = infer(ode,
                 )
 
 # SAVE
-serialize("simulations/total_$(ode)_N=$(N)_ratio0.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_var05.jls", inference)
