@@ -917,7 +917,7 @@ give a dictionary of key to index
 function dictionary_map(vec)
     dict_map = Dict()
     for i in eachindex(vec)
-        dict_map[vec[i][2:end]] = i
+        dict_map[vec[i]] = i
     end
     return dict_map
 end

@@ -28,7 +28,19 @@ diffusion
     However!! if we are to compare the model with other models, we should fit them to the same data points at least...
     maybe we have to change the priors, but the data should stay the same
 
-    So I will try to fit the diffusion2 again but with rho_ratio prior centered at 0
+    So I will try to fit the diffusion2 to all data points again but with rho_ratio prior centered at 0
+    -> This gives the same posteriors as diffusion2 with mean data points
+    Hmm..
 
 
+
+GENE EXPRESSION CORRELATION
+
+the regions of in the gene expression data does not correspond directly 
+to the structural connectome regions. The gene data regions are coarser and bilateral.
+Hence, we can average the simulated pathology subregions and correlate to gene expression regions.
+
+As for the bilateral vs lateral-specific...
+What makes more sense is averaging the simulated pathology across both hemispheres..
+if not.. maybe do one analysis for the average and then for each hemisphere?
 
