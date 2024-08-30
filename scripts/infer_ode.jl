@@ -42,7 +42,7 @@ priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" =
 priors["σ"] = InverseGamma(2,3)
 #priors["seed"] = truncated(Normal(0,0.1),lower=0)
 # diffusion seed prior
-seed_m = round(0.1*N,digits=2)
+seed_m = round(0.05*N,digits=2)
 seed_v = round(0.1*seed_m,digits=2)
 priors["seed"] = truncated(Normal(seed_m,seed_v),lower=0)
 
