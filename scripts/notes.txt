@@ -44,3 +44,10 @@ As for the bilateral vs lateral-specific...
 What makes more sense is averaging the simulated pathology across both hemispheres..
 if not.. maybe do one analysis for the average and then for each hemisphere?
 
+
+I tried fitting the average, and also for each hemisphere.. either way
+the correlations are low. The highest R^2 is around 0.23 (for single gene).
+SNCA is among the highest correlations though, which is nice. 
+I tested both betas and death rates for aggregation and aggregation+death
+the results are similar
+
