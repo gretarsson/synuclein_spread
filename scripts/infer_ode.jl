@@ -14,6 +14,7 @@ ode = diffusion2
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
 data = data[:,5:end,:]
+data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)))
 timepoints = timepoints[5:end]
 #_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 #idxs = findall(idxs);
@@ -28,7 +29,7 @@ u0 = [0. for _ in 1:N]
 #data2, maxima2, endpoints2 = inform_priors(data,4)
 
 # DEFINE PRIORS
-priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" => truncated(Normal(1,0.25), lower=0)); 
+priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" => truncated(Normal(0,0.25), lower=0)); 
 #priors["α"] = truncated(Normal(0,1),lower=0)
 #for i in 1:N
 #    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0)
@@ -41,7 +42,7 @@ priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" =
 priors["σ"] = InverseGamma(2,3)
 #priors["seed"] = truncated(Normal(0,0.1),lower=0)
 # diffusion seed prior
-seed_m = round(0.20*N,digits=2)
+seed_m = round(0.1*N,digits=2)
 seed_v = round(0.1*seed_m,digits=2)
 priors["seed"] = truncated(Normal(seed_m,seed_v),lower=0)
 
@@ -77,4 +78,3 @@ inference = infer(ode,
 
 # SAVE
 serialize("simulations/total_$(ode)_N=$(N)_ratio0.jls", inference)
-# TODO rename and remove ratio0

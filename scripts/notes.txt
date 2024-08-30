@@ -1,0 +1,29 @@
+just some notes regarding the project...
+
+
+Inferring model parameters (N=448, all regions)
+Lilelihood computed from all data points
+
+diffusion+aggregation+death
+    works great
+
+diffusion+aggregation
+    works great (though a bit slow)
+
+diffusion
+    if including all data points, the model does not want to remove anterograde transport.
+    The result is that the steady-state is homogeneous. This makes sense from the model formulation.
+    If rho_ratio = 1, then the effective Laplacian is symmetric.
+
+    if only including time points (1.0, 3.0, 6.0, 9.0), the model prefers retrograde, however it sets the seed too low.
+    The result is almost no pathology anywhere, though the order of pathology severity is preserved. 
+    Might this be because, when including all data samples, most regions have many samples close to zero at all timepoints? inspecting the data, this looks plausible
+    because when looking at predicted vs (mean) observed, it looks like increasing the seed would give a really good fit.
+    Looks bizarre that the seed is estimated to be that low. And it is reproducible, I tried with different priors for the seed and 
+    they give the same posterior.
+
+    perhaps the only way to make the bayesian inference prefer a proper spreading is to fit to sample-averaged data points. 
+    this did indeed work better, though I am still not satisfied
+
+
+

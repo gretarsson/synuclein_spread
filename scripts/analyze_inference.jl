@@ -5,7 +5,7 @@ include("helpers.jl");
 
 
 # simulation to analyze
-simulation = "total_diffusion2_N=448";
+simulation = "total_diffusion2_N=448_mean";
 
 # plot 
 inference = deserialize("simulations/"*simulation*".jls")
