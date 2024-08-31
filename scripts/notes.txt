@@ -32,6 +32,9 @@ diffusion
     -> This gives the same posteriors as diffusion2 with mean data points
     Hmm..
 
+    SOLVED:
+    putting seed ~ Normal(1, 0.5) gives at least arguably sensible results with full data
+    
 
 
 GENE EXPRESSION CORRELATION
