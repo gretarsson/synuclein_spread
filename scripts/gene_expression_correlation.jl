@@ -21,7 +21,7 @@ W_labels = readdlm("data/W_labeled.csv",',')[2:end,1];
 W_label_map = dictionary_map(W_labels);
 
 # Find estimate of posterior distributions 
-model_par = "β";
+model_par = "β[";
 inference = deserialize(simulation);
 chain = inference["chain"];
 priors = inference["priors"];
@@ -31,16 +31,16 @@ for i in 1:length(priors.keys)
         append!(model_par_idxs,i)
     end
 end
-model_par = "d[";
-inference = deserialize(simulation);
-chain = inference["chain"];
-priors = inference["priors"];
-model_par_idxs2 = [];
-for i in 1:length(priors.keys)
-    if occursin(model_par,priors.keys[i])
-        append!(model_par_idxs2,i)
-    end
-end
+#model_par = "d[";
+#inference = deserialize(simulation);
+#chain = inference["chain"];
+#priors = inference["priors"];
+#model_par_idxs2 = [];
+#for i in 1:length(priors.keys)
+#    if occursin(model_par,priors.keys[i])
+#        append!(model_par_idxs2,i)
+#    end
+#end
 
 
 # find modes of each parameter
@@ -52,16 +52,16 @@ for i in eachindex(model_par_idxs)
     mode_i = posterior_i.x[argmax(posterior_i.density)]
     append!(all_modes,mode_i)
 end
-all_modes2 = [];
-for i in eachindex(model_par_idxs2)
-    par_samples = vec(chain[:,model_par_idxs2[i],:])
-    posterior_i = KernelDensity.kde(par_samples)
-    Plots.plot!(posterior_i)
-    mode_i = posterior_i.x[argmax(posterior_i.density)]
-    append!(all_modes2,mode_i)
-end
-Plots.scatter(all_modes,all_modes2)  # TODO investigate correlations in optimal parameters
-all_modes = all_modes2 .- all_modes
+#all_modes2 = [];
+#for i in eachindex(model_par_idxs2)
+#    par_samples = vec(chain[:,model_par_idxs2[i],:])
+#    posterior_i = KernelDensity.kde(par_samples)
+#    Plots.plot!(posterior_i)
+#    mode_i = posterior_i.x[argmax(posterior_i.density)]
+#    append!(all_modes2,mode_i)
+#end
+#Plots.scatter(all_modes,all_modes2)  # TODO investigate correlations in optimal parameters
+#all_modes = all_modes2 .- all_modes
 
 # create a map, indexing the regions in gene expression data and relating them to regions in the structural connectome
 gene_to_struct = Dict(); 
@@ -126,9 +126,9 @@ for gene_index in axes(gene_matrix,2)
     df_gene = DataFrame(X=gene_matrix[:,gene_index], Y=para_vector)
     ols = lm(@formula(Y ~ X),df_gene)
     coeff_p = coeftable(ols).cols[4][2]
-    if coeff_p < 1e-9
+    if coeff_p < 0.01 / N_genes
         println("R^2: $(r2(ols)), p-value $(coeff_p), gene name: $(gene_labels[gene_index])")
-        display(Plots.scatter(gene_matrix[:,gene_index],para_vector))
+        display(Plots.scatter(gene_matrix[:,gene_index],para_vector;title="$(gene_labels[gene_index])"))
     end
     push!(lms,ols)
     push!(pvals,coeff_p)
