@@ -8,7 +8,7 @@ trained on all the data. It does much better when trained
 on t=1,3,6,9 skipping the first four timepoints.
 =#
 # pick ode
-ode = diffusion2
+ode = death2
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
@@ -23,34 +23,33 @@ data = deserialize("data/total_path_3D.jls");
 # DIFFUSION, RETRO- AND ANTEROGRADE
 #N = length(idxs)
 N = size(data)[1];
-u0 = [0. for _ in 1:N]
+u0 = [0. for _ in 1:2*N]
 
 # INFORM PRIORS
 #data2, maxima2, endpoints2 = inform_priors(data,4)
 
 # DEFINE PRIORS
 priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1), lower=0), "ρᵣ" => truncated(Normal(1,0.5), lower=0)); 
-#priors["α"] = truncated(Normal(0,1),lower=0)
-#for i in 1:N
-#    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0)
-#end
-#for i in 1:N
-#    #priors["d[$(i)]"] = truncated(Normal( maxima[i] - endpoints[i] , 0.05),lower=0)
-#    priors["d[$(i)]"] = truncated(Normal( 0 , 1),lower=0)
-#end
-#priors["γ"] = truncated(Normal(0,1),lower=0)
+priors["α"] = truncated(Normal(0,1),lower=0)
+for i in 1:N
+    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0)
+end
+for i in 1:N
+    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0)
+end
+priors["γ"] = truncated(Normal(0,1),lower=0)
 priors["σ"] = InverseGamma(2,3)
-#priors["seed"] = truncated(Normal(0,0.1),lower=0)
+priors["seed"] = truncated(Normal(0,0.1),lower=0)
 # diffusion seed prior
-seed_m = round(0.05*N,digits=2)
-seed_v = round(0.1*seed_m,digits=2)
-priors["seed"] = truncated(Normal(seed_m,seed_v),lower=0)
+#seed_m = round(0.05*N,digits=2)
+#seed_v = round(0.1*seed_m,digits=2)
+#priors["seed"] = truncated(Normal(seed_m,seed_v),lower=0)
 
 # parameter refactorization
-#factors = [1/100, 1., 1., [1 for _ in 1:N]..., [1. for _ in 1:N]..., 1.]
+factors = [1/100, 1., 1., [1 for _ in 1:N]..., [1. for _ in 1:N]..., 1.]
 #factors = [1/100, 1., 1.]
 #factors = [1/100, 1., 1., [1 for _ in 1:N]...]
-factors = [1/100, 1.]
+#factors = [1/100, 1.]
 
 # INFER
 inference = infer(ode, 
@@ -65,7 +64,6 @@ inference = infer(ode,
                 bayesian_seed=true,
                 seed_value=1.,
                 transform_observable=true,
-                #alg=Tsit5(),
                 alg=Tsit5(),
                 abstol=1e-6,
                 reltol=1e-3,
@@ -77,4 +75,4 @@ inference = infer(ode,
                 )
 
 # SAVE
-serialize("simulations/total_$(ode)_N=$(N)_var05.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_with_u.jls", inference)
