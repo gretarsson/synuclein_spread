@@ -5,7 +5,15 @@ Inferring model parameters (N=448, all regions)
 Lilelihood computed from all data points
 
 diffusion+aggregation+death
-    works great
+    works great when having dydt = gamma * (1 - y)
+    including x, either as gamma*(x-y) or gamma*x*(x-y)
+    does not do that well...
+    In those casees with x, the d's are just too small and we don't see as good declines as the non-x case.
+
+    Maybe the different versions of death have success dependent on how much data is included?
+
+    Next up to try is dydt = gamma*x*(1-y)
+    maybe this is better?
 
 diffusion+aggregation
     works great (though a bit slow)
