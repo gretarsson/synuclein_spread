@@ -6,17 +6,23 @@ Lilelihood computed from all data points
 
 diffusion+aggregation+death
     works great when having dydt = gamma * (1 - y)
-    including x, either as gamma*(x-y) or gamma*x*(x-y)
+    including x, either as 
+    death_u = gamma*(x-y) or 
+    death_2u = gamma*x*(x-y)
+
     does not do that well...
     In those casees with x, the d's are just too small and we don't see as good declines as the non-x case.
+    However..  death_u (death_2u not tested yet) did do well on N=40. You would think it would just increase 
+    the d's where x is small. But it does not. 
 
     Maybe the different versions of death have success dependent on how much data is included?
+    I tried skipping the first <1 month timepoints and it does help but is not as good as death = gamma * (1-y)
 
     Next up to try is dydt = gamma*x*(1-y)
     maybe this is better?
 
 diffusion+aggregation
-    works great (though a bit slow)
+    works great (though a bit slow), of course the end points are overestimated by the model, but that is expected
 
 diffusion
     if including all data points, the model does not want to remove anterograde transport.
