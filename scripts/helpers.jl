@@ -278,9 +278,9 @@ function death2(du,u,p,t;L=L,factors=(1.,1.))
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
-    du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α  .* x .* (β .- d.*y .- x)   # quick gradient computation
+    du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α  .* x .* (β .- y .- x)   # quick gradient computation
     #du[(N+1):(2*N)] .=  γ .* (1 .- y)  
-    du[(N+1):(2*N)] .=  γ .* x .* (1 .- y)  
+    du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
 end
 function death_superlocal2(du,u,p,t;L=L,factors=(1.,1.))
     La, Lr, N = L  
@@ -895,9 +895,9 @@ function plot_inference(inference, save_path; plotscale=log10)
     plot_retrodiction(inference; save_path=save_path*"/retrodiction");
     predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
-    plot_posteriors(inference, save_path=save_path*"/posteriors");
-    plot_chains(inference, save_path=save_path*"/chains");
-    plot_priors(inference; save_path=save_path*"/priors");
+    #plot_posteriors(inference, save_path=save_path*"/posteriors");
+    #plot_chains(inference, save_path=save_path*"/chains");
+    #plot_priors(inference; save_path=save_path*"/priors");
     return nothing
 end
 
