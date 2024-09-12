@@ -5,7 +5,7 @@ include("helpers.jl");
 
 
 # simulation to analyze
-simulation = "total_death_all_local2_N=448_mean_withu";
+simulation = "total_death_all_local2_N=448_skipfirst_withu";
 
 # plot 
 inference = deserialize("simulations/"*simulation*".jls")

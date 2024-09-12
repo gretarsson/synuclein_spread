@@ -21,7 +21,10 @@ diffusion+aggregation+death
     Next up to try is dydt = gamma*x*(1-y)
     maybe this is better?
     -> skipping the first timepoints, it is not that bad. But still not as good as death. It still overestimates a lot of regions at the end
-    -> trying out with all data to see if it makes a difference
+    -> trying out with all data to see if it makes a difference -> it is better, but at all as good as dydt = gamma (1-y)
+
+    I also tried setting "all" parameters to being local, and it still doesn't get the last time points right with death_u.
+    It is frustrating that it works death_u works for N=40, but that not for N=448. 
 
 diffusion+aggregation
     works great (though a bit slow), of course the end points are overestimated by the model, but that is expected
