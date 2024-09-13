@@ -26,6 +26,11 @@ diffusion+aggregation+death
     I also tried setting "all" parameters to being local, and it still doesn't get the last time points right with death_u.
     It is frustrating that it works death_u works for N=40, but that not for N=448. 
 
+
+    SETTING MORE REASONABLE PRIORS
+    using a loguniform prior on the time scale parameters (rho, alpha, gamma), makes for a quite fast sample
+    given that rho is cut off at a reaonable place, such as 1e-1 for mean-normalized W.
+
 diffusion+aggregation
     works great (though a bit slow), of course the end points are overestimated by the model, but that is expected
 
@@ -52,8 +57,16 @@ diffusion
     Hmm..
 
     SOLVED:
-    putting seed ~ Normal(1, 0.5) gives at least arguably sensible results with full data
+    putting rho_ratio ~ Normal(1, 0.5) gives at least arguably sensible results with full data
     
+
+MODEL COMPARISON
+
+    To use the Turing.pointwise_loglikelihoods() function, we need to explicity set the likelihood in the Turing model. 
+    We need these to compute the psis-loo using the ParetoSmooth.jl package.
+    This slows the MCMC sampler down significantly. 
+    Hence, we are only left with the option of computing the pointwise loglikelihoods ourselves.
+    This clearly should not be too hard.
 
 
 GENE EXPRESSION CORRELATION

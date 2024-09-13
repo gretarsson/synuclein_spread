@@ -278,9 +278,9 @@ function death2(du,u,p,t;L=L,factors=(1.,1.))
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
-    du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α  .* x .* (β .- y .- x)   # quick gradient computation
-    #du[(N+1):(2*N)] .=  γ .* (1 .- y)  
-    du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
+    du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+    #du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
 end
 function death_all_local2(du,u,p,t;L=L,factors=(1.,1.))
     La, Lr, N = L  
@@ -370,6 +370,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     end
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
+    #display("mean of W $(mean(W[ W .> 0 ]))")
+    #W = W ./ mean( W[ W .> 0 ] )  # normalize connecivity by its mean
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
@@ -457,7 +459,10 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         =#
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
-        data ~ MvNormal(predicted,σ^2*I)
+        data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo
+        #for k in eachindex(data)  # does work with psis_loo
+        #    data[k] ~ Normal(predicted[k], σ^2)
+        #end
 
         return nothing
     end
@@ -496,6 +501,10 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
     end
 
+    # compute elpd (expected log predictive density)
+    #elpd = compute_psis_loo(model,chain)
+    #waic = elpd.estimates[2,1] - elpd.estimates[3,1]  # total naive elpd - total p_eff
+
     # rescale the parameters in the chain and prior distributions
     factor_matrix = diagm(factors)
     n_chains = size(chain)[3]
@@ -529,6 +538,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                      "sol_idxs" => sol_idxs,
                      "u0" => u0,
                      "L" => L
+                     #"elpd" => elpd,
+                     #"waic" => waic
                      )
 
     return inference
