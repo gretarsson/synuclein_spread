@@ -265,6 +265,21 @@ function death_local2(du,u,p,t;L=L,factors=(1.,1.))
     #du[(N+1):(2*N)] .=  ϵ .* (γ .* x .- y)  
     #du[(N+1):(2*N)] .=  (tanh.(x) .- y) ./ γ
 end
+function death(du,u,p,t;L=L,factors=(1.,1.))
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+    γ = p[end]
+
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+    #du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
+end
 function death2(du,u,p,t;L=L,factors=(1.,1.))
     La, Lr, N = L  
     p = factors .* p
@@ -321,7 +336,7 @@ a dictionary containing the ODE functions
 =#
 odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion_pop2" => diffusion_pop2, "aggregation" => aggregation, 
             "aggregation2" => aggregation2, "aggregation_pop2" => aggregation_pop2, "death_local2" => death_local2, "aggregation2_localα" => aggregation2_localα,
-            "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2)
+            "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2, "death" => death)
 
 
 
@@ -355,7 +370,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         retro_and_antero = true 
         display("Model includes both retrograde and anterograde transport.")
     else 
-        display("Model includes only anterograde transport.")
+        display("Model includes only retrograde transport.")
     end
     if bayesian_seed
         display("Model is inferring seeding initial conditions")
@@ -372,7 +387,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     W = W[idxs,idxs]
     #display("mean of W $(mean(W[ W .> 0 ]))")
     #W = W ./ mean( W[ W .> 0 ] )  # normalize connecivity by its mean
-    L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+    L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
     N = size(L)[1]
@@ -457,9 +472,18 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #=
         using all observations
         =#
+        variances = copy(predicted)
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
-        data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo
+        # create equivalent array of variances
+        for j in axes(variances,2), i in axes(variances,1)
+            variances[i,j] = σ[i]  
+        end
+        variances = vec(cat([variances for _ in 1:N_samples]...,dims=3))
+        variances = variances[nonmissing]
+        display(size(variances))
+
+        data ~ MvNormal(predicted,diagm(variances.^2))  # does not work with psis_loo
         #for k in eachindex(data)  # does work with psis_loo
         #    data[k] ~ Normal(predicted[k], σ^2)
         #end
