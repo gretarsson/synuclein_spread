@@ -14,16 +14,16 @@ n_threads = 1;
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
-data = data[:,5:end,:]
-timepoints = timepoints[5:end]
-data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)))
-_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-idxs = findall(idxs);
+data = data[:,5:end,:];
+timepoints = timepoints[5:end];
+data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)));
+#_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+#idxs = findall(idxs);
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-N = length(idxs)
-#N = size(data)[1];
+#N = length(idxs);
+N = size(data)[1];
 u0 = [0. for _ in 1:2*N];
 
 # INFORM PRIORS
@@ -31,21 +31,21 @@ u0 = [0. for _ in 1:2*N];
 
 # DEFINE PRIORS
 #priors =OrderedDict{Any,Any}( "ρ" => LogUniform(1e-6,1e-1), "ρᵣ" => truncated(Normal(0,0.01), lower=0)); 
-#priors =OrderedDict{Any,Any}( "ρ" => LogNormal(0,1)); 
-priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1),lower=0)); 
-priors["α"] = truncated(Normal(0,1),lower=0);
+priors =OrderedDict{Any,Any}( "ρ" => LogUniform(1e-4,1e2)); 
+#priors =OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,1),lower=0)); 
+#priors["α"] = truncated(Normal(0,1),lower=0);
 #priors =OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" => truncated(Normal(1,0.25), lower=0)); 
-#priors["α"] = LogNormal(0,1);
+priors["α"] = LogUniform(1e-4,1e2);
 for i in 1:N
     priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 for i in 1:N
     priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
-priors["γ"] = truncated(Normal(0,1),lower=0);
-#priors["γ"] = LogNormal(0,1);
+#priors["γ"] = truncated(Normal(0,1),lower=0);
+priors["γ"] = LogUniform(1e-4,1e2);
 #priors["σ"] = MvLogNormal([0 for _ in 1:N], I);  # prev. InverseGammma(2,3)
-#priors["σ"] = LogNormal(0, 1);  # prev. InverseGammma(2,3)
+#priors["σ"] = LogNormal(0,0.1);  # prev. InverseGammma(2,3)
 priors["σ"] = InverseGamma(2, 3);  # prev. InverseGammma(2,3)
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 # diffusion seed prior
@@ -68,7 +68,7 @@ inference = infer(ode,
                 "data/W_labeled.csv"; 
                 factors=factors,
                 u0=u0,
-                idxs=idxs,
+                #idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 seed_value=1.,
@@ -78,7 +78,7 @@ inference = infer(ode,
                 reltol=1e-3,
                 adtype=AutoReverseDiff(),  # without compile much faster for aggregation
                 sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
-                benchmark=false,
+                benchmark=true,
                 benchmark_ad=[:reversediff],
                 test_typestable=false
                 )

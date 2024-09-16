@@ -58,7 +58,31 @@ diffusion
 
     SOLVED:
     putting rho_ratio ~ Normal(1, 0.5) gives at least arguably sensible results with full data
+
+
+EFFICIENCY OF MCMC
+
+    I am now trying to make MCMC stable for multiple threads (turns out I may have been lucky with N=448 before, threads vary a lot in computation time)
+    I also want to use LogUniform priors for the timescale parameters. For N=40, this was actually surprisingly quick.
+    It wasn't as quick as using Normal(), but similar.      
+    this is for loguniform where the range is smaller for rho, however
     
+    what if all timescales have identical priors? -> the benchmarking didnt even finish, took too long
+
+    Normalizing the connectome does speed MCMC up for N=448, but not for N=40. Mean did better than other normalizations
+    Actually, it seems like the evaluation is a lot quicker without normalization and gradient computation is slightly quicker with normalization.
+    it varies quite alot by each run, but it seems like w/o normalization is quicker with N=448
+    
+    So by comparing the truncated normal priors with loguniform, they have similar benchmarks for N=448.
+    There is one large difference though, and the loguniform is way slower for the "linked" gradient computation, though not for "standard".
+
+    what abot lognormal(0,1) priors? (N=448)
+    it sucks, all benchmarking metrics are on the scale of seconds, not even ms
+    what abot lognormal(0,0.1) priors? (N=448)
+    it's better, but gradient coputation is still at seconds...
+
+
+
 
 MODEL COMPARISON
 

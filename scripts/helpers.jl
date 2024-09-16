@@ -386,7 +386,9 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
     #display("mean of W $(mean(W[ W .> 0 ]))")
-    #W = W ./ mean( W[ W .> 0 ] )  # normalize connecivity by its mean
+    #W = W ./ mean( W[ W .> 0 ] )  # normalize connecivity by its mean, but this slows MCMC down substantially...
+    #W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum, but this also slows MCMC down substantially...
+    #W = W ./ minimum( W[ W .> 0 ] )  # normalize connecivity by its minimum, but this also slows MCMC down extremely...
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region

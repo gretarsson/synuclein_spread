@@ -11,7 +11,7 @@ using Serialization
 using CairoMakie
 using ParetoSmooth
 # add helper functions
-include("helpers.jl")
+include("../scripts/helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
 simulation_code = "both_total_diffusion_N=40"
@@ -48,24 +48,30 @@ function both_diffusion(du,u,p,t)
     pr = p[2]
 
 
-    du .= -pr*LTr*u - pa*LTa*u   # this gives fast gradient computation
+    du .= -pr*LTr*u    # this gives fast gradient computation
     #du .= -(pr*LTr + pa*LTa)*u  # this gives superslow gradient computation 
 end
 # ODE settings
 alg = Tsit5()
-tspan = (0.0,9.0)
+tspan = (0.0,1000)
 # ICs
 u0 = [0. for i in 1:N]  # initial conditions
 u0[seed] = 1 # seed, past seed=15 some regions go beyond 1.
 # Parameters
-pa = 0.01
-pr = 0.02
+pa = 0
+pr = 0.01
 p = [pa, pr]
 # setting up, solve, and plot
 #sensealg = ForwardDiffSensitivity()
 prob = ODEProblem(both_diffusion, u0, tspan, p; alg=alg)
-sol = solve(prob,alg; abstol=1e-10, reltol=1e-3)
-StatsPlots.plot(sol; legend=false, ylim=(0,1))
+sol = solve(prob,alg; abstol=1e-6, reltol=1e-3)
+
+StatsPlots.plot(sol; legend=false)
+sum(Array(sol),dims=1)
+#plt = StatsPlots.plot()
+#StatsPlots.plot!(plt,sol; legend=false)
+display(sol[:,end])
+
 
 
 # -----------------------------------------------------------------------------------------------------------------
