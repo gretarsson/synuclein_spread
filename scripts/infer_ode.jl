@@ -17,13 +17,13 @@ data = deserialize("data/total_path_3D.jls");
 data = data[:,5:end,:]
 timepoints = timepoints[5:end]
 data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)))
-#_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-#idxs = findall(idxs);
+_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+idxs = findall(idxs);
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-#N = length(idxs)
-N = size(data)[1];
+N = length(idxs)
+#N = size(data)[1];
 u0 = [0. for _ in 1:2*N];
 
 # INFORM PRIORS
@@ -44,7 +44,9 @@ for i in 1:N
 end
 priors["γ"] = truncated(Normal(0,1),lower=0);
 #priors["γ"] = LogNormal(0,1);
-priors["σ"] = MvLogNormal([0 for _ in 1:N], I);  # prev. InverseGammma(2,3)
+#priors["σ"] = MvLogNormal([0 for _ in 1:N], I);  # prev. InverseGammma(2,3)
+#priors["σ"] = LogNormal(0, 1);  # prev. InverseGammma(2,3)
+priors["σ"] = InverseGamma(2, 3);  # prev. InverseGammma(2,3)
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 # diffusion seed prior
 #seed_m = round(0.05*N,digits=2)
@@ -66,7 +68,7 @@ inference = infer(ode,
                 "data/W_labeled.csv"; 
                 factors=factors,
                 u0=u0,
-                #idxs=idxs,
+                idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 seed_value=1.,

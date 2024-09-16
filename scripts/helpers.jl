@@ -425,6 +425,15 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     vec_data = vec_data[nonmissing]
     vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
 
+    # make data array with rows that only have their (uniquely sized) nonmissing columns
+    row_data = Vector{Vector{Float64}}([[] for _ in 1:size(data)[1]])
+    row_nonmiss = [[] for _ in 1:size(data)[1]]
+    for i in axes(data,1)
+        nonmissing = findall(data[i,:,1] .!== missing)
+        row_nonmiss[i] = nonmissing
+        row_data[i] = identity.(data[i,nonmissing,1])
+    end
+
     # check if N_pars and length(factors) 
     if N_pars !== length(factors)
         display("Warning: The factor vector has length $(length(factors)) but the number of parameters is $(N_pars) according to the prior dictionary. Quitting...")
@@ -437,7 +446,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         u00 = u0  # IC needs to be defined within model to work
         # priors
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
-        σ ~ priors["σ"]
+        σ ~ arraydist([priors["σ"] for _ in 1:N])
         if bayesian_seed
             u00[seedd] ~ priors["seed"]  
         else
@@ -472,27 +481,33 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #=
         using all observations
         =#
-        variances = copy(predicted)
-        predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
-        predicted = predicted[nonmissing]
+        #variances = copy(predicted)
+        #predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        #predicted = predicted[nonmissing]
         # create equivalent array of variances
-        for j in axes(variances,2), i in axes(variances,1)
-            variances[i,j] = σ[i]  
-        end
-        variances = vec(cat([variances for _ in 1:N_samples]...,dims=3))
-        variances = variances[nonmissing]
-        display(size(variances))
-
-        data ~ MvNormal(predicted,diagm(variances.^2))  # does not work with psis_loo
-        #for k in eachindex(data)  # does work with psis_loo
-        #    data[k] ~ Normal(predicted[k], σ^2)
+        #for j in axes(variances,2), i in axes(variances,1)
+        #    variances[i,j] = σ[i]  
         #end
+        #variances = vec(cat([variances for _ in 1:N_samples]...,dims=3))
+        #variances = variances[nonmissing]
+        #display(size(variances))
+
+        #data ~ MvNormal(predicted,σ^2*I))  # does not work with psis_loo, but mucher faster
+        #for k in eachindex(data)  # does work with psis_loo
+        #    data[k] ~ Normal(predicted[k], σ[k]^2)
+        #end
+        for k in axes(data,1)  # does work with psis_loo
+            nonmissing_k = row_nonmiss[k]
+            data[k] ~ MvNormal(identity.(predicted[k,nonmissing_k]), σ[k]^2*I)
+        end
 
         return nothing
     end
 
+
     # trying out using all datapoints, not only averages
-    model = bayesian_model(vec_data, prob)
+    #model = bayesian_model(vec_data, prob)
+    model = bayesian_model(row_data, prob)
 
     # define Turing model
     #model = bayesian_model(vec(data), prob)
