@@ -81,6 +81,49 @@ EFFICIENCY OF MCMC
     what abot lognormal(0,0.1) priors? (N=448)
     it's better, but gradient coputation is still at seconds...
 
+    Using lazyarrays significantly improves linked gradient computation (loguniform priors). 
+    thresholding the matrix (and using sparse arrays helps a little) does not do much for the loguniform case. 
+    Lognormal still takes seconds. this doesn't change no matter what normalizations we use.
+    Same issue with linked gradient computation being much slower than standard
+
+    bayesian_seed and transform_observable has negligient effect on computation time.
+
+
+    -> some headway, keeping rho at loguniform, setting alpha -> LogNormal(0,1), makes linked gradient finish <1s. same for gamma -> LogNormal(0,1)
+    Okay, so it seems that normalizing the connectome by its maximum (without thresholding/sparse does better actually), using LazyArray, and individual variances
+    produces around 10ms/100ms evaluation/gradient computation with full data skipping first timepoints.
+
+    normalizing first and then thresholding seem to be even quicker. However, using sparse arrays do not
+    Hmm upon repeating simulations, it seeems like the thresholding sometimes is quicker but sometimes is much slower, espescially for linked.
+    Not thresholding the connectome seem to be more stable.
+
+    now verifying if the indiviudal variances is the reason it is quicker now -> it does not seem to have an impact
+
+    Checking if sigma ~ LogNormal(0,1) is the culprit in making it slow -> InverseGamma (w or w/o filldist) seems more stable and slightly faster. But it is hard to say, they're not that *that* different
+
+    Maybe MvLogNormal was to blame?  -> whether using filldist or multivaraite dist does not seem to matter (my gut says filldist is better though)
+
+
+    Okay, so it is either LazyArrays, maximum normalization, or both that made it quicker, let us check
+    maximum normalizaiton makes gradients and evals MUCH quicker
+    Lazyarrays does not seem to make much of an impact, might as well keep it there
+    I also verified that setting upper truncation limit to Inf instead of undetermined did not have an impact
+
+
+    Now, including rho_ratio, the evals and grad computations are of similar speed 
+    Trying rho_a and rho_r again, is it actually slower? The gradient computation is slower, though the other metrics not so much
+
+    So rho_ratio is still better. However, upon some more thinking... the prior of rho_ratio should be lognormal and not normal.
+    this is because the ratio of lognormals is itself lognormal. With this prior, the MCMC with settings as described above, performs relatively well.
+    every once in a while, like with other settings, the grad computations are much slower. But most of the time they are in the lower 100ms.
+
+    SUMMARY
+    Normalizing the structural connectome (no thresholding), we get fast MCMC sampling even with indiviudal variances for each regions
+    AND with LogNormal(0,1) priors for all time scale parameters. This is also true with rho_ratio, where I learned it is most sensible to give a lognormal prior.
+    This is because the ratio of lognormals is itself lognormal.
+
+    It does not matter if we use global or regional variances (for the MCMC sampling speed)
+
 
 
 

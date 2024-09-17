@@ -6,12 +6,16 @@ using LSODA
 using Distributions
 using TuringBenchmarking  
 using ReverseDiff
+using Enzyme
+using Zygote
 using SciMLSensitivity
 using LinearAlgebra
 using Serialization
 using CairoMakie
 using ParetoSmooth
 using Random
+using SparseArrays
+using LazyArrays
 #=
 Helper functions for the project
 =#
@@ -295,7 +299,6 @@ function death2(du,u,p,t;L=L,factors=(1.,1.))
     y = u[(N+1):(2*N)]
     du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (1 .- y)  
-    #du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
 end
 function death_all_local2(du,u,p,t;L=L,factors=(1.,1.))
     La, Lr, N = L  
@@ -327,7 +330,8 @@ function death_superlocal2(du,u,p,t;L=L,factors=(1.,1.))
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
-    du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α  .* x .* (β .- d.*y .- x)   # quick gradient computation
+    #du[1:N] .= -ρa*ρr*La*x .- ρa*Lr*x .+ α  .* x .* (β .- d.*y .- x)   # quick gradient computation
+    du[1:N] .= -ρa*La*x .- ρr*Lr*x .+ α  .* x .* (β .- d.*y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (1 .- y)  
     #du[(N+1):(2*N)] .=  γ .* (x .- y)  
 end
@@ -363,7 +367,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                test_typestable=false,
                transform_observable=false,
                )
-
     # verify that choice of ODE is correct wrp to retro- and anterograde
     retro_and_antero = false
     if occursin("2",string(ode))
@@ -385,17 +388,14 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     end
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
-    #display("mean of W $(mean(W[ W .> 0 ]))")
-    #W = W ./ mean( W[ W .> 0 ] )  # normalize connecivity by its mean, but this slows MCMC down substantially...
-    #W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum, but this also slows MCMC down substantially...
-    #W = W ./ minimum( W[ W .> 0 ] )  # normalize connecivity by its minimum, but this also slows MCMC down extremely...
+    W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum, but this also slows MCMC down substantially...
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
     N = size(L)[1]
     if retro_and_antero  # include both Laplacians, if told to
-        La = copy(L)
-        Lr = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  
+        Lr = copy(L)
+        La = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  
         if occursin("death",string(ode)) || occursin("pop",string(ode))
             L = (La,Lr,N)
         else
@@ -427,12 +427,12 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     vec_data = vec_data[nonmissing]
     vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
 
-    # make data array with rows that only have their (uniquely sized) nonmissing columns
+    # EXPERIMENTAL make data array with rows that only have their (uniquely sized) nonmissing columns
     #row_data = Vector{Vector{Float64}}([[] for _ in 1:size(data)[1]])
-    #row_nonmiss = [[] for _ in 1:size(data)[1]]
+    row_nonmiss = Vector{Vector{Int}}([[] for _ in 1:size(data)[1]])
     #for i in axes(data,1)
     #    nonmissing = findall(data[i,:,1] .!== missing)
-    #    row_nonmiss[i] = nonmissing
+    #    row_nonmiss[i] = identity.(nonmissing)
     #    row_data[i] = identity.(data[i,nonmissing,1])
     #end
 
@@ -444,11 +444,11 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
-                                    nonmissing=nonmissing)
+                                    nonmissing=nonmissing::Vector{Int64},
+                                    row_nonmiss=row_nonmiss::Vector{Vector{Int}})
         u00 = u0  # IC needs to be defined within model to work
         # priors
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
-        #σ ~ arraydist([priors["σ"] for _ in 1:N])
         σ ~ priors["σ"] 
         if bayesian_seed
             u00[seedd] ~ priors["seed"]  
@@ -460,60 +460,29 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
 
         # Transform prediction
-        #predicted = vec(predicted[sol_idxs,:])
         predicted = predicted[sol_idxs,:]
         if transform_observable
-            if haskey(priors,"c")
-                c ~ priors["c"]
-                amplitude = 1 .- c*predicted
-            else
-                amplitude = 1
-            end
-            if haskey(priors,"k")
-                k ~ priors["k"]
-                input = k*predicted
-            else
-                input = predicted
-            end
-            predicted = amplitude .* tanh.(input)
+            predicted = tanh.(predicted)
         end
 
         # Observations.
-        #data ~ MvNormal(predicted, σ^2 * I)  # this gives quicker evals (but recommended by TuringLang developers). For large N, this appears superior
-        # trying out using all datapoints, not only averages
-        #=
-        using all observations
-        =#
-        #variances = copy(predicted)
+        # common variance among all regions NORMAL
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
-        # create equivalent array of variances
-        #for j in axes(variances,2), i in axes(variances,1)
-        #    variances[i,j] = σ[i]  
-        #end
-        #variances = vec(cat([variances for _ in 1:N_samples]...,dims=3))
-        #variances = variances[nonmissing]
-        #display(size(variances))
-
         data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
-        #for k in eachindex(data)  # does work with psis_loo
-        #    data[k] ~ Normal(predicted[k], σ[k]^2)
-        #end
-        #for k in axes(data,1)  # does work with psis_loo
+
+        # region-specific variances PER ROW
+        #for k in axes(data,1)  
         #    nonmissing_k = row_nonmiss[k]
-        #    data[k] ~ MvNormal(identity.(predicted[k,nonmissing_k]), σ[k]^2*I)
+        #    data[k] ~ MvNormal(predicted[k,nonmissing_k], σ[k]^2*I)
         #end
 
         return nothing
     end
 
-
-    # trying out using all datapoints, not only averages
-    model = bayesian_model(vec_data, prob)
-    #model = bayesian_model(row_data, prob)
-
     # define Turing model
-    #model = bayesian_model(vec(data), prob)
+    model = bayesian_model(vec_data, prob)  # NORMAL
+    #model = bayesian_model(row_data, prob)  # PER ROW
 
     # test if typestable if told to, red marking in read-out means something is unstable
     if test_typestable
