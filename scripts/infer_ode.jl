@@ -9,7 +9,7 @@ on t=1,3,6,9 skipping the first four timepoints.
 =#
 # pick ode
 ode = death2;
-n_threads = 1;
+n_threads = 4;
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
@@ -68,10 +68,10 @@ inference = infer(ode,
                 reltol=1e-3,
                 adtype=AutoReverseDiff(),  # without compile much faster for aggregation and death
                 sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
-                benchmark=true,
+                benchmark=false,
                 benchmark_ad=[:reversediff],
-                test_typestable=true
+                test_typestable=false
                 )
 
-# SAVE
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads).jls", inference)
+# SAVE σ
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
