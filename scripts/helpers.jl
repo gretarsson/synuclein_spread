@@ -367,6 +367,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                test_typestable=false,
                transform_observable=false,
                )
+    # TODO: add regional variance automatically from prior dict
     # verify that choice of ODE is correct wrp to retro- and anterograde
     retro_and_antero = false
     if occursin("2",string(ode))
@@ -428,24 +429,38 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
 
     # EXPERIMENTAL make data array with rows that only have their (uniquely sized) nonmissing columns
-    #row_data = Vector{Vector{Float64}}([[] for _ in 1:size(data)[1]])
+    row_data = Vector{Vector{Float64}}([[] for _ in 1:size(data)[1]])
     row_nonmiss = Vector{Vector{Int}}([[] for _ in 1:size(data)[1]])
-    #for i in axes(data,1)
-    #    nonmissing = findall(data[i,:,1] .!== missing)
-    #    row_nonmiss[i] = identity.(nonmissing)
-    #    row_data[i] = identity.(data[i,nonmissing,1])
-    #end
+    for i in axes(data,1)
+        data_subarray = vec(data[i,:,:])
+        nonmissing_i = findall(data_subarray .!== missing)
+        row_nonmiss[i] = identity.(nonmissing_i)
+        row_data[i] = identity.(data_subarray[nonmissing_i])
+    end
 
     # check if N_pars and length(factors) 
     if N_pars !== length(factors)
         display("Warning: The factor vector has length $(length(factors)) but the number of parameters is $(N_pars) according to the prior dictionary. Quitting...")
         return nothing
     end
+    # check if global or regional variance
+    global_variance::Bool = false
+    if length(priors["σ"]) == 1
+        global_variance = true
+    end
+
+    # use correct data type dependent on whether regional or global variance (for optimal Turing model specification)
+    if global_variance
+        final_data = vec_data
+    else
+        final_data = row_data
+    end
 
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
                                     nonmissing=nonmissing::Vector{Int64},
-                                    row_nonmiss=row_nonmiss::Vector{Vector{Int}})
+                                    row_nonmiss=row_nonmiss::Vector{Vector{Int}}
+                                    )
         u00 = u0  # IC needs to be defined within model to work
         # priors
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
@@ -466,23 +481,32 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         end
 
         # Observations.
-        # common variance among all regions NORMAL
-        predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
-        predicted = predicted[nonmissing]
-        data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
-
-        # region-specific variances PER ROW
-        #for k in axes(data,1)  
-        #    nonmissing_k = row_nonmiss[k]
-        #    data[k] ~ MvNormal(predicted[k,nonmissing_k], σ[k]^2*I)
-        #end
+        #predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        #predicted = predicted[nonmissing]
+        #data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
+        if global_variance
+            # common variance among all regions NORMAL
+            predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+            predicted = predicted[nonmissing]
+            data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
+        else
+            # region-specific variances PER ROW
+            predicted = cat([predicted for _ in 1:N_samples]...,dims=3)
+            for k in axes(data,1)  
+                nonmissing_k = row_nonmiss[k]
+                predicted_sub = vec(predicted[k,:,:])
+                data[k] ~ MvNormal(predicted_sub[nonmissing_k], σ[k]^2*I)
+            end
+        end
 
         return nothing
     end
 
     # define Turing model
-    model = bayesian_model(vec_data, prob)  # NORMAL
+    #model = bayesian_model(vec_data, prob)  # NORMAL
     #model = bayesian_model(row_data, prob)  # PER ROW
+    model = bayesian_model(final_data, prob)  # NEW
+
 
     # test if typestable if told to, red marking in read-out means something is unstable
     if test_typestable

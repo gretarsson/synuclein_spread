@@ -30,7 +30,7 @@ u0 = [0. for _ in 1:2*N];
 #data2, maxima2, endpoints2 = inform_priors(data,4)
 
 # DEFINE PRIORS
-priors =OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 
+priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 
 priors["α"] = LogNormal(0,1);
 for i in 1:N
     priors["β[$(i)]"] = truncated(Normal(0,1), 0, Inf);
@@ -39,8 +39,8 @@ for i in 1:N
     priors["d[$(i)]"] = truncated(Normal(0,1), 0, Inf);
 end
 priors["γ"] = LogNormal(0,1);
-#priors["σ"] = filldist(LogNormal(0,1),N);  # regional variance
-priors["σ"] = LogNormal(0,1);  # global variance
+priors["σ"] = filldist(LogNormal(0,1),N);  # regional variance
+#priors["σ"] = LogNormal(0,1);  # global variance
 priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
 # diffusion seed prior
 #seed_m = round(0.05*N,digits=2)
@@ -70,7 +70,7 @@ inference = infer(ode,
                 sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
                 benchmark=true,
                 benchmark_ad=[:reversediff],
-                test_typestable=false
+                test_typestable=true
                 )
 
 # SAVE
