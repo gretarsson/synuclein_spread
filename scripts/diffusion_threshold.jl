@@ -27,7 +27,7 @@ zerovec = zerovec ./ sum(zerovec)  # normalize so sum equals 1 (IC = 1)
 
 # read strutural connectome
 thresholds = LinRange(0.,0.99,100)
-M = 100  # number of random pars and inital conditions
+M = N  # number of random pars and inital conditions
 mses = zeros(M,length(thresholds))
 ss_diffs = zeros(length(thresholds))
 hh = 0
@@ -69,7 +69,7 @@ for j in eachindex(thresholds)
         # settings for ODE
         #u0 = rand(N)  # pick random IC
         u0 = [0. for _ in 1:N]  # go through each node as a seed
-        u0[79] = 1  # 79 is the empirical seed
+        u0[m] = 1  # 79 is the empirical seed
         #p = 0.01*rand()
         p = rand(LogNormal(0,1))
         tspan = (0.0,9.0)
@@ -89,21 +89,23 @@ for j in eachindex(thresholds)
 
     end
 end
-println(mses)
 
+# plot normalized mean squared error
 mean_mses = mean(eachrow(mses))
 vars_mses = std(eachrow(mses))
-fig = Plots.plot(thresholds,mean_mses; legend=false, color=:tab10, yerror=vars_mses, label=nothing)
+fig = Plots.plot(thresholds,mean_mses; legend=false, color=:tab10, yerror=vars_mses, label=nothing, ylims=(-1,maximum(mean_mses .+ vars_mses)))
 Plots.vline!([hh], color=palette(:tab10)[4], label="critical threshold = $(hh)", legend=true)
 Plots.ylabel!("Normalized mean squared error")
 Plots.xlabel!("Thresholding level")
 savefig(fig, "figures/thresholding/mse_struct_threshold.pdf")
 
 # plot 0-eigenvector distances
-println(ss_diffs)
 fig2 = Plots.plot(thresholds,ss_diffs; legend=false, color=:tab10)
-Plots.scatter!(thresholds,ss_diffs;legend=false, color=:tab10)
+#Plots.scatter!(thresholds,ss_diffs;legend=false, color=:tab10)
 Plots.vline!([hh],color=palette(:tab10)[4])
 Plots.ylabel!("0-eigenvector max. difference")
 Plots.xlabel!("Thresholding level")
 savefig(fig2, "figures/thresholding/mse_struct_threshold_eigvec.pdf")
+
+
+
