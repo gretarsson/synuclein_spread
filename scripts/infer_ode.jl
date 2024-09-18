@@ -1,5 +1,5 @@
-using Serialization
-include("helpers.jl");
+using Turing, Distributed, Serialization
+Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
 #=
 Infer parameters of ODE using Bayesian framework
 NOTE:
@@ -7,9 +7,23 @@ the diffusion-only model does not do well when
 trained on all the data. It does much better when trained
 on t=1,3,6,9 skipping the first four timepoints.
 =#
-# pick ode
-ode = death2;
+
+@everywhere begin
+    using Pkg; Pkg.activate(".")
+    Pkg.instantiate(); Pkg.precompile()
+end
+
+@everywhere begin
+using Turing
 n_threads = 4;
+addprocs(4)
+end
+
+@everywhere begin
+include("helpers.jl");
+
+# pick ode
+ode = death;
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
@@ -30,7 +44,8 @@ u0 = [0. for _ in 1:2*N];
 #data2, maxima2, endpoints2 = inform_priors(data,4)
 
 # DEFINE PRIORS
-priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 
+#priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 
+priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
 priors["α"] = LogNormal(0,1);
 for i in 1:N
     priors["β[$(i)]"] = truncated(Normal(0,1), 0, Inf);
@@ -39,8 +54,8 @@ for i in 1:N
     priors["d[$(i)]"] = truncated(Normal(0,1), 0, Inf);
 end
 priors["γ"] = LogNormal(0,1);
-priors["σ"] = filldist(LogNormal(0,1),N);  # regional variance
-#priors["σ"] = LogNormal(0,1);  # global variance
+#priors["σ"] = filldist(LogNormal(0,1),N);  # regional variance
+priors["σ"] = LogNormal(0,1);  # global variance
 priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
 # diffusion seed prior
 #seed_m = round(0.05*N,digits=2)
@@ -48,7 +63,8 @@ priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
 #priors["seed"] = truncated(Normal(seed_m,seed_v),lower=0)
 
 # parameter refactorization
-factors = [1, 1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1];
+factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1];
+end
 
 # INFER
 inference = infer(ode, 
@@ -73,5 +89,5 @@ inference = infer(ode,
                 test_typestable=false
                 )
 
-# SAVE σ
+# SAVE 
 serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)

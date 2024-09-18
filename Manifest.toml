@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "ecbdd6bacb9a943054617e74a11d8f915b104f03"
+project_hash = "5e61941fc46d1618fde772bc19e2e4bf69134da8"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "6778bcc27496dae5723ff37ee30af451db8b35fe"
@@ -2494,6 +2494,12 @@ deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jl
 git-tree-sha1 = "cb5a2ab6763464ae0f19c86c56c63d4a2b0f5bda"
 uuid = "36c8627f-9965-5494-a995-c6b170f724f3"
 version = "1.52.2+0"
+
+[[deps.ParallelDataTransfer]]
+deps = ["Distributed"]
+git-tree-sha1 = "bc589aa8c8d7cd9551541d0d63414ef8b894af8e"
+uuid = "2dcacdae-9679-587a-88bb-8b444fb7085b"
+version = "0.5.1"
 
 [[deps.Parameters]]
 deps = ["OrderedCollections", "UnPack"]

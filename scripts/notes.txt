@@ -125,6 +125,11 @@ EFFICIENCY OF MCMC
     It does not matter if we use global or regional variances (for the MCMC sampling speed)
 
 
+    UPDATE:
+    So that is good. Still things could be faster, clearly there is a lot of variane in how quickly the sampling goes
+    between runs. 
+
+
 
 
 MODEL COMPARISON

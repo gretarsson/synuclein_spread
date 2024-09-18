@@ -367,7 +367,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                test_typestable=false,
                transform_observable=false,
                )
-    # TODO: add regional variance automatically from prior dict
     # verify that choice of ODE is correct wrp to retro- and anterograde
     retro_and_antero = false
     if occursin("2",string(ode))
@@ -509,16 +508,16 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
 
     # test if typestable if told to, red marking in read-out means something is unstable
-    if test_typestable
-        @code_warntype model.f(
-            model,
-            Turing.VarInfo(model),
-            Turing.SamplingContext(
-                Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
-            ),
-            model.args...,
-        )
-    end
+    #if test_typestable
+    #    @code_warntype model.f(
+    #        model,
+    #        Turing.VarInfo(model),
+    #        Turing.SamplingContext(
+    #            Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
+    #        ),
+    #        model.args...,
+    #    )
+    #end
 
     # benchmark
     if benchmark
@@ -532,7 +531,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  # time estimated is shown
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
-        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCThreads(), 1000, n_threads; progress=true)
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
         #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
     end
 
