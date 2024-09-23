@@ -1,5 +1,5 @@
-using Turing, Distributed, Serialization
-Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
+using Serialization
+include("helpers.jl");
 #=
 Infer parameters of ODE using Bayesian framework
 NOTE:
@@ -8,22 +8,9 @@ trained on all the data. It does much better when trained
 on t=1,3,6,9 skipping the first four timepoints.
 =#
 
-@everywhere begin
-    using Pkg; Pkg.activate(".")
-    Pkg.instantiate(); Pkg.precompile()
-end
-
-@everywhere begin
-using Turing
-n_threads = 4;
-addprocs(4)
-end
-
-@everywhere begin
-include("helpers.jl");
-
 # pick ode
 ode = death;
+n_threads = 4
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
@@ -31,7 +18,7 @@ data = deserialize("data/total_path_3D.jls");
 #data = data[:,5:end,:];
 #timepoints = timepoints[5:end];
 #data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)));
-#_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+#_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.);
 #idxs = findall(idxs);
 
 
@@ -64,7 +51,6 @@ priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
 
 # parameter refactorization
 factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1];
-end
 
 # INFER
 inference = infer(ode, 
@@ -82,12 +68,15 @@ inference = infer(ode,
                 alg=Tsit5(),
                 abstol=1e-6,
                 reltol=1e-3,
-                adtype=AutoReverseDiff(),  # without compile much faster for aggregation and death
-                sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
+                adtype=AutoReverseDiff(compile=true),  # without compile much faster for aggregation and death
+                #adtype=AutoTracker(),  # without compile much faster for aggregation and death
+                #sensealg=TrackerAdjoint(),
+                sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP()),
                 benchmark=false,
-                benchmark_ad=[:reversediff],
-                test_typestable=false
+                benchmark_ad=[:reversediff, :reversediff_compiled, :zygote, :tracker],
+                #benchmark_ad=[:zygote],
+                test_typestable=true
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_tracker.jls", inference)

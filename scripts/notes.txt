@@ -130,6 +130,19 @@ EFFICIENCY OF MCMC
     between runs. 
 
 
+    Removing all for loops and mutations seem to dramatially increase the efficiency of the sampler.
+    However, the real culprit is the seeding. Avoiding mutation of the intiial condition and setting all priors on all IC variables,
+    is actually really quick with AutoTracker+TrackerAdjoint. However, whether this produces all shit or whether the lognormals produce all shit remains to see.
+    It produces all shitt... however, we might want to find a way to add ICs without mutation (mutation does not enable tracker and ygote)
+
+    Zygote does not work because of the for-loop for concatenating predicted variables so it is easy to index them to nonmissing.
+    Is there any way to avoid doing this? Of course we can avoid it we use mean samples but I do not think so.
+
+    I have attempted many ways but none seem to work... I cannot find a way to get below 100 ms for gradient computation
+    
+
+
+
 
 
 MODEL COMPARISON

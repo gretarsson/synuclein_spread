@@ -270,6 +270,7 @@ function death_local2(du,u,p,t;L=L,factors=(1.,1.))
     #du[(N+1):(2*N)] .=  (tanh.(x) .- y) ./ γ
 end
 function death(du,u,p,t;L=L,factors=(1.,1.))
+    N = length(L[:,1])
     p = factors .* p
     ρ = p[1]
     α = p[2]
@@ -421,6 +422,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     end
 
     # reshape data into vector and find indices that are not of type missing
+    # NORMAL
     N_samples = size(data)[3]
     vec_data = vec(data)
     nonmissing = findall(vec_data .!== missing)
@@ -449,54 +451,91 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     end
 
     # use correct data type dependent on whether regional or global variance (for optimal Turing model specification)
+    # NNORAML:W:
     if global_variance
         final_data = vec_data
     else
         final_data = row_data
     end
 
+    # EXP
+    u0[seed] = 1
+    u01 = repeat([0.],seed-1)
+    u02 = repeat([0.],2*N - seed)
+    #N_samples = 1
+    #final_data = vec(data[:,:,1])
+    #nonmissing = findall(final_data .!== missing)
+    #final_data = identity.(final_data[nonmissing])
+
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
                                     nonmissing=nonmissing::Vector{Int64},
-                                    row_nonmiss=row_nonmiss::Vector{Vector{Int}}
+                                    row_nonmiss=row_nonmiss::Vector{Vector{Int}},
+                                    u01=u01::Vector{Float64},
+                                    u02=u02::Vector{Float64}
                                     )
         u00 = u0  # IC needs to be defined within model to work
         # priors
-        p ~ arraydist([ode_priors[i] for i in 1:N_pars])
-        σ ~ priors["σ"] 
-        if bayesian_seed
-            u00[seedd] ~ priors["seed"]  
-        else
-            u00[seedd] = seed_value
-        end
+        #p ~ arraydist([ode_priors[i] for i in 1:N_pars])  # NORMAL
+        #σ ~ priors["σ"] 
+        # NORMAL
+        #if bayesian_seed
+        #    u00[seedd] ~ priors["seed"]  
+        #else
+        #    u00[seedd] = seed_value
+        #end
+
+        # EXP
+        ρ ~ LogNormal(0,1)
+        α ~ LogNormal(0,1)
+        β ~ filldist(truncated(Normal(0,1),0,Inf),N)
+        d ~ filldist(truncated(Normal(0,1),0,Inf),N)
+        γ ~ LogNormal(0,1)
+        σ ~ LogNormal(0,1)
+        # try to avoid mutation for seed
+        #u00[seedd] ~ truncated(Normal(0,0.1),0,Inf)
+        IC ~ truncated(Normal(0,0.1),0,Inf)  
+        #u00 = IC .* u0
+        u00 = vcat(u01,IC,u02)
 
         # Simulate diffusion model 
+        # NORMAL
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
+        # EXP
+        #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, abstol=abstol, reltol=reltol)
 
         # Transform prediction
         predicted = predicted[sol_idxs,:]
-        if transform_observable
-            predicted = tanh.(predicted)
-        end
+        predicted = tanh.(predicted)  # EXP
+        # NORMAL
+        #if transform_observable
+        #    predicted = tanh.(predicted)
+        #end
 
         # Observations.
         #predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         #predicted = predicted[nonmissing]
         #data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
-        if global_variance
-            # common variance among all regions NORMAL
-            predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
-            predicted = predicted[nonmissing]
-            data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
-        else
-            # region-specific variances PER ROW
-            predicted = cat([predicted for _ in 1:N_samples]...,dims=3)
-            for k in axes(data,1)  
-                nonmissing_k = row_nonmiss[k]
-                predicted_sub = vec(predicted[k,:,:])
-                data[k] ~ MvNormal(predicted_sub[nonmissing_k], σ[k]^2*I)
-            end
-        end
+
+        # EXP
+        predicted = repeat(vec(predicted),N_samples)[nonmissing]  # reformats predicted to use nonmissing (verified)
+        data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
+
+        # NROMAL
+        #if global_variance
+        #    # common variance among all regions NORMAL
+        #    predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        #    predicted = predicted[nonmissing]
+        #    data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
+        #else
+        #    # region-specific variances PER ROW
+        #    predicted = cat([predicted for _ in 1:N_samples]...,dims=3)
+        #    for k in axes(data,1)  
+        #        nonmissing_k = row_nonmiss[k]
+        #        predicted_sub = vec(predicted[k,:,:])
+        #        data[k] ~ MvNormal(predicted_sub[nonmissing_k], σ[k]^2*I)
+        #    end
+        #end
 
         return nothing
     end
@@ -521,7 +560,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
     # benchmark
     if benchmark
-        suite = TuringBenchmarking.make_turing_suite(model;adbackends=benchmark_ad)
+        suite = TuringBenchmarking.make_turing_suite(model;adbackends=benchmark_ad,check=true)
         println(run(suite))
         return nothing
     end
@@ -531,8 +570,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  # time estimated is shown
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
-        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
-        #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
+        #chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCThreads(), 1000, n_threads; progress=true)
     end
 
     # compute elpd (expected log predictive density)
@@ -566,6 +605,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                      "data_indices" => idxs, 
                      "seed_idx" => seed,
                      "bayesian_seed" => bayesian_seed,
+                     "seed_value" => seed_value,
                      "transform_observable" => transform_observable,
                      "ode" => string(ode),  # store var name of ode (functions cannot be saved)
                      "factors" => factors,
@@ -636,7 +676,11 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     _, argmax = findmax(chain[:lp])
     mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
     p = mode_pars[1:N_pars]
-    u0[seed] = chain["seed"][argmax]  
+    if inference["bayesian_seed"]
+        u0[seed] = chain["seed"][argmax]  
+    else
+        u0[seed] = 0.01  
+    end
 
     # solve ODE
     sol = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
@@ -794,7 +838,9 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     N = size(data)[1]
     M = length(timepoints)
     par_names = chain.name_map.parameters
-    seed_ch_idx = findall(x->x==:seed,par_names)[1]  # TODO find index of chain programmatically
+    if inference["bayesian_seed"]
+        seed_ch_idx = findall(x->x==:seed,par_names)[1]  # TODO find index of chain programmatically
+    end
     # if data is 3D, find mean
     if length(size(data)) > 2
         var_data = var3(data)
@@ -819,8 +865,12 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     for sample in eachrow(Array(posterior_samples))
         # samples
         p = sample[1:N_pars]  # first index is σ and last index is seed
-        u0[seed] = sample[seed_ch_idx]  # TODO: find seed index automatically
-        #u0[seed] = sample[end]  # TODO: find seed index automatically
+        if inference["bayesian_seed"]
+            u0[seed] = sample[seed_ch_idx]  
+        else
+            u0[seed] = 0.01
+        end
+        #u0[seed] = sample[end]  
         
         # solve
         sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
