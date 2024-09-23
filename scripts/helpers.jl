@@ -531,7 +531,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  # time estimated is shown
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
-        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCThreads(), 1000, n_threads; progress=true)
         #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
     end
 

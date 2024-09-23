@@ -1,5 +1,3 @@
-using Turing, Distributed, Serialization
-Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
 #=
 Infer parameters of ODE using Bayesian framework
 NOTE:
@@ -7,23 +5,12 @@ the diffusion-only model does not do well when
 trained on all the data. It does much better when trained
 on t=1,3,6,9 skipping the first four timepoints.
 =#
-
-@everywhere begin
-    using Pkg; Pkg.activate(".")
-    Pkg.instantiate(); Pkg.precompile()
-end
-
-@everywhere begin
-using Turing
-n_threads = 4;
-addprocs(4)
-end
-
-@everywhere begin
 include("helpers.jl");
+using Serialization
 
 # pick ode
 ode = death;
+n_threads = 4
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
@@ -64,7 +51,6 @@ priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
 
 # parameter refactorization
 factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1];
-end
 
 # INFER
 inference = infer(ode, 
@@ -85,7 +71,7 @@ inference = infer(ode,
                 adtype=AutoReverseDiff(),  # without compile much faster for aggregation and death
                 sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
                 benchmark=false,
-                benchmark_ad=[:reversediff],
+                benchmark_ad=[:reversediff, :reversediff_compiled],
                 test_typestable=false
                 )
 
