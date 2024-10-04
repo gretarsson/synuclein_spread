@@ -270,6 +270,7 @@ function death_local2(du,u,p,t;L=L,factors=(1.,1.))
     #du[(N+1):(2*N)] .=  (tanh.(x) .- y) ./ γ
 end
 function death(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
     p = factors .* p
     ρ = p[1]
     α = p[2]
@@ -401,6 +402,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         else
             L = (La,Lr)
         end
+    else
+        L = (L,N)
     end
     data = data[idxs,:,:]  # subindex data (idxs defaults to all regions unless told otherwise)
 
@@ -502,6 +505,11 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         predicted = predicted[nonmissing]
         data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
 
+        # EXP
+        #predicted = repeat(vec(predicted),N_samples)[nonmissing]  # reformats predicted to use nonmissing (verified) but is not quicker?
+        #data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
+
+
         return nothing
     end
 
@@ -535,7 +543,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  # time estimated is shown
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
-        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCThreads(), 1000, n_threads; progress=true)
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
         #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
     end
 

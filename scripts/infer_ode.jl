@@ -45,7 +45,8 @@ end
 #priors["γ"] = LogNormal(0,1);
 priors["γ"] = truncated(Normal(0,0.1),0,Inf);
 #priors["σ"] = filldist(LogNormal(0,1),N);  # regional variance
-priors["σ"] = LogNormal(0,1);  # global variance
+#priors["σ"] = LogNormal(0,1);  # global variance
+priors["σ"] = truncated(Normal(0,0.1),0,Inf);  # global variance
 priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
 # diffusion seed prior
 #seed_m = round(0.05*N,digits=2)
