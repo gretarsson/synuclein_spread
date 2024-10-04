@@ -10,7 +10,7 @@ using Serialization
 
 # pick ode
 ode = death;
-n_threads = 4
+n_threads = 1
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
@@ -32,15 +32,18 @@ u0 = [0. for _ in 1:2*N];
 
 # DEFINE PRIORS
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 
-priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
-priors["α"] = LogNormal(0,1);
+#priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
+#priors["α"] = LogNormal(0,1);
+priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),0,Inf) ); 
+priors["α"] = truncated(Normal(0,0.1),0,Inf);
 for i in 1:N
     priors["β[$(i)]"] = truncated(Normal(0,1), 0, Inf);
 end
 for i in 1:N
     priors["d[$(i)]"] = truncated(Normal(0,1), 0, Inf);
 end
-priors["γ"] = LogNormal(0,1);
+#priors["γ"] = LogNormal(0,1);
+priors["γ"] = truncated(Normal(0,0.1),0,Inf);
 #priors["σ"] = filldist(LogNormal(0,1),N);  # regional variance
 priors["σ"] = LogNormal(0,1);  # global variance
 priors["seed"] = truncated(Normal(0,0.1), 0, Inf);

@@ -1,7 +1,7 @@
 using Turing
 using Distributed
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
-addprocs(0)
+addprocs(4)
 
 # instantiate and precompile environment in all processes
 @everywhere begin

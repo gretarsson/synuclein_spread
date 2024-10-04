@@ -483,20 +483,24 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         #predicted = predicted[nonmissing]
         #data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
-        if global_variance
-            # common variance among all regions NORMAL
-            predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
-            predicted = predicted[nonmissing]
-            data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
-        else
-            # region-specific variances PER ROW
-            predicted = cat([predicted for _ in 1:N_samples]...,dims=3)
-            for k in axes(data,1)  
-                nonmissing_k = row_nonmiss[k]
-                predicted_sub = vec(predicted[k,:,:])
-                data[k] ~ MvNormal(predicted_sub[nonmissing_k], σ[k]^2*I)
-            end
-        end
+        #if global_variance
+        #    # common variance among all regions NORMAL
+        #    predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        #    predicted = predicted[nonmissing]
+        #    data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
+        #else
+        #    # region-specific variances PER ROW
+        #    predicted = cat([predicted for _ in 1:N_samples]...,dims=3)
+        #    for k in axes(data,1)  
+        #        nonmissing_k = row_nonmiss[k]
+        #        predicted_sub = vec(predicted[k,:,:])
+        #        data[k] ~ MvNormal(predicted_sub[nonmissing_k], σ[k]^2*I)
+        #    end
+        #end
+        # exp is local definition causing memor: issues? yes, it does seem like it
+        predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        predicted = predicted[nonmissing]
+        data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
 
         return nothing
     end
