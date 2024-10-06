@@ -10,7 +10,7 @@ on t=1,3,6,9 skipping the first four timepoints.
 
 # pick ode
 ode = death;
-n_threads = 4
+n_threads = 1
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
