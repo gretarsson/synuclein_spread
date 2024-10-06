@@ -26,7 +26,7 @@ trained on all the data. It does much better when trained
 on t=1,3,6,9 skipping the first four timepoints.
 =#
 # pick ode
-ode = death;
+ode = aggregation;
 n_threads = 4;
 
 # read data
@@ -42,7 +42,7 @@ data = deserialize("data/total_path_3D.jls");
 #N = length(idxs);
 N = size(data)[1];
 display("N = $(N)")
-u0 = [0. for _ in 1:(2*N)];
+u0 = [0. for _ in 1:N];
 
 # INFORM PRIORS
 #data2, maxima2, endpoints2 = inform_priors(data,4)
@@ -57,10 +57,10 @@ priors["α"] = truncated(Normal(0,0.1),0,Inf);
 for i in 1:N
     priors["β[$(i)]"] = truncated(Normal(0,1), 0, Inf);
 end
-for i in 1:N
-    priors["d[$(i)]"] = truncated(Normal(0,1), 0, Inf);
-end
-priors["γ"] = truncated(Normal(0,0.1),0,Inf);
+#for i in 1:N
+#    priors["d[$(i)]"] = truncated(Normal(0,1), 0, Inf);
+#end
+#priors["γ"] = truncated(Normal(0,0.1),0,Inf);
 #priors["γ"] = LogNormal(0,1);
 #priors["σ"] = filldist(LogNormal(0,1),N);  # regional variance
 priors["σ"] = LogNormal(0,1); # global variance
@@ -71,7 +71,7 @@ priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
 #priors["seed"] = truncated(Normal(seed_m,seed_v),lower=0)
 
 # parameter refactorization
-factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.];
+factors = [1., 1., [1 for _ in 1:N]...];
 
 
 # INFER

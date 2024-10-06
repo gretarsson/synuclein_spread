@@ -202,6 +202,7 @@ function diffusion_pop2(du,u,p,t;L=(La,Lr,N), factors=nothing)
     du[(N+1):(2*N)] .= 1/γ .* x .-  1/γ .* y
 end
 function aggregation(du,u,p,t;L=L,factors=(1.,1.))
+    L, _ = L
     kα,kβ = factors 
     ρ = p[1]
     α = kα * p[2]
