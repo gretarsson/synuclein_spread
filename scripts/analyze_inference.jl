@@ -5,7 +5,7 @@ include("helpers.jl");
 
 
 # simulation to analyze
-simulation = "total_death_N=40_threads=4_var1";
+simulation = "total_death_N=448_threads=4_var1_normalpriors";
 
 # plot 
 inference = deserialize("simulations/"*simulation*".jls")
