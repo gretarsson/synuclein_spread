@@ -168,6 +168,7 @@ end
 # ODEs
 # ----------------------------------------------------
 function diffusion(du,u,p,t;L=L,factors=nothing)
+    L, _ = L
     ρ = p[1]
 
     du .= -ρ*L*u 
@@ -475,7 +476,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         end
 
         # Simulate diffusion model 
-        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
+        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
 
         # Transform prediction
         predicted = predicted[sol_idxs,:]

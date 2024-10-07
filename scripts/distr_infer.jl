@@ -26,7 +26,7 @@ trained on all the data. It does much better when trained
 on t=1,3,6,9 skipping the first four timepoints.
 =#
 # pick ode
-ode = aggregation;
+ode = diffusion;
 n_threads = 4;
 
 # read data
@@ -49,14 +49,14 @@ u0 = [0. for _ in 1:N];
 
 # DEFINE PRIORS
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 
-#priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
+priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
 #priors["α"] = LogNormal(0,1);
-priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),0,Inf)); 
-priors["α"] = truncated(Normal(0,0.1),0,Inf);
-for i in 1:N
-    priors["β[$(i)]"] = truncated(Normal(0,1), 0, Inf);
-end
+#priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),0,Inf)); 
+#priors["α"] = truncated(Normal(0,0.1),0,Inf);
+#for i in 1:N
+#    priors["β[$(i)]"] = truncated(Normal(0,1), 0, Inf);
+#end
 #for i in 1:N
 #    priors["d[$(i)]"] = truncated(Normal(0,1), 0, Inf);
 #end
@@ -64,14 +64,16 @@ end
 #priors["γ"] = LogNormal(0,1);
 #priors["σ"] = filldist(LogNormal(0,1),N);  # regional variance
 priors["σ"] = LogNormal(0,1); # global variance
-priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
+#priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
+priors["seed"] = LogNormal(0,1);
 # diffusion seed prior
 #seed_m = round(0.05*N,digits=2)
 #seed_v = round(0.1*seed_m,digits=2)
-#priors["seed"] = truncated(Normal(seed_m,seed_v),lower=0)
-
+#priors["seed"] = truncated(Normal(seed_m,seed_v),0,Inf)
+#
 # parameter refactorization
-factors = [1., 1., [1 for _ in 1:N]...];
+#factors = [1., 1., [1 for _ in 1:N]...];
+factors = [1.]
 
 
 # INFER
@@ -98,5 +100,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_logpriors.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
