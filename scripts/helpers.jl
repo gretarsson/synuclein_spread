@@ -915,17 +915,16 @@ function plot_priors(inference; save_path="")
     # rescale the parameters according to the factor
     priors = inference["priors"]
 
-    prior_figs = []
     i = 1
     for (var, dist) in priors
         prior_i = StatsPlots.plot(dist, title=var, ylabel="Density", xlabel="Sample value", legend=false)
         if !isempty(save_path)
             savefig(prior_i, save_path*"/prior_$(var).png")
         end
-        push!(prior_figs, prior_i)
         i += 1
+        StatsPlots.closeall()
     end
-    return 
+    return nothing 
 end
 
 #=
@@ -967,8 +966,8 @@ function plot_inference(inference, save_path; plotscale=log10)
     end
 
     # plot
-    #predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
-    #plot_retrodiction(inference; save_path=save_path*"/retrodiction");
+    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
+    plot_retrodiction(inference; save_path=save_path*"/retrodiction");
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     #plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
