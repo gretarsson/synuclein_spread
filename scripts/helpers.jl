@@ -942,16 +942,15 @@ function plot_prior_and_posterior(inference; save_path="")
     priors = inference["priors"]
     vars = collect(keys(priors))
     master_fig = StatsPlots.plot(chain) 
-    prior_and_posterior_figs = []
     for (i,var) in enumerate(vars)
         plot_i = StatsPlots.plot(master_fig[i,2], title=var)
         StatsPlots.plot!(plot_i, priors[var])
         if !isempty(save_path)
             savefig(plot_i, save_path*"/prior_and_posterior_$(var).png")
         end
-        push!(prior_and_posterior_figs,plot_i)
+        StatsPlots.closeall()
     end
-    return prior_and_posterior_figs
+    return nothing
 end
 
 #=
@@ -968,8 +967,8 @@ function plot_inference(inference, save_path; plotscale=log10)
     end
 
     # plot
-    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
-    plot_retrodiction(inference; save_path=save_path*"/retrodiction");
+    #predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
+    #plot_retrodiction(inference; save_path=save_path*"/retrodiction");
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     #plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
