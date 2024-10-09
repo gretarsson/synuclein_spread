@@ -26,7 +26,7 @@ trained on all the data. It does much better when trained
 on t=1,3,6,9 skipping the first four timepoints.
 =#
 # pick ode
-ode = diffusion;
+ode = death;
 n_threads = 4;
 
 # read data
@@ -34,7 +34,7 @@ timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
 #data = data[:,5:end,:];
 #timepoints = timepoints[5:end];
-#data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)));
+data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)));
 #_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 #idxs = findall(idxs);
 
@@ -42,38 +42,39 @@ data = deserialize("data/total_path_3D.jls");
 #N = length(idxs);
 N = size(data)[1];
 display("N = $(N)")
-u0 = [0. for _ in 1:N];
+u0 = [0. for _ in 1:(2*N)];
 
 # INFORM PRIORS
 #data2, maxima2, endpoints2 = inform_priors(data,4)
 
 # DEFINE PRIORS
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 
-priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
+#priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
 #priors["α"] = LogNormal(0,1);
-#priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),0,Inf)); 
-#priors["α"] = truncated(Normal(0,0.1),0,Inf);
-#for i in 1:N
-#    priors["β[$(i)]"] = truncated(Normal(0,1), 0, Inf);
-#end
-#for i in 1:N
-#    priors["d[$(i)]"] = truncated(Normal(0,1), 0, Inf);
-#end
-#priors["γ"] = truncated(Normal(0,0.1),0,Inf);
+priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),0,Inf)); 
+priors["α"] = truncated(Normal(0,0.1),0,Inf);
+for i in 1:N
+    priors["β[$(i)]"] = truncated(Normal(0,1), 0, Inf);
+end
+for i in 1:N
+    priors["d[$(i)]"] = truncated(Normal(0,1), 0, Inf);
+end
+priors["γ"] = truncated(Normal(0,0.1),0,Inf);
 #priors["γ"] = LogNormal(0,1);
 #priors["σ"] = filldist(LogNormal(0,1),N);  # regional variance
 priors["σ"] = LogNormal(0,1); # global variance
-#priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
-priors["seed"] = LogNormal(0,1);
+priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
+#priors["seed"] = LogNormal(0,1);
 # diffusion seed prior
 #seed_m = round(0.05*N,digits=2)
 #seed_v = round(0.1*seed_m,digits=2)
 #priors["seed"] = truncated(Normal(seed_m,seed_v),0,Inf)
 #
 # parameter refactorization
-#factors = [1., 1., [1 for _ in 1:N]...];
-factors = [1.]
+factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.];  # death
+#factors = [1., 1., [1 for _ in 1:N]...];  # aggregation
+#factors = [1.]  # diffusion
 
 
 # INFER
@@ -100,5 +101,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_logpriors.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_normal_mean.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
