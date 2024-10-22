@@ -74,13 +74,14 @@ for i in 1:N
 end
 priors["γ"] = truncated(Normal(0,0.1),lower=0);
 #priors["γ"] = LogNormal(0,1);
-#priors["σ"] = LogNormal(-1,1);
-priors["σ"] = truncated(Normal(0,0.01),lower=0);  # regional variance
+priors["σ"] = LogNormal(0,1);
+#priors["σ"] = truncated(Normal(0,0.01),lower=0);  # regional variance
 #priors["σ"] = filldist(LogNormal(0,1),N); 
 #priors["σ"] = filldist(InverseGamma(2,3),N); # global variance
 #priors["σ"] = InverseGamma(2,3); # global variance
 #priors["σ"] = truncated(Normal(0,0.01),lower=0); # global variance
-priors["seed"] = truncated(Normal(0,0.1),lower=0);
+#priors["seed"] = truncated(Normal(0,0.1),lower=0);
+priors["seed"] = LogUniform(1e-4,1e-2);
 #priors["seed"] = LogNormal(0,1);
 # diffusion seed prior
 #seed_m = round(0.05*N,digits=2)
@@ -103,7 +104,7 @@ inference = infer(ode,
                 u0=u0,
                 idxs=idxs,
                 n_threads=n_threads,
-                bayesian_seed=true,
+                bayesian_seed=false,
                 seed_value=0.01,
                 transform_observable=true,
                 alg=Tsit5(),
@@ -117,5 +118,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_poisson_normal.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_constrain_seed.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
