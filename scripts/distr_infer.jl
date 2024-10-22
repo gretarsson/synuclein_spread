@@ -1,6 +1,6 @@
 using Turing
 using Distributed
-addprocs(4)
+addprocs(0)
 
 # instantiate and precompile environment in all processes
 @everywhere begin
@@ -14,6 +14,7 @@ end
 
 @everywhere begin
 include("helpers.jl")
+#include("tanhnormal.jl")
 end
 
 
@@ -26,21 +27,32 @@ trained on all the data. It does much better when trained
 on t=1,3,6,9 skipping the first four timepoints.
 =#
 # pick ode
+include("tanhnormal.jl")
 ode = death;
-n_threads = 4;
+n_threads = 1;
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
+data = data ./ 2
+#for i in eachindex(data)
+#    if !ismissing(data[i]) && data[i] == 0
+#        data[i] = missing
+#    end
+#end
+#data = atanh.(data)
+#data = data .+ 0.01
+#data = data ./ (maximum(skipmissing(data))+0.1)
 #data = data[:,5:end,:];
 #timepoints = timepoints[5:end];
-data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)));
-#_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-#idxs = findall(idxs);
+#data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)));
+_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+idxs = findall(idxs);
+
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-#N = length(idxs);
-N = size(data)[1];
+N = length(idxs);
+#N = size(data)[1];
 display("N = $(N)")
 u0 = [0. for _ in 1:(2*N)];
 
@@ -52,19 +64,23 @@ u0 = [0. for _ in 1:(2*N)];
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
 #priors["α"] = LogNormal(0,1);
-priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),0,Inf)); 
-priors["α"] = truncated(Normal(0,0.1),0,Inf);
+priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0)); 
+priors["α"] = truncated(Normal(0,0.1),lower=0);
 for i in 1:N
-    priors["β[$(i)]"] = truncated(Normal(0,1), 0, Inf);
+    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 for i in 1:N
-    priors["d[$(i)]"] = truncated(Normal(0,1), 0, Inf);
+    priors["d[$(i)]"] = truncated(Normal(0,1), lower=0);
 end
-priors["γ"] = truncated(Normal(0,0.1),0,Inf);
+priors["γ"] = truncated(Normal(0,0.1),lower=0);
 #priors["γ"] = LogNormal(0,1);
-#priors["σ"] = filldist(LogNormal(0,1),N);  # regional variance
-priors["σ"] = LogNormal(0,1); # global variance
-priors["seed"] = truncated(Normal(0,0.1), 0, Inf);
+#priors["σ"] = LogNormal(-1,1);
+priors["σ"] = truncated(Normal(0,0.01),lower=0);  # regional variance
+#priors["σ"] = filldist(LogNormal(0,1),N); 
+#priors["σ"] = filldist(InverseGamma(2,3),N); # global variance
+#priors["σ"] = InverseGamma(2,3); # global variance
+#priors["σ"] = truncated(Normal(0,0.01),lower=0); # global variance
+priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #priors["seed"] = LogNormal(0,1);
 # diffusion seed prior
 #seed_m = round(0.05*N,digits=2)
@@ -85,7 +101,7 @@ inference = infer(ode,
                 "data/W_labeled.csv"; 
                 factors=factors,
                 u0=u0,
-                #idxs=idxs,
+                idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 seed_value=0.01,
@@ -101,5 +117,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_normal_mean.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_poisson_normal.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)

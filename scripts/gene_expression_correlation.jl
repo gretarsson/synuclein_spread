@@ -8,7 +8,8 @@ Here we run linear regression to find correlations
 between the posteriors of the inferred model parameters
 to regional gene expression data
 =#
-simulation = "simulations/total_death_N=448_ultimate.jls"
+simulation = "simulations/total_death_N=448_threads=4_var1_normalpriors2.jls"
+#simulation = "simulations/total_death_N=448_ultimate.jls"
 # read gene data
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
@@ -31,37 +32,36 @@ for i in 1:length(priors.keys)
         append!(model_par_idxs,i)
     end
 end
-#model_par = "d[";
-#inference = deserialize(simulation);
-#chain = inference["chain"];
-#priors = inference["priors"];
-#model_par_idxs2 = [];
-#for i in 1:length(priors.keys)
-#    if occursin(model_par,priors.keys[i])
-#        append!(model_par_idxs2,i)
-#    end
-#end
+model_par = "d[";
+inference = deserialize(simulation);
+chain = inference["chain"];
+priors = inference["priors"];
+model_par_idxs2 = [];
+for i in 1:length(priors.keys)
+    if occursin(model_par,priors.keys[i])
+        append!(model_par_idxs2,i)
+    end
+end
 
 
 # find modes of each parameter
 all_modes = [];
 for i in eachindex(model_par_idxs)
-    par_samples = vec(chain[:,model_par_idxs[i],:])
+    par_samples = vec(chain[:,model_par_idxs[i],1])
     posterior_i = KernelDensity.kde(par_samples)
-    Plots.plot!(posterior_i)
+    #Plots.plot!(posterior_i)
     mode_i = posterior_i.x[argmax(posterior_i.density)]
     append!(all_modes,mode_i)
 end
-#all_modes2 = [];
-#for i in eachindex(model_par_idxs2)
-#    par_samples = vec(chain[:,model_par_idxs2[i],:])
-#    posterior_i = KernelDensity.kde(par_samples)
-#    Plots.plot!(posterior_i)
-#    mode_i = posterior_i.x[argmax(posterior_i.density)]
-#    append!(all_modes2,mode_i)
-#end
-#Plots.scatter(all_modes,all_modes2)  # TODO investigate correlations in optimal parameters
-#all_modes = all_modes2 .- all_modes
+all_modes2 = [];
+for i in eachindex(model_par_idxs2)
+    par_samples = vec(chain[:,model_par_idxs2[i],:])
+    posterior_i = KernelDensity.kde(par_samples)
+    Plots.plot!(posterior_i)
+    mode_i = posterior_i.x[argmax(posterior_i.density)]
+    append!(all_modes2,mode_i)
+end
+all_modes = all_modes2 .- all_modes
 
 # create a map, indexing the regions in gene expression data and relating them to regions in the structural connectome
 gene_to_struct = Dict(); 
@@ -126,8 +126,8 @@ for gene_index in axes(gene_matrix,2)
     df_gene = DataFrame(X=gene_matrix[:,gene_index], Y=para_vector)
     ols = lm(@formula(Y ~ X),df_gene)
     coeff_p = coeftable(ols).cols[4][2]
-    if coeff_p < 0.01 / N_genes
-        println("R^2: $(r2(ols)), p-value $(coeff_p), gene name: $(gene_labels[gene_index])")
+    if coeff_p < (0.05 / N_genes)
+        println("R^2: $(r2(ols)), corr p-value $(coeff_p*N_genes), gene name: $(gene_labels[gene_index])")
         display(Plots.scatter(gene_matrix[:,gene_index],para_vector;title="$(gene_labels[gene_index])"))
     end
     push!(lms,ols)
@@ -136,6 +136,15 @@ end
 r2s = r2.(lms)
 r2_inds = reverse(sortperm(r2s))
 p_inds = sortperm(pvals)
+
+# Holm-Bonferroni correction
+for i in p_inds
+    if pvals[i] < 0.05 / (N_genes - (i-1))
+        println("corr p-value $(pvals[i]), gene name: $(gene_labels[i])")
+        display(Plots.scatter(gene_matrix[:,i],para_vector;title="$(gene_labels[i])"))
+    end
+end
+
 
 # do multiple linear regression on subset of highly significant genes
 top_gene_inds = 1 .+ p_inds[1:10]

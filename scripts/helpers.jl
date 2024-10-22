@@ -391,7 +391,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     end
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
-    W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum, but this also slows MCMC down substantially...
+    #W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum, but this also slows MCMC down substantially...
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
@@ -432,7 +432,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     vec_data = vec_data[nonmissing]
     vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
 
-    # EXPERIMENTAL make data array with rows that only have their (uniquely sized) nonmissing columns
+    ## EXPERIMENTAL make data array with rows that only have their (uniquely sized) nonmissing columns
     row_data = Vector{Vector{Float64}}([[] for _ in 1:size(data)[1]])
     row_nonmiss = Vector{Vector{Int}}([[] for _ in 1:size(data)[1]])
     for i in axes(data,1)
@@ -469,6 +469,9 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         # priors
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
         σ ~ priors["σ"] 
+        # trying out gamma
+        #a ~ InverseGamma(2,3)
+        #b ~ InverseGamma(2,3)
         if bayesian_seed
             u00[seedd] ~ priors["seed"]  
         else
@@ -477,6 +480,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
         # Simulate diffusion model 
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
+        #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
 
         # Transform prediction
         predicted = predicted[sol_idxs,:]
@@ -484,10 +488,23 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
             predicted = tanh.(predicted)
         end
 
-        # Observations.
-        #predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
-        #predicted = predicted[nonmissing]
-        #data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
+        ## Observations. REAL one
+        predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        predicted = predicted[nonmissing]
+        for pred in predicted
+            if pred < 0
+                display("Negative u(t) -> Likelihood set to -Inf")
+                Turing.Turing.@addlogprob! -Inf
+                return nothing
+            end
+        end
+        #data ~ MvNormal(predicted,σ^2*I)  # do30es not work with psis_loo, but mucher faster
+        #data ~ MvNormal(predicted,diagm((predicted .+ 1e-2)))  # trying out mvnormal with poisson
+        #data ~ arraydist([ truncated(Normal(predicted[i],σ^2),lower=0,upper=1) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though 
+        data ~ arraydist([ Normal(predicted[i], σ^2 * predicted[i]+1e-2) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though 
+        return nothing
+
+        # THIS WORKS
         #if global_variance
         #    # common variance among all regions NORMAL
         #    predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
@@ -500,19 +517,60 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #        nonmissing_k = row_nonmiss[k]
         #        predicted_sub = vec(predicted[k,:,:])
         #        data[k] ~ MvNormal(predicted_sub[nonmissing_k], σ[k]^2*I)
+        #        #data[k] ~ arraydist([ truncated(Normal(predicted_sub[ind], σ[k]^2), lower=0,upper=1) for ind in nonmissing_k ] )
         #    end
         #end
         # exp is local definition causing memor: issues? yes, it does seem like it
-        predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
-        predicted = predicted[nonmissing]
-        data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
+        #predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        #predicted = predicted[nonmissing]
+        #data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
 
         # EXP
         #predicted = repeat(vec(predicted),N_samples)[nonmissing]  # reformats predicted to use nonmissing (verified) but is not quicker?
         #data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
 
+        # put noise into the data
+        # custom noise
+        #predicted = predicted[sol_idxs,:]
+        #predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        #predicted = predicted[nonmissing]
+        ##predicted = tanh.(predicted)
+        #for i in eachindex(data)
+        #    #data[i] ~ LogitNormal(predicted[i],σ^2)
+        #    data[i] ~ truncated(Normal(predicted[i],σ^2),lower=0)
+        #    #data[i] ~ abs(predicted[i]) + InverseGamma(a,b)
+        #    #data[i] ~ predicted[i] + LogNormal(a,b)
+        #    #data[i] ~ TanhNormal(predicted[i],σ^2)
+        #    #data[i] ~ (predicted[i] + Beta(a))/2
+        #end
+        # ind variance
+        #predicted = predicted[sol_idxs,:]
+        #predicted = tanh.(predicted)
+        ##predicted = cat([predicted for _ in 1:N_samples]...,dims=3)
+        ## try out brownian motion noise
+        #for i in axes(data,1)  
+        #    for j in axes(data,2)
+        #        #time = timepoints[j]
+        #        pred = predicted[i,j]
+        #        for k in axes(data,3)
+        #            if !ismissing(data[i,j,k])
+        #                data[i,j,k] ~ TanhNormal(pred, σ[i]^2*(pred+1e-3))
+        #            end
+        #        end
+        #    end
+        #end
+        #for k in axes(data,1)  
+        #    nonmissing_k = row_nonmiss[k]
+        #    predicted_sub = vec(predicted[k,:,:])[nonmissing_k]
+        #    for j in 1:size(data[k],1)
+        #        data[k][j] ~ truncated(Normal(predicted_sub[j], σ[k]^2),lower=0)
+        #        #data[k][j] ~ TanhNormal(tanh(predicted_sub[j]), σ[k]^2)
+        #    end
+        #    #data[k] ~ MvNormal(predicted_sub, σ[k]^2*I)
+        #    #data[k] ~ arraydist([Normal(predicted_sub[j], σ[k]^2) for j in 1:)
+        #end
 
-        return nothing
+        #return nothing
     end
 
     # define Turing model
@@ -542,6 +600,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
     # Sample to approximate posterior
     if n_threads == 1
+        #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true, initial_params=[0.01 for _ in 1:(2*N+4)])  # time estimated is shown
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  # time estimated is shown
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
@@ -966,10 +1025,10 @@ function plot_inference(inference, save_path; plotscale=log10)
     end
 
     # plot
-    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
+    #predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
     plot_retrodiction(inference; save_path=save_path*"/retrodiction");
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
-    #plot_posteriors(inference, save_path=save_path*"/posteriors");
+    plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
     #plot_priors(inference; save_path=save_path*"/priors");
     return nothing
