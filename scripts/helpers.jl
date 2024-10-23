@@ -492,7 +492,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
         for pred in predicted
-            if pred < 0
+            if pred < 0 || pred >= 1
                 display("Negative u(t) -> Likelihood set to -Inf")
                 Turing.Turing.@addlogprob! -Inf
                 return nothing
@@ -501,7 +501,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #data ~ MvNormal(predicted,σ^2*I)  # do30es not work with psis_loo, but mucher faster
         #data ~ MvNormal(predicted,diagm((predicted .+ 1e-2)))  # trying out mvnormal with poisson
         #data ~ arraydist([ truncated(Normal(predicted[i],σ^2),lower=0,upper=1) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though 
-        data ~ arraydist([ Normal(predicted[i], σ^2 * predicted[i]+1e-2) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though 
+        #data ~ arraydist([ Normal(predicted[i], σ^2 * predicted[i]+1e-2) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
+        data ~ arraydist([ Normal(predicted[i], σ^2 * predicted[i]*(1-predicted[i])+1e-2) for i in 1:size(predicted)[1] ])  # testing 
         return nothing
 
         # THIS WORKS

@@ -45,7 +45,7 @@ data = data ./ 2
 #data = data ./ (maximum(skipmissing(data))+0.1)
 #data = data[:,5:end,:];
 #timepoints = timepoints[5:end];
-#data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)));
+data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)));
 _, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 idxs = findall(idxs);
 
@@ -81,6 +81,7 @@ priors["σ"] = truncated(Normal(0,0.01),lower=0);  # regional variance
 #priors["σ"] = InverseGamma(2,3); # global variance
 #priors["σ"] = truncated(Normal(0,0.01),lower=0); # global variance
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
+#priors["seed"] = Uniform(0,0.1);
 #priors["seed"] = LogNormal(0,1);
 # diffusion seed prior
 #seed_m = round(0.05*N,digits=2)
@@ -103,7 +104,7 @@ inference = infer(ode,
                 u0=u0,
                 idxs=idxs,
                 n_threads=n_threads,
-                bayesian_seed=true,
+                bayesian_seed=false,
                 seed_value=0.01,
                 transform_observable=true,
                 alg=Tsit5(),
@@ -117,5 +118,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_poisson_normal.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_binomial_mean_noseed.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
