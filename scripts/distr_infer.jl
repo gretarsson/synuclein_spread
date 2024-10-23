@@ -74,8 +74,8 @@ for i in 1:N
 end
 priors["γ"] = truncated(Normal(0,0.1),lower=0);
 #priors["γ"] = LogNormal(0,1);
-#priors["σ"] = LogNormal(-1,1);
-priors["σ"] = truncated(Normal(0,0.01),lower=0);  # regional variance
+priors["σ"] = LogNormal(0,1);
+#priors["σ"] = truncated(Normal(0,0.01),lower=0);  # regional variance
 #priors["σ"] = filldist(LogNormal(0,1),N); 
 #priors["σ"] = filldist(InverseGamma(2,3),N); # global variance
 #priors["σ"] = InverseGamma(2,3); # global variance
@@ -118,5 +118,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_binomial_mean_noseed.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_poisson_normal.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)

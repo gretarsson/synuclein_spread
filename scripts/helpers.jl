@@ -391,10 +391,11 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     end
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
-    #W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum, but this also slows MCMC down substantially...
+    W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum, but this also slows MCMC down substantially...
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
+    display("Seed at region $(seed)")
     N = size(L)[1]
     if retro_and_antero  # include both Laplacians, if told to
         Lr = copy(L)
@@ -469,9 +470,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         # priors
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
         σ ~ priors["σ"] 
-        # trying out gamma
-        #a ~ InverseGamma(2,3)
-        #b ~ InverseGamma(2,3)
         if bayesian_seed
             u00[seedd] ~ priors["seed"]  
         else
@@ -479,8 +477,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         end
 
         # Simulate diffusion model 
-        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
-        #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
+        #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
+        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, dt=1e-3)
 
         # Transform prediction
         predicted = predicted[sol_idxs,:]
@@ -498,7 +496,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                 return nothing
             end
         end
-        #data ~ MvNormal(predicted,σ^2*I)  # do30es not work with psis_loo, but mucher faster
+        data ~ MvNormal(predicted,σ^2*I)  # do30es not work with psis_loo, but mucher faster
+        return nothing
         #data ~ MvNormal(predicted,diagm((predicted .+ 1e-2)))  # trying out mvnormal with poisson
         #data ~ arraydist([ truncated(Normal(predicted[i],σ^2),lower=0,upper=1) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though 
         #data ~ arraydist([ Normal(predicted[i], σ^2 * predicted[i]+1e-2) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
@@ -640,6 +639,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                      "data_indices" => idxs, 
                      "seed_idx" => seed,
                      "bayesian_seed" => bayesian_seed,
+                     "seed_value" => seed_value,
                      "transform_observable" => transform_observable,
                      "ode" => string(ode),  # store var name of ode (functions cannot be saved)
                      "factors" => factors,
@@ -868,7 +868,9 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     N = size(data)[1]
     M = length(timepoints)
     par_names = chain.name_map.parameters
-    seed_ch_idx = findall(x->x==:seed,par_names)[1]  # TODO find index of chain programmatically
+    if inference["bayesian_seed"]
+        seed_ch_idx = findall(x->x==:seed,par_names)[1]  # TODO find index of chain programmatically
+    end
     # if data is 3D, find mean
     if length(size(data)) > 2
         var_data = var3(data)
@@ -893,8 +895,12 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     for sample in eachrow(Array(posterior_samples))
         # samples
         p = sample[1:N_pars]  # first index is σ and last index is seed
-        u0[seed] = sample[seed_ch_idx]  # TODO: find seed index automatically
-        #u0[seed] = sample[end]  # TODO: find seed index automatically
+        if inference["bayesian_seed"]
+            u0[seed] = sample[seed_ch_idx]  # TODO: find seed index automatically
+            #u0[seed] = sample[end]  # TODO: find seed index automatically
+        else    
+            u0[seed] = inference["seed_value"]
+        end
         
         # solve
         sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
@@ -1024,7 +1030,13 @@ function plot_inference(inference, save_path; plotscale=log10)
         mkdir(save_path);
     catch
     end
-
+    if !inference["bayesian_seed"]
+        try
+            delete!(inference["priors"], "seed")
+        catch
+        end
+    end
+    
     # plot
     #predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
     plot_retrodiction(inference; save_path=save_path*"/retrodiction");

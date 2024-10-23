@@ -8,4 +8,4 @@ simulation = "total_death_N=40_threads=1_var1_binomial_mean_noseed";
 
 # plot 
 inference_obj = deserialize("simulations/"*simulation*".jls")
-plot_inference(inference,"figures/"*simulation;plotscale=log10)  
+plot_inference(inference_obj,"figures/"*simulation;plotscale=log10)  

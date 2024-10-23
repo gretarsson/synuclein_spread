@@ -15,7 +15,7 @@ using Interpolations
 using Distributions
 using StatsPlots
 # add helper functions
-include("helpers.jl")
+include("../scripts/helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
 simulation_code = "total_aggregation_N=40"
@@ -68,6 +68,38 @@ p = [ρ, α, β...]
 prob = ODEProblem(aggregation2, u0, tspan, p; alg=alg)
 sol = solve(prob,alg; abstol=1e-9, reltol=1e-6)
 StatsPlots.plot(sol; legend=false, ylim=(0,1))
+
+# testing a split function
+function f1(du,u,p,t;L=LT)
+    ρ = p[1]
+
+    du .= -ρ*L*u   
+end
+function f2(du,u,p,t)
+    α = p[2]
+    β = p[3:end]
+
+    du .= α .* u .* (β .- u)  
+end
+laplacian = DiffEqArrayOperator(-p[1]*Matrix(LT))
+split = SplitFunction(laplacian,f2)
+# ODE settings
+alg = LawsonEuler(krylov=false)
+tspan = (0.0,9.0)
+# ICs
+u0 = [0. for i in 1:N]  # initial conditions
+u0[seed] = 0.1  # seed
+# Parameters
+ρ = 0.001
+α = 3
+#α = [rand(truncated(Normal(10.,0.5))) for _ in 1:N]
+β = [1. for i in 1:N]
+#p = [ρ, α..., β...]
+p = [ρ, α, β...]
+split_prob = SplitODEProblem(split,u0,tspan,p)
+sol = solve(split_prob,alg; abstol=1e-9, reltol=1e-9, dt=1e-3)
+StatsPlots.plot(sol; legend=false)
+
 
 
 # -----------------------------------------------------------------------------------------------------------------
