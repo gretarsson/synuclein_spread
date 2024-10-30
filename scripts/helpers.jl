@@ -287,6 +287,33 @@ function death(du,u,p,t;L=L,factors=(1.,1.))
     du[(N+1):(2*N)] .=  γ .* (1 .- y)  
     #du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
 end
+function sis(du,u,p,t;L=W,factors=(1.,1.))
+    W,N = L
+    p = factors .* p
+    τ = p[1:N]
+    γ = p[(N+1):2*N]
+    #ϵ = p[end]
+
+
+    x = u[1:N]
+    #du[1:N] .= ϵ*W*x .* (1 .- x) .+ τ .* x .* (1 .- x) .- γ .* x   
+    du[1:N] .= τ .* x .* (1 .- x) .- γ .* x   
+end
+function sir(du,u,p,t;L=W,factors=(1.,1.))
+    W,N = L
+    p = factors .* p
+    τ = p[1:N]
+    γ = p[(N+1):(2*N)]
+    θ = p[(2*N+1):(3*N)]
+    ϵ = p[end]
+
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= ϵ*W*x .* (1 .- y .- x) .+ τ .* x .* (1 .- y .- x) .- (γ .+ θ) .* x   
+    #du[1:N] .=  τ .* x .* (1 .- y .- x) .- (γ .+ θ) .* x   
+    du[(N+1):(2*N)] .=  θ .* x  
+end
 function death2(du,u,p,t;L=L,factors=(1.,1.))
     La, Lr, N = L  
     p = factors .* p
@@ -343,7 +370,7 @@ a dictionary containing the ODE functions
 =#
 odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion_pop2" => diffusion_pop2, "aggregation" => aggregation, 
             "aggregation2" => aggregation2, "aggregation_pop2" => aggregation_pop2, "death_local2" => death_local2, "aggregation2_localα" => aggregation2_localα,
-            "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2, "death" => death)
+            "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2, "death" => death, "sir" => sir, "sis" => sis)
 
 
 
@@ -417,7 +444,16 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # Define prob
     p = zeros(Float64, N_pars)
     tspan = (timepoints[1],timepoints[end])
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    # EXP
+    # ------
+    for i in 1:N
+        W[i,i] = 0
+    end
+    #W = (Matrix(transpose(W)),N)
+    W = (Matrix(W),N)
+    rhs(du,u,p,t;L=W, func=ode::Function) = func(du,u,p,t;L=W,factors=factors)
+    # ------
+    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
@@ -489,19 +525,20 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         ## Observations. REAL one
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
-        for pred in predicted
-            if pred < 0 || pred >= 1
-                display("Negative u(t) -> Likelihood set to -Inf")
-                Turing.Turing.@addlogprob! -Inf
-                return nothing
-            end
-        end
-        data ~ MvNormal(predicted,σ^2*I)  # do30es not work with psis_loo, but mucher faster
-        #data ~ MvNormal(predicted,diagm((predicted .+ 1e-2)))  # trying out mvnormal with poisson
-        #data ~ arraydist([ truncated(Normal(predicted[i],σ^2),lower=0,upper=1) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though  trying for n=448
+        #for pred in predicted
+        #    if pred < 0 || pred > 1
+        #        display("Negative u(t) -> Likelihood set to -Inf")
+        #        Turing.Turing.@addlogprob! -Inf
+        #        return nothing
+        #    end
+        #end
+        #data ~ arraydist([ Beta(σ*predicted[i], σ*(1-predicted[i])) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
+        data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
         return nothing
-        #data ~ arraydist([ Normal(predicted[i], σ^2 * (predicted[i]+1e-2)) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
-        #data ~ arraydist([ Normal(predicted[i], σ^2 * predicted[i]*(1-predicted[i])+1e-2) for i in 1:size(predicted)[1] ])  # testing 
+        #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
+        #data ~ MvNormal(predicted, σ  * diagm((sqrt.(predicted) .+ 1e-2)))  # trying out mvnormal with poisson
+        #data ~ arraydist([ truncated(Normal(predicted[i],σ^2),lower=0,upper=1) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though 
+        #data ~ arraydist([ Normal(predicted[i],  σ*sqrt(predicted[i] + 0.1) ) for i in 1:size(predicted)[1] ])  # testing 
 
         # THIS WORKS
         #if global_variance
@@ -514,11 +551,12 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #    predicted = cat([predicted for _ in 1:N_samples]...,dims=3)
         #    for k in axes(data,1)  
         #        nonmissing_k = row_nonmiss[k]
-        #        predicted_sub = vec(predicted[k,:,:])
-        #        data[k] ~ MvNormal(predicted_sub[nonmissing_k], σ[k]^2*I)
+        #        predicted_sub = vec(predicted[k,:,:])[nonmissing_k]
+        #        data[k] ~ MvNormal(predicted_sub, σ[k]*diagm(sqrt.(predicted_sub) .+ 1e-2))
         #        #data[k] ~ arraydist([ truncated(Normal(predicted_sub[ind], σ[k]^2), lower=0,upper=1) for ind in nonmissing_k ] )
         #    end
         #end
+        #return nothing
         # exp is local definition causing memor: issues? yes, it does seem like it
         #predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         #predicted = predicted[nonmissing]

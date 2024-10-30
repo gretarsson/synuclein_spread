@@ -34,7 +34,7 @@ n_threads = 1;
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
-data = data ./ 2
+#data = data ./ 2 
 #for i in eachindex(data)
 #    if !ismissing(data[i]) && data[i] == 0
 #        data[i] = missing
@@ -79,7 +79,7 @@ priors["σ"] = LogNormal(0,1);
 #priors["σ"] = filldist(LogNormal(0,1),N); 
 #priors["σ"] = filldist(InverseGamma(2,3),N); # global variance
 #priors["σ"] = InverseGamma(2,3); # global variance
-#priors["σ"] = truncated(Normal(0,0.01),lower=0); # global variance
+#priors["σ"] = truncated(Normal(0,0.01),lower=0,upper=0.01); # global variance
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #priors["seed"] = Uniform(0,0.1);
 #priors["seed"] = LogNormal(0,1);
@@ -118,5 +118,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_truncated_normal.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_poisson_normal.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
