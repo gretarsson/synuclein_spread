@@ -28,7 +28,7 @@ on t=1,3,6,9 skipping the first four timepoints.
 =#
 # pick ode
 include("tanhnormal.jl")
-ode = sir;
+ode = sis;
 n_threads = 1;
 
 # read data
@@ -54,7 +54,7 @@ idxs = findall(idxs);
 N = length(idxs);
 #N = size(data)[1];
 display("N = $(N)")
-u0 = [0. for _ in 1:(2*N)];
+u0 = [0. for _ in 1:(N)];
 
 # DEFINE PRIORS
 priors = OrderedDict{Any,Any}( )
@@ -64,16 +64,16 @@ end
 for i in 1:N
     priors["γ[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
-for i in 1:N
-    priors["θ[$(i)]"] = truncated(Normal(0,1),lower=0);
-end
+#for i in 1:N
+#    priors["θ[$(i)]"] = truncated(Normal(0,1),lower=0);
+#end
 priors["ϵ"] = truncated(Normal(0,1),lower=0);
 priors["σ"] = LogNormal(0,1);
-priors["seed"] = truncated(Normal(0,0.1),lower=0,upper=1);
+#priors["seed"] = truncated(Normal(0,0.1),lower=0,upper=1);
 #
 # parameter refactorization
 #factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]...,[1 for _ in 1:N]..., 1]
-factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1]
+factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]..., 1.]
 
 
 # INFER
@@ -86,7 +86,7 @@ inference = infer(ode,
                 u0=u0,
                 idxs=idxs,
                 n_threads=n_threads,
-                bayesian_seed=true,
+                bayesian_seed=false,
                 seed_value=0.01,
                 transform_observable=false,
                 alg=Tsit5(),
@@ -100,5 +100,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_local_infection_recovery_death_transpose.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_local_infection_recovery_transpose_noseed.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
