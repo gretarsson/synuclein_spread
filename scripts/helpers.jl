@@ -287,20 +287,32 @@ function death(du,u,p,t;L=L,factors=(1.,1.))
     du[(N+1):(2*N)] .=  γ .* (1 .- y)  
     #du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
 end
-function sir(du,u,p,t;W=W,factors=(1.,1.))
-    W,N = W
+function sis(du,u,p,t;L=W,factors=(1.,1.))
+    W,N = L
     p = factors .* p
-    τ = p[1]
-    γ = p[2:(N+1)]
-    θ = p[(N+2):(2*N+1)]
-    ϵ = p[4]
+    τ = p[1:N]
+    γ = p[(N+1):2*N]
+    #ϵ = p[end]
+
+
+    x = u[1:N]
+    #du[1:N] .= ϵ*W*x .* (1 .- x) .+ τ .* x .* (1 .- x) .- γ .* x   
+    du[1:N] .= τ .* x .* (1 .- x) .- γ .* x   
+end
+function sir(du,u,p,t;L=W,factors=(1.,1.))
+    W,N = L
+    p = factors .* p
+    τ = p[1:N]
+    γ = p[(N+1):(2*N)]
+    θ = p[(2*N+1):(3*N)]
+    ϵ = p[end]
 
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
-    du[1:N] .= ϵ*W*x .* (1 .- y .- x) .+ τ .* x .* (1 .- y .- x) .- (γ .+ θ) .* x   # quick gradient computation
+    du[1:N] .= ϵ*W*x .* (1 .- y .- x) .+ τ .* x .* (1 .- y .- x) .- (γ .+ θ) .* x   
+    #du[1:N] .=  τ .* x .* (1 .- y .- x) .- (γ .+ θ) .* x   
     du[(N+1):(2*N)] .=  θ .* x  
-    #du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
 end
 function death2(du,u,p,t;L=L,factors=(1.,1.))
     La, Lr, N = L  
@@ -358,7 +370,7 @@ a dictionary containing the ODE functions
 =#
 odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion_pop2" => diffusion_pop2, "aggregation" => aggregation, 
             "aggregation2" => aggregation2, "aggregation_pop2" => aggregation_pop2, "death_local2" => death_local2, "aggregation2_localα" => aggregation2_localα,
-            "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2, "death" => death, "sir" => sir)
+            "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2, "death" => death, "sir" => sir, "sis" => sis)
 
 
 
@@ -437,8 +449,9 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     for i in 1:N
         W[i,i] = 0
     end
-    W = (Matrix(transpose(W)),N)
-    rhs(du,u,p,t;W=W, func=ode::Function) = func(du,u,p,t;W=W,factors=factors)
+    #W = (Matrix(transpose(W)),N)
+    W = (Matrix(W),N)
+    rhs(du,u,p,t;L=W, func=ode::Function) = func(du,u,p,t;L=W,factors=factors)
     # ------
     #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
@@ -513,19 +526,19 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
         #for pred in predicted
-        #    if pred < 0 || pred >= 1
+        #    if pred < 0 || pred > 1
         #        display("Negative u(t) -> Likelihood set to -Inf")
         #        Turing.Turing.@addlogprob! -Inf
         #        return nothing
         #    end
         #end
-        data ~ MvNormal(predicted,σ^2*I)  # do30es not work with psis_loo, but mucher faster
-        #data ~ MvNormal(predicted, σ  * diagm((sqrt.(predicted) .+ 1e-2)))  # trying out mvnormal with poisson
+        #data ~ arraydist([ Beta(σ*predicted[i], σ*(1-predicted[i])) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
+        data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
         return nothing
+        #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
+        #data ~ MvNormal(predicted, σ  * diagm((sqrt.(predicted) .+ 1e-2)))  # trying out mvnormal with poisson
         #data ~ arraydist([ truncated(Normal(predicted[i],σ^2),lower=0,upper=1) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though 
-        #data ~ arraydist([ Normal(predicted[i], σ^2 * predicted[i]+1e-2) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
         #data ~ arraydist([ Normal(predicted[i],  σ*sqrt(predicted[i] + 0.1) ) for i in 1:size(predicted)[1] ])  # testing 
-        #return nothing
 
         # THIS WORKS
         #if global_variance
