@@ -477,8 +477,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         end
 
         # Simulate diffusion model 
-        #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
-        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, dt=1e-3)
+        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
+        #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
 
         # Transform prediction
         predicted = predicted[sol_idxs,:]
@@ -497,12 +497,11 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
             end
         end
         data ~ MvNormal(predicted,σ^2*I)  # do30es not work with psis_loo, but mucher faster
-        return nothing
         #data ~ MvNormal(predicted,diagm((predicted .+ 1e-2)))  # trying out mvnormal with poisson
-        #data ~ arraydist([ truncated(Normal(predicted[i],σ^2),lower=0,upper=1) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though 
-        #data ~ arraydist([ Normal(predicted[i], σ^2 * predicted[i]+1e-2) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
-        data ~ arraydist([ Normal(predicted[i], σ^2 * predicted[i]*(1-predicted[i])+1e-2) for i in 1:size(predicted)[1] ])  # testing 
+        #data ~ arraydist([ truncated(Normal(predicted[i],σ^2),lower=0,upper=1) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though  trying for n=448
         return nothing
+        #data ~ arraydist([ Normal(predicted[i], σ^2 * (predicted[i]+1e-2)) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
+        #data ~ arraydist([ Normal(predicted[i], σ^2 * predicted[i]*(1-predicted[i])+1e-2) for i in 1:size(predicted)[1] ])  # testing 
 
         # THIS WORKS
         #if global_variance
