@@ -292,12 +292,12 @@ function sis(du,u,p,t;L=W,factors=(1.,1.))
     p = factors .* p
     τ = p[1:N]
     γ = p[(N+1):2*N]
-    #ϵ = p[end]
+    ϵ = p[end]
 
 
     x = u[1:N]
-    #du[1:N] .= ϵ*W*x .* (1 .- x) .+ τ .* x .* (1 .- x) .- γ .* x   
-    du[1:N] .= τ .* x .* (1 .- x) .- γ .* x   
+    du[1:N] .= ϵ*W*x .* (1 .- x) .+ τ .* x .* (1 .- x) .- γ .* x   
+    #du[1:N] .= τ .* x .* (1 .- x) .- γ .* x   
 end
 function sir(du,u,p,t;L=W,factors=(1.,1.))
     W,N = L
@@ -418,7 +418,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     end
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
-    W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum, but this also slows MCMC down substantially...
+    W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum
     L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
@@ -446,12 +446,14 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     tspan = (timepoints[1],timepoints[end])
     # EXP
     # ------
-    for i in 1:N
-        W[i,i] = 0
+    if string(ode) == "sis" || string(ode) == "sir"
+        for i in 1:N
+            W[i,i] = 0
+        end
+        #W = (Matrix(transpose(W)),N)  # transposing gives bad results
+        L = (Matrix(W),N)  # not transposing gives excellent results
     end
-    #W = (Matrix(transpose(W)),N)
-    W = (Matrix(W),N)
-    rhs(du,u,p,t;L=W, func=ode::Function) = func(du,u,p,t;L=W,factors=factors)
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     # ------
     #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
