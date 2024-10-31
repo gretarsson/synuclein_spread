@@ -34,6 +34,8 @@ n_threads = 1;
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
+data = data .+ 1e-5
+data = data ./ 2
 #data = data ./ maximum(skipmissing(data)) 
 #for i in eachindex(data)
 #    if !ismissing(data[i]) && data[i] == 0
@@ -46,6 +48,8 @@ data = deserialize("data/total_path_3D.jls");
 #data = data[:,5:end,:];
 #timepoints = timepoints[5:end];
 #data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)));
+minimum(skipmissing(data))
+maximum(skipmissing(data))
 _, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 idxs = findall(idxs);
 
@@ -72,8 +76,8 @@ priors["σ"] = LogNormal(0,1);
 #priors["seed"] = truncated(Normal(0,0.1),lower=0,upper=1);
 #
 # parameter refactorization
-#factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]...,[1 for _ in 1:N]..., 1]
-factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.]
+factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]...,[1 for _ in 1:N]..., 1]
+#factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]..., 1.]
 
 
 # INFER
@@ -100,5 +104,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_local_infection_recovery_death_transpose_noseed_test.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_local_infection_recovery_death_beta.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)

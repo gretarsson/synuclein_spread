@@ -534,8 +534,17 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #        return nothing
         #    end
         #end
-        #data ~ arraydist([ Beta(σ*predicted[i], σ*(1-predicted[i])) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
-        data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
+        #for i in 1:size(predicted)[1]
+        #    if predicted[i] <= 0 
+        #        predicted[i] = 1e-5
+        #    end
+        #    if predicted[i] >= 1 
+        #        predicted[i] = 1-1e-5
+        #    end
+        #end
+        #predictedR ~ Dirichlet(predicted)
+        data ~ arraydist([ Beta(σ*max(predicted[i],1e-3), σ*max((1-predicted[i]),1e-3)) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
+        #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
         return nothing
         #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
         #data ~ MvNormal(predicted, σ  * diagm((sqrt.(predicted) .+ 1e-2)))  # trying out mvnormal with poisson
