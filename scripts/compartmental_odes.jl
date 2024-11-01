@@ -24,7 +24,7 @@ data = data ./ 2
 Read structural data 
 =#
 W = readdlm("data/W.csv",',')[idxs,idxs]
-W = Matrix(transpose(W))
+#W = Matrix(transpose(W))
 labels = readdlm("data/W_labeled.csv",',')[1,2:end][idxs]
 seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
 W = W ./ maximum(W[W .> 0])
@@ -60,12 +60,12 @@ y0 = [0. for i in 1:N]
 u0 = [x0...,y0...]
 # Parameters
 τ = 5
-γ = [0.1 for _ in 1:N]
-θ = [0. for _ in 1:N]
-ϵ = 0.1
+γ = [0.5 for _ in 1:N]
+θ = [1 for _ in 1:N]
+ϵ = 1
 p0 = [τ, γ..., θ..., ϵ]
-p = 1. * p0
+p = 1 * p0
 # setting up, solve, and plot
 prob = ODEProblem(sir_test, u0, tspan, p; alg=alg, maxiters=1000)
-sol = solve(prob,alg; abstol=1e-6, reltol=1e-3)
+sol = solve(prob,alg; abstol=1e-6, reltol=1e-6)
 StatsPlots.plot(sol; legend=false, ylim=(0,1), idxs=1:N)
