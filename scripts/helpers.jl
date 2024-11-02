@@ -278,13 +278,16 @@ function death(du,u,p,t;L=L,factors=(1.,1.))
     α = p[2]
     β = p[3:(N+2)]
     d = p[(N+3):(2*N+2)]
-    γ = p[end]
+    #γ = p[end]
 
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
-    du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
-    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+    #du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
+    #du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+    # sir inspired
+    du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d .* x  
     #du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
 end
 function sis(du,u,p,t;L=W,factors=(1.,1.))
@@ -543,8 +546,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #    end
         #end
         #predictedR ~ Dirichlet(predicted)
-        data ~ arraydist([ Beta(σ*max(predicted[i],1e-3), σ*max((1-predicted[i]),1e-3)) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
-        #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
+        #data ~ arraydist([ Beta(σ*max(predicted[i],1e-3), σ*max((1-predicted[i]),1e-3)) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
+        data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
         return nothing
         #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
         #data ~ MvNormal(predicted, σ  * diagm((sqrt.(predicted) .+ 1e-2)))  # trying out mvnormal with poisson
@@ -935,7 +938,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     axs = Any[NaN for _ in 1:N]
     for i in 1:N
         f = CairoMakie.Figure()
-        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0,1))
+        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0,0.01))
         fs[i] = f
         axs[i] = ax
     end
