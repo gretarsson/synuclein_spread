@@ -937,7 +937,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     fs = Any[NaN for _ in 1:N]
     axs = Any[NaN for _ in 1:N]
     for i in 1:N
-        f = CairoMakie.Figure()
+        f = CairoMakie.Figure(fontsize=20)
         ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0,0.01))
         fs[i] = f
         axs[i] = ax
@@ -989,18 +989,18 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
         var_data_i = var_data[i,:][nonmissing]
         indices = findall(x -> isnan(x),var_data_i)
         var_data_i[indices] .= 0
-        CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1.)  
+        CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1., markersize=15)  
         # have lower std capped at 0.01 (to be visible in the plots)
         var_data_i_lower = copy(var_data_i)
         for (n,var) in enumerate(var_data_i)
             if sqrt(var) > data_i[n]
-                var_data_i_lower[n] = max(data_i[n]^2-0.01, 0)
+                var_data_i_lower[n] = max(data_i[n]^2-1e-5, 0)
                 #var_data_i_lower[n] = data_i[n]^2
             end
         end
 
         #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
-        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i_lower), sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
+        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i_lower), sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2, linewidth=3)
         #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, [0. for _ in 1:length(timepoints_i)], sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
     end
     # plot all data points across all samples
@@ -1011,7 +1011,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
             nonmissing = findall(data[i,:,k] .!== missing)
             data_i = data[i,:,k][nonmissing]
             timepoints_i = timepoints[nonmissing] .+ jiggle[k]
-            CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 71/255, 171/255), alpha=0.4)  
+            CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 71/255, 171/255), alpha=0.4, markersize=15)  
         end
         CairoMakie.save(save_path * "/retrodiction_region_$(i).png", fs[i])
     end

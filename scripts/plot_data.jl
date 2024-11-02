@@ -87,6 +87,8 @@ end
 #serialize("data/total_path_3D.jls", total_path_3D)
 total_path_3D
 
+
+# PLOT ALL SAMPLES AND ALL TIMEPOINTS AND ALL REGIONS
 mean_data = mean3(total_path_3D)
 var_data = var3(total_path_3D)
 # plot total_path_3D, that is, all samples and timepoints for each region
