@@ -19,12 +19,12 @@ include("../scripts/helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
 simulation_code = "total_aggregation_N=40"
-data_threshold = 0.15
+data_threshold = 0.0
 
 #=
 read pathology data
 =#
-data, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=data_threshold)
+data, idxs = read_data("data/avg_total_path.csv", remove_nans=false, threshold=data_threshold)
 timepoints = vec(readdlm("data/timepoints.csv", ','))
 plt = StatsPlots.plot()
 for i in axes(data,1)
@@ -37,7 +37,9 @@ N = size(data)[1]
 Read structural data 
 =#
 W = readdlm("data/W.csv",',')[idxs,idxs]
+W = W ./ maximum( W[W.>0] )
 LT = transpose(laplacian_out(W))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+LT = laplacian_out(W)
 labels = readdlm("data/W_labeled.csv",',')[1,2:end][idxs]
 seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
 
@@ -53,21 +55,21 @@ function aggregation2(du,u,p,t;L=LT)
 end
 # ODE settings
 alg = Tsit5()
-tspan = (0.0,9.0)
+tspan = (0.0,20.0)
 # ICs
 u0 = [0. for i in 1:N]  # initial conditions
-u0[seed] = rand(Normal(0.,0.01))  # seed
+u0[seed] = 0.01  # seed
 # Parameters
-ρ = rand(truncated(Normal(0,0.01),lower=0.))
-α = rand(Normal(0,2.5))
+ρ = 1
+α = 1
 #α = [rand(truncated(Normal(10.,0.5))) for _ in 1:N]
-β = [rand(truncated(Normal(0.5,0.25), lower=0., upper=1.)) for i in 1:N]
+β = [1. for i in 1:N]
 #p = [ρ, α..., β...]
 p = [ρ, α, β...]
 # setting up, solve, and plot
 prob = ODEProblem(aggregation2, u0, tspan, p; alg=alg)
 sol = solve(prob,alg; abstol=1e-9, reltol=1e-6)
-StatsPlots.plot(sol; legend=false, ylim=(0,1))
+StatsPlots.plot(sol; legend=false)
 
 # testing a split function
 function f1(du,u,p,t;L=LT)

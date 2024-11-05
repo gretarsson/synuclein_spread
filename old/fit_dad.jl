@@ -15,16 +15,16 @@ using Interpolations
 using Distributions
 using StatsPlots
 # add helper functions
-include("helpers.jl")
+include("../scripts/helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
 simulation_code = "total_death_N=40"
-data_threshold = 0.15
+data_threshold = 0.
 
 #=
 read pathology data
 =#
-data, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=data_threshold)
+data, idxs = read_data("data/avg_total_path.csv", remove_nans=false, threshold=data_threshold)
 timepoints = vec(readdlm("data/timepoints.csv", ','))
 plt = StatsPlots.plot()
 for i in axes(data,1)
@@ -37,7 +37,8 @@ N = size(data)[1]
 Read structural data 
 =#
 W = readdlm("data/W.csv",',')[idxs,idxs]
-LT = transpose(laplacian_out(W))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+W = W ./ maximum(W[W .> 0])
+LT = laplacian_out(W)  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
 labels = readdlm("data/W_labeled.csv",',')[1,2:end][idxs]
 seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
 
@@ -52,31 +53,29 @@ function dad(du,u,p,t;L=LT)  # diffusion-aggregation-death
     ρ = p[1]
     α = p[2]
     β = p[3:N+2]
-    γ = p[N+3]
-    κ = p[(N+4):end]
+    γ = p[(N+3):end]
     # rhs
-    du[1:N] .= -ρ*L*x .+ α .* x .* (β.*y .- x)  
-    du[N+1:2*N] .= -1/γ .* (y .- (1 .- κ.*x))  
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)  
+    du[N+1:2*N] .= γ .* x  
 end
 # ODE settings
 alg = Tsit5()
-tspan = (0.0,9.0)
+tspan = (0.0,20.0)
 # ICs
 x0 = [0. for i in 1:N]  # initial conditions
-x0[seed] = 1e-5  # seed
-y0 = [1. for i in 1:N]
+x0[seed] = 0.01  # seed
+y0 = [0. for i in 1:N]
 u0 = [x0...,y0...]
 # Parameters
-ρ = rand(truncated(Normal(0.01,0.001),lower=0.))
-α = rand(Normal(20,2.5))
-β = [rand(truncated(Normal(data[i,end],0.05), lower=0.)) for i in 1:N]
-γ = rand(truncated(Normal(1.,0.1),lower=0.))
-κ = [rand(truncated(Normal(data[i,end],0.05), lower=0.)) for i in 1:N]
-p = [ρ, α, β..., γ, κ...]
+ρ = 1
+α = 1
+β = [1. for i in 1:N]
+γ = [0.1 for i in 1:N]
+p = [ρ, α, β..., γ...] 
 # setting up, solve, and plot
 prob = ODEProblem(dad, u0, tspan, p; alg=alg)
 sol = solve(prob,alg; abstol=1e-9, reltol=1e-6)
-StatsPlots.plot(sol; legend=false, ylim=(0,1), idxs=1:N)
+StatsPlots.plot(sol; legend=false, idxs=1:N)
 
 
 # -----------------------------------------------------------------------------------------------------------------

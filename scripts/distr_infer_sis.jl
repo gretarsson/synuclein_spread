@@ -34,7 +34,7 @@ n_threads = 1;
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
-#data = data ./ 2
+data = data ./ 100
 #data = data ./ maximum(skipmissing(data)) 
 #for i in eachindex(data)
 #    if !ismissing(data[i]) && data[i] == 0
@@ -62,21 +62,23 @@ u0 = [0. for _ in 1:(N)];
 # DEFINE PRIORS
 priors = OrderedDict{Any,Any}( )
 for i in 1:N
-    priors["τ[$(i)]"] = truncated(Normal(0,1),lower=0);
+    #priors["τ[$(i)]"] = truncated(Normal(0,1),lower=0);
+    priors["τ[$(i)]"] = truncated(Normal(100,5),lower=0);
 end
 for i in 1:N
-    priors["γ[$(i)]"] = truncated(Normal(0,1),lower=0);
+    priors["γ[$(i)]"] = truncated(Normal(1,0.1),lower=0);
 end
 #for i in 1:N
 #    priors["θ[$(i)]"] = truncated(Normal(0,1),lower=0);
 #end
-priors["ϵ"] = truncated(Normal(0,1),lower=0);
+#priors["ϵ"] = truncated(Normal(0,0.1),lower=0);
+priors["ϵ"] = LogNormal(0,1);
 priors["σ"] = LogNormal(0,1);
-#priors["seed"] = truncated(Normal(0,0.1),lower=0,upper=1);
+priors["seed"] = truncated(Normal(0,0.01),lower=0,upper=1);
 #
 # parameter refactorization
-factors = 0.1*[[1 for _ in 1:N]...,[1 for _ in 1:N]..., 1.]  # SIS
-#factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.]
+#factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]...,[1 for _ in 1:N]..., 1]
+factors = [[1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.]
 
 
 # INFER
@@ -89,7 +91,7 @@ inference = infer(ode,
                 u0=u0,
                 idxs=idxs,
                 n_threads=n_threads,
-                bayesian_seed=false,
+                bayesian_seed=true,
                 seed_value=0.01,
                 transform_observable=false,
                 alg=Tsit5(),
@@ -103,5 +105,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_k=100.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_smallseed.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)

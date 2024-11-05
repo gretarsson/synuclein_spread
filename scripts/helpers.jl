@@ -278,13 +278,16 @@ function death(du,u,p,t;L=L,factors=(1.,1.))
     α = p[2]
     β = p[3:(N+2)]
     d = p[(N+3):(2*N+2)]
-    γ = p[end]
+    #γ = p[end]
 
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
-    du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
-    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+    #du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
+    #du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+    # sir inspired
+    du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d .* x  
     #du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
 end
 function sis(du,u,p,t;L=W,factors=(1.,1.))
@@ -296,7 +299,7 @@ function sis(du,u,p,t;L=W,factors=(1.,1.))
 
 
     x = u[1:N]
-    du[1:N] .= ϵ*W*x .* (100 .- x) .+ τ .* x .* (100 .- x) .- γ .* x   
+    du[1:N] .= ϵ*W*x .* (1 .- x) .+ τ .* x .* (1 .- γ .- x)    
     #du[1:N] .= τ .* x .* (1 .- x) .- γ .* x   
 end
 function sir(du,u,p,t;L=W,factors=(1.,1.))
@@ -544,7 +547,12 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #end
         #predictedR ~ Dirichlet(predicted)
         #data ~ arraydist([ Beta(σ*max(predicted[i],1e-3), σ*max((1-predicted[i]),1e-3)) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
-        data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
+        #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
+        #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
+        #data ~ arraydist([ truncated(Normal(predicted[i],σ*max(predicted[i],1e-2)),lower=0) for i in 1:size(predicted)[1] ]) 
+        data ~ arraydist([ truncated(Normal(predicted[i],σ),lower=0) for i in 1:size(predicted)[1] ]) 
+        #predicted = (predicted ./ 100) .+ 1e-3
+        #data ~ arraydist([ 100*Beta(10000 * predicted[i], 10000 * (1-predicted[i])) for i in 1:size(predicted)[1] ]) 
         return nothing
         #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
         #data ~ MvNormal(predicted, σ  * diagm((sqrt.(predicted) .+ 1e-2)))  # trying out mvnormal with poisson
@@ -934,8 +942,8 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     fs = Any[NaN for _ in 1:N]
     axs = Any[NaN for _ in 1:N]
     for i in 1:N
-        f = CairoMakie.Figure()
-        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Portion of cells infected", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0,1))
+        f = CairoMakie.Figure(fontsize=20)
+        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
         fs[i] = f
         axs[i] = ax
     end
@@ -986,18 +994,18 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
         var_data_i = var_data[i,:][nonmissing]
         indices = findall(x -> isnan(x),var_data_i)
         var_data_i[indices] .= 0
-        CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1.)  
+        CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1., markersize=15)  
         # have lower std capped at 0.01 (to be visible in the plots)
         var_data_i_lower = copy(var_data_i)
         for (n,var) in enumerate(var_data_i)
             if sqrt(var) > data_i[n]
-                var_data_i_lower[n] = max(data_i[n]^2-0.01, 0)
+                var_data_i_lower[n] = max(data_i[n]^2-1e-5, 0)
                 #var_data_i_lower[n] = data_i[n]^2
             end
         end
 
         #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
-        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i_lower), sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
+        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i_lower), sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2, linewidth=3)
         #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, [0. for _ in 1:length(timepoints_i)], sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
     end
     # plot all data points across all samples
@@ -1008,7 +1016,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
             nonmissing = findall(data[i,:,k] .!== missing)
             data_i = data[i,:,k][nonmissing]
             timepoints_i = timepoints[nonmissing] .+ jiggle[k]
-            CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 71/255, 171/255), alpha=0.4)  
+            CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 71/255, 171/255), alpha=0.4, markersize=15)  
         end
         CairoMakie.save(save_path * "/retrodiction_region_$(i).png", fs[i])
     end
