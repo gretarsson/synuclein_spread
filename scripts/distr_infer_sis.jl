@@ -62,21 +62,19 @@ u0 = [0. for _ in 1:(N)];
 # DEFINE PRIORS
 priors = OrderedDict{Any,Any}( )
 for i in 1:N
-    #priors["τ[$(i)]"] = truncated(Normal(0,0.1),lower=0);
-    priors["τ[$(i)]"] = LogNormal(-1,1);
+    #priors["τ[$(i)]"] = truncated(Normal(0,1),lower=0);
+    priors["τ[$(i)]"] = truncated(Normal(100,5),lower=0);
 end
 for i in 1:N
-    #priors["γ[$(i)]"] = truncated(Normal(0,1),lower=0);
-    priors["γ[$(i)]"] = LogNormal(-1,1);
+    priors["γ[$(i)]"] = truncated(Normal(1,0.1),lower=0);
 end
 #for i in 1:N
 #    priors["θ[$(i)]"] = truncated(Normal(0,1),lower=0);
 #end
 #priors["ϵ"] = truncated(Normal(0,0.1),lower=0);
-priors["ϵ"] = LogNormal(-1,1);
-priors["σ"] = LogNormal(-2,1);
-#priors["seed"] = truncated(Normal(0,1e-4),lower=0,upper=1);
-priors["seed"] = LogNormal(-1,1);
+priors["ϵ"] = LogNormal(0,1);
+priors["σ"] = LogNormal(0,1);
+priors["seed"] = truncated(Normal(0,0.01),lower=0,upper=1);
 #
 # parameter refactorization
 #factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]...,[1 for _ in 1:N]..., 1]
@@ -98,7 +96,7 @@ inference = infer(ode,
                 transform_observable=false,
                 alg=Tsit5(),
                 abstol=1e-6,
-                reltol=1e-6,
+                reltol=1e-3,
                 adtype=AutoReverseDiff(),  # without compile much faster for aggregation and death
                 sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
                 benchmark=false,
@@ -107,5 +105,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_correct_units.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_smallseed.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
