@@ -296,7 +296,7 @@ function sis(du,u,p,t;L=W,factors=(1.,1.))
 
 
     x = u[1:N]
-    du[1:N] .= ϵ*W*x .* (1 .- x) .+ τ .* x .* (1 .- x) .- γ .* x   
+    du[1:N] .= ϵ*W*x .* (100 .- x) .+ τ .* x .* (100 .- x) .- γ .* x   
     #du[1:N] .= τ .* x .* (1 .- x) .- γ .* x   
 end
 function sir(du,u,p,t;L=W,factors=(1.,1.))
@@ -543,8 +543,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #    end
         #end
         #predictedR ~ Dirichlet(predicted)
-        data ~ arraydist([ Beta(σ*max(predicted[i],1e-3), σ*max((1-predicted[i]),1e-3)) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
-        #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
+        #data ~ arraydist([ Beta(σ*max(predicted[i],1e-3), σ*max((1-predicted[i]),1e-3)) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
+        data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
         return nothing
         #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
         #data ~ MvNormal(predicted, σ  * diagm((sqrt.(predicted) .+ 1e-2)))  # trying out mvnormal with poisson
