@@ -5,7 +5,7 @@ using Serialization
 include("helpers.jl");
 
 # simulation to analyze
-simulation = "total_sir_N=40_threads=1_var1_local_infection_recovery_death_transpose_noseed_test";
+simulation = "total_death_N=448_threads=1_var1_sis_inspired_logpriors_truncatedlikelihood";
 
 # plot 
 inference_obj = deserialize("simulations/"*simulation*".jls")

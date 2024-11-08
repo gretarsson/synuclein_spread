@@ -278,17 +278,11 @@ function death(du,u,p,t;L=L,factors=(1.,1.))
     α = p[2]
     β = p[3:(N+2)]
     d = p[(N+3):(2*N+2)]
-    #γ = p[end]
-
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
-    #du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
-    #du[(N+1):(2*N)] .=  γ .* (1 .- y)  
-    # sir inspired
     du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  d .* x  
-    #du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
 end
 function sis(du,u,p,t;L=W,factors=(1.,1.))
     W,N = L
