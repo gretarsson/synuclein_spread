@@ -11,17 +11,17 @@ using Serialization
 using CairoMakie
 using ParetoSmooth
 # add helper functions
-include("helpers.jl")
+include("../scripts/helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
 simulation_code = "total_diffusion_N=40"
-threshold = 0.15
-retro = false
+threshold = 0.0
+retro = true
 
 #=
 read pathology data
 =#
-data, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=threshold)
+data, idxs = read_data("data/avg_total_path.csv", remove_nans=false, threshold=threshold)
 timepoints = vec(readdlm("data/timepoints.csv", ','))
 plt = StatsPlots.plot(;ylabel="total pathology", xlabel="time (month)")
 for i in axes(data,1)
@@ -35,7 +35,9 @@ save("figures/total_path/all_$(N)_regions.png",plt)
 Read structural data 
 =#
 W = readdlm("data/W.csv",',')[idxs,idxs]
-L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=retro)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+#W = W ./ maximum(W[W .> 0])
+L = Matrix(transpose(laplacian_out(W; self_loops=true, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+#L = Matrix(laplacian_out(W; self_loops=false, retro=retro))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
 labels = readdlm("data/W_labeled.csv",',')[1,2:end][idxs]
 seed = findall(x->x=="iCP",labels)[1]  # find index of seed region
 
@@ -52,14 +54,15 @@ alg = Tsit5()
 tspan = (0.0,9.0)
 # ICs
 u0 = [0. for i in 1:N]  # initial conditions
-u0[seed] = 1 # seed, past seed=15 some regions go beyond 1.
+u0[seed] = 100 # seed, past seed=15 some regions go beyond 1.
 # Parameters
-ρ = 0.2
+ρ = 1
 p = [ρ]
 # setting up, solve, and plot
 prob = ODEProblem(diffusion2, u0, tspan, p; alg=alg)
-sol = solve(prob,alg; abstol=1e-6, reltol=1e-3)
-StatsPlots.plot(sol; legend=false, ylim=(0,1))
+sol = solve(prob,alg; abstol=1e-6, reltol=1e-3, maxiters=100)
+size(sol)
+StatsPlots.plot(sol; legend=false, ylim=(0,1.))
 
 # -----------------------------------------------------------------------------------------------------------------
 #=

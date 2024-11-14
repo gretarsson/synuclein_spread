@@ -278,17 +278,11 @@ function death(du,u,p,t;L=L,factors=(1.,1.))
     α = p[2]
     β = p[3:(N+2)]
     d = p[(N+3):(2*N+2)]
-    #γ = p[end]
-
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
-    #du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
-    #du[(N+1):(2*N)] .=  γ .* (1 .- y)  
-    # sir inspired
     du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  d .* x  
-    #du[(N+1):(2*N)] .=  γ .* (d .* x .- y)  
 end
 function sis(du,u,p,t;L=W,factors=(1.,1.))
     W,N = L
@@ -543,7 +537,22 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         end
 
         # Simulate diffusion model 
-        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
+        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=5000)
+        #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
+        #try
+        #    predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=10000)
+        #    # Check for solver failure indirectly via the result size
+        #    if size(predicted)[2] < size(timepointss)[1]  # Check if solution is empty or contains NaNs
+        #        println("Error: Nan of empty solution.")
+        #        Turing.@addlogprob!(-Inf)  # Set log-likelihood to -Inf if solver fails
+        #        return  # Exit early if solver fails
+        #    end
+        #catch e
+        #    Turing.@addlogprob!(-Inf)
+        #    println("Error: DifferentialEquations.jl encountered an error.")
+        #    println("Error message: ", e)
+        #    return
+        #end
 
         # pick out the variables of interest (ignore auxiliary variables)
         predicted = predicted[sol_idxs,:]
@@ -552,34 +561,10 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
 
-        # Define likelihood (vectorized)
-        #data ~ MvNormal(predicted,σ*I)  # only normal likelihood
-        data ~ arraydist([ truncated(Normal(predicted[i],σ),lower=0) for i in 1:size(predicted)[1] ])  # truncated normal
-        
-        # EXP
-        # ----------------------------------------
-        # MARKOV CHAIN LIKELIHOOD
-        #τ ~ InverseGamma(3,0.5)
-        #data_shape = size(data)
-        #t0 = 0
-        #u00M = nothing
-        #for j in 1:data_shape[1]
-        #    t1 = timepointss[j]
-        #    prob = remake(prob, tspan=(t0,t1))
-        #    if j == 1
-        #        predicted = solve(prob, alg; u0=u00, p=p,  saveat=[t1], sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
-        #    else
-        #        predicted = solve(prob, alg; u0=u00M, p=p,  saveat=[t1], sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
-        #    end
-        #    pred = vec(predicted)
-        #    u00M ~ arraydist([truncated(Normal(pred[i],τ),lower=0) for i in 1:2*N])
-        #    t0 = t1
-        #    us = pred[sol_idxs,:]
-        #    u_ij = [u for (u, n) in zip(us, N_samples[:,j]) for _ in 1:n]
-        #    data[j] ~ MvNormal(u_ij, σ*I)
-        #end
-        # ----------------------------------------
-
+        #data ~ arraydist([ truncated(Normal(predicted[i],σ),lower=0) for i in 1:size(predicted)[1] ]) 
+        ϵ = 1e-6
+        predicted = clamp.(predicted, ϵ, Inf)
+        data ~ MvNormal(log.(predicted),σ*I) 
         return nothing
     end
 
@@ -617,8 +602,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     end
 
     # compute elpd (expected log predictive density)
-    #elpd = compute_psis_loo(model,chain)
-    #waic = elpd.estimates[2,1] - elpd.estimates[3,1]  # total naive elpd - total p_eff
+    elpd = compute_psis_loo(model,chain)
+    waic = elpd.estimates[2,1] - elpd.estimates[3,1]  # total naive elpd - total p_eff
 
     # rescale the parameters in the chain and prior distributions
     factor_matrix = diagm(factors)
@@ -652,9 +637,9 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                      "factors" => factors,
                      "sol_idxs" => sol_idxs,
                      "u0" => u0,
-                     "L" => L
+                     "L" => L,
                      #"elpd" => elpd,
-                     #"waic" => waic
+                     "waic" => waic
                      )
 
     return inference
@@ -717,26 +702,16 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     _, argmax = findmax(chain[:lp])
     mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
     p = mode_pars[1:N_pars]
-    u0[seed] = chain["seed"][argmax]  
+    if inference["bayesian_seed"]
+        u0[seed] = chain["seed"][argmax]  
+    else
+        u0[seed] = inference["seed_value"]  
+    end
+
 
     # solve ODE
     sol = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
     sol = Array(sol[sol_idxs,:])
-    if inference["transform_observable"]
-        if haskey(priors,"c")
-            c = chain["c"][argmax]
-            amplitude = 1 .- c*sol
-        else
-            amplitude = 1
-        end
-        if haskey(priors,"k")
-            k = chain["k"][argmax]
-            input = k*sol
-        else
-            input = sol
-        end
-        sol = amplitude .* tanh.(input)
-    end
 
     # plot
     xticks = ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e-0], [L"$10^{-6}$", L"$10^{-5}$", L"$10^{-4}$", L"$10^{-3}$", L"$10^{-2}$", L"$10^{-1}$", L"$10^0$"])
@@ -761,7 +736,8 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     nonmissing = findall(x .!== missing)
     x = x[nonmissing]
     y = y[nonmissing]
-    minxy = 0
+    minxy = min(minimum(x),minimum(y))
+    minxy = 1e-5
     if plotscale==log10 && ((sum(x .== 0) + sum(y .== 0)) > 0)  # if zeros present, add the smallest number in plot
         minx = minimum(x[x.>0])
         miny = minimum(y[y.>0])
@@ -894,7 +870,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_varia
     axs = Any[NaN for _ in 1:N]
     for i in 1:N
         f = CairoMakie.Figure(fontsize=20)
-        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0.,1.))
+        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0,1.))
         fs[i] = f
         axs[i] = ax
     end
