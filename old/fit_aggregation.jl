@@ -19,7 +19,7 @@ include("../scripts/helpers.jl")
 
 # Set name for files to be saved in figures/ and simulations/
 simulation_code = "total_aggregation_N=40"
-data_threshold = 0.0
+data_threshold = 0.15
 
 #=
 read pathology data
@@ -49,26 +49,33 @@ Define, simulate, and plot model
 function aggregation2(du,u,p,t;L=LT)
     ρ = p[1]
     α = p[2]
-    β = p[3:end]
+    β = p[3:(N+2)]
 
-    du .= -ρ*L*u .+ α .* u .* (β .- u)  
+    du .= -ρ*L*u .+ α .* u .* (β .- u) .* (u .- 1e-6)  
+end
+function stochastic(du,u,p,t)
+    du .= p[end] .* u
 end
 # ODE settings
-alg = Tsit5()
-tspan = (0.0,20.0)
+alg = EM()
+#alg = Tsit5()
+tspan = (0.0,9.0)
 # ICs
-u0 = [0. for i in 1:N]  # initial conditions
+u0 = [0.0 for i in 1:N]  # initial conditions
 u0[seed] = 0.01  # seed
+
 # Parameters
 ρ = 1
-α = 1
+α = 50
 #α = [rand(truncated(Normal(10.,0.5))) for _ in 1:N]
 β = [1. for i in 1:N]
+σ = 0.01
 #p = [ρ, α..., β...]
-p = [ρ, α, β...]
+p = [ρ, α, β..., σ]
 # setting up, solve, and plot
-prob = ODEProblem(aggregation2, u0, tspan, p; alg=alg)
-sol = solve(prob,alg; abstol=1e-9, reltol=1e-6)
+#prob = ODEProblem(aggregation2, u0, tspan, p; alg=alg)
+prob = SDEProblem(aggregation2, stochastic, u0, tspan, p; alg=alg)
+sol = solve(prob,alg,dt=1e-3; abstol=1e-10, reltol=1e-10)
 StatsPlots.plot(sol; legend=false)
 
 # testing a split function

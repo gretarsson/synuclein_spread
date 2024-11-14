@@ -398,7 +398,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                benchmark=false,
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
-               transform_observable=false,
                )
     # verify that choice of ODE is correct wrp to retro- and anterograde
     retro_and_antero = false
@@ -447,8 +446,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # Define prob
     p = zeros(Float64, N_pars)
     tspan = (timepoints[1],timepoints[end])
-    # EXP
-    # ------
     if string(ode) == "sis" || string(ode) == "sir"
         for i in 1:N
             W[i,i] = 0
@@ -456,9 +453,17 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #W = (Matrix(transpose(W)),N)  # transposing gives bad results
         L = (Matrix(W),N)  # not transposing gives excellent results
     end
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     # ------
-    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    # SDE
+    # ------
+    #function stochastic!(du,u,p,t)
+    #        du[1:N] .= 0.0001
+    #        du[(N+1):(2*N)] .= 0.0001
+    #end
+    #prob = SDEProblem(rhs, stochastic!, u0, tspan, p; alg=alg)
+    # ------
+    # ------
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
@@ -474,7 +479,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     vec_data = vec_data[nonmissing]
     vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
 
-    ## EXPERIMENTAL make data array with rows that only have their (uniquely sized) nonmissing columns
+    ## make data array with rows that only have their (uniquely sized) nonmissing columns
     row_data = Vector{Vector{Float64}}([[] for _ in 1:size(data)[1]])
     row_nonmiss = Vector{Vector{Int}}([[] for _ in 1:size(data)[1]])
     for i in axes(data,1)
@@ -502,6 +507,26 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         final_data = row_data
     end
 
+    # EXP
+    # -------
+    # Organize data according to Markov chain type inference
+    #data2 = create_data2(data)
+    #N_samples = Int.(ones(size(data2)))
+    #for i in 1:size(data2)[1]
+    #    for j in 1:size(data2)[2]
+    #        N_samples[i,j] = Int(size(data2[i,j])[1])
+    #    end
+    #end
+    #data1 = [Float64[] for _ in 1:size(data2)[2]]
+    #for j in 1:size(data2)[2]
+    #    elm = []
+    #    for i in 1:size(data2)[1]
+    #        append!(elm,data2[i,j])
+    #    end
+    #    data1[j] = elm
+    #end
+    # -------
+
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
                                     nonmissing=nonmissing::Vector{Int64},
@@ -519,121 +544,48 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
         # Simulate diffusion model 
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
-        #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
 
-        # Transform prediction
+        # pick out the variables of interest (ignore auxiliary variables)
         predicted = predicted[sol_idxs,:]
-        if transform_observable
-            predicted = tanh.(predicted)
-        end
 
-        ## Observations. REAL one
+        # package predictions to match observation (when vectorizing data)
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
-        #for pred in predicted
-        #    if pred < 0 || pred > 1
-        #        display("Negative u(t) -> Likelihood set to -Inf")
-        #        Turing.Turing.@addlogprob! -Inf
-        #        return nothing
-        #    end
-        #end
-        #for i in 1:size(predicted)[1]
-        #    if predicted[i] <= 0 
-        #        predicted[i] = 1e-5
-        #    end
-        #    if predicted[i] >= 1 
-        #        predicted[i] = 1-1e-5
-        #    end
-        #end
-        #predictedR ~ Dirichlet(predicted)
-        #data ~ arraydist([ Beta(σ*max(predicted[i],1e-3), σ*max((1-predicted[i]),1e-3)) for i in 1:size(predicted)[1] ])  # this works really well too, took hella long though 
-        #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
-        #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
-        #data ~ arraydist([ truncated(Normal(predicted[i],σ*max(predicted[i],1e-2)),lower=0) for i in 1:size(predicted)[1] ]) 
-        data ~ arraydist([ truncated(Normal(predicted[i],σ),lower=0) for i in 1:size(predicted)[1] ]) 
-        #predicted = (predicted ./ 100) .+ 1e-3
-        #data ~ arraydist([ 100*Beta(10000 * predicted[i], 10000 * (1-predicted[i])) for i in 1:size(predicted)[1] ]) 
-        return nothing
-        #data ~ MvNormal(predicted,σ*I)  # do30es not work with psis_loo, but mucher faster
-        #data ~ MvNormal(predicted, σ  * diagm((sqrt.(predicted) .+ 1e-2)))  # trying out mvnormal with poisson
-        #data ~ arraydist([ truncated(Normal(predicted[i],σ^2),lower=0,upper=1) for i in 1:size(predicted)[1] ])  # this works really well, took hella long though 
-        #data ~ arraydist([ Normal(predicted[i],  σ*sqrt(predicted[i] + 0.1) ) for i in 1:size(predicted)[1] ])  # testing 
 
-        # THIS WORKS
-        #if global_variance
-        #    # common variance among all regions NORMAL
-        #    predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
-        #    predicted = predicted[nonmissing]
-        #    data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
-        #else
-        #    # region-specific variances PER ROW
-        #    predicted = cat([predicted for _ in 1:N_samples]...,dims=3)
-        #    for k in axes(data,1)  
-        #        nonmissing_k = row_nonmiss[k]
-        #        predicted_sub = vec(predicted[k,:,:])[nonmissing_k]
-        #        data[k] ~ MvNormal(predicted_sub, σ[k]*diagm(sqrt.(predicted_sub) .+ 1e-2))
-        #        #data[k] ~ arraydist([ truncated(Normal(predicted_sub[ind], σ[k]^2), lower=0,upper=1) for ind in nonmissing_k ] )
-        #    end
-        #end
-        #return nothing
-        # exp is local definition causing memor: issues? yes, it does seem like it
-        #predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
-        #predicted = predicted[nonmissing]
-        #data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
-
+        # Define likelihood (vectorized)
+        #data ~ MvNormal(predicted,σ*I)  # only normal likelihood
+        data ~ arraydist([ truncated(Normal(predicted[i],σ),lower=0) for i in 1:size(predicted)[1] ])  # truncated normal
+        
         # EXP
-        #predicted = repeat(vec(predicted),N_samples)[nonmissing]  # reformats predicted to use nonmissing (verified) but is not quicker?
-        #data ~ MvNormal(predicted,σ^2*I)  # does not work with psis_loo, but mucher faster
-
-        # put noise into the data
-        # custom noise
-        #predicted = predicted[sol_idxs,:]
-        #predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
-        #predicted = predicted[nonmissing]
-        ##predicted = tanh.(predicted)
-        #for i in eachindex(data)
-        #    #data[i] ~ LogitNormal(predicted[i],σ^2)
-        #    data[i] ~ truncated(Normal(predicted[i],σ^2),lower=0)
-        #    #data[i] ~ abs(predicted[i]) + InverseGamma(a,b)
-        #    #data[i] ~ predicted[i] + LogNormal(a,b)
-        #    #data[i] ~ TanhNormal(predicted[i],σ^2)
-        #    #data[i] ~ (predicted[i] + Beta(a))/2
-        #end
-        # ind variance
-        #predicted = predicted[sol_idxs,:]
-        #predicted = tanh.(predicted)
-        ##predicted = cat([predicted for _ in 1:N_samples]...,dims=3)
-        ## try out brownian motion noise
-        #for i in axes(data,1)  
-        #    for j in axes(data,2)
-        #        #time = timepoints[j]
-        #        pred = predicted[i,j]
-        #        for k in axes(data,3)
-        #            if !ismissing(data[i,j,k])
-        #                data[i,j,k] ~ TanhNormal(pred, σ[i]^2*(pred+1e-3))
-        #            end
-        #        end
+        # ----------------------------------------
+        # MARKOV CHAIN LIKELIHOOD
+        #τ ~ InverseGamma(3,0.5)
+        #data_shape = size(data)
+        #t0 = 0
+        #u00M = nothing
+        #for j in 1:data_shape[1]
+        #    t1 = timepointss[j]
+        #    prob = remake(prob, tspan=(t0,t1))
+        #    if j == 1
+        #        predicted = solve(prob, alg; u0=u00, p=p,  saveat=[t1], sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
+        #    else
+        #        predicted = solve(prob, alg; u0=u00M, p=p,  saveat=[t1], sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=1000)
         #    end
+        #    pred = vec(predicted)
+        #    u00M ~ arraydist([truncated(Normal(pred[i],τ),lower=0) for i in 1:2*N])
+        #    t0 = t1
+        #    us = pred[sol_idxs,:]
+        #    u_ij = [u for (u, n) in zip(us, N_samples[:,j]) for _ in 1:n]
+        #    data[j] ~ MvNormal(u_ij, σ*I)
         #end
-        #for k in axes(data,1)  
-        #    nonmissing_k = row_nonmiss[k]
-        #    predicted_sub = vec(predicted[k,:,:])[nonmissing_k]
-        #    for j in 1:size(data[k],1)
-        #        data[k][j] ~ truncated(Normal(predicted_sub[j], σ[k]^2),lower=0)
-        #        #data[k][j] ~ TanhNormal(tanh(predicted_sub[j]), σ[k]^2)
-        #    end
-        #    #data[k] ~ MvNormal(predicted_sub, σ[k]^2*I)
-        #    #data[k] ~ arraydist([Normal(predicted_sub[j], σ[k]^2) for j in 1:)
-        #end
+        # ----------------------------------------
 
-        #return nothing
+        return nothing
     end
 
     # define Turing model
-    #model = bayesian_model(vec_data, prob)  # NORMAL
-    #model = bayesian_model(row_data, prob)  # PER ROW
-    model = bayesian_model(final_data, prob)  # NEW
-
+    model = bayesian_model(final_data, prob)  # OG
+    #model = bayesian_model(data1, prob)  # EXP Markov chain
 
     # test if typestable if told to, red marking in read-out means something is unstable
     #if test_typestable
@@ -657,7 +609,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # Sample to approximate posterior
     if n_threads == 1
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true, initial_params=[0.01 for _ in 1:(2*N+4)])  # time estimated is shown
-        chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  # time estimated is shown
+        chain = sample(model, NUTS(2000,0.65;adtype=adtype), 1000; progress=true)  
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
@@ -687,7 +639,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     chain = replacenames(chain, "u00[$(seed)]" => "seed")
 
     # save chains and metadata to a dictionary
-    display(chain)  
     inference = Dict("chain" => chain, 
                      "priors" => priors, 
                      "data" => data,
@@ -696,7 +647,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                      "seed_idx" => seed,
                      "bayesian_seed" => bayesian_seed,
                      "seed_value" => seed_value,
-                     "transform_observable" => transform_observable,
+                     "transform_observable" => false,
                      "ode" => string(ode),  # store var name of ode (functions cannot be saved)
                      "factors" => factors,
                      "sol_idxs" => sol_idxs,
@@ -903,7 +854,7 @@ end
 #=
 plot retrodictino from inference result
 =#
-function plot_retrodiction(inference; save_path=nothing, N_samples=300)
+function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_variance=false)
     # try creating folder to save in
     try
         mkdir(save_path) 
@@ -943,7 +894,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
     axs = Any[NaN for _ in 1:N]
     for i in 1:N
         f = CairoMakie.Figure(fontsize=20)
-        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
+        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0.,1.))
         fs[i] = f
         axs[i] = ax
     end
@@ -957,30 +908,20 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
         else    
             u0[seed] = inference["seed_value"]
         end
+        σ = sample[end]
         
         # solve
         sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
         t = sol_p.t
         sol_p = Array(sol_p[sol_idxs,:])
-        if inference["transform_observable"]
-            if haskey(priors,"c")
-                c_ch_idx = findall(x->x==:c,par_names)[1]
-                c = sample[c_ch_idx]
-                amplitude = 1 .- c*sol_p
-            else
-                amplitude = 1
-            end
-            if haskey(priors,"k")
-                k_ch_idx = findall(x->x==:c,par_names)[1]
-                k = sample[k_ch_idx]
-                input = k*sol_p
-            else
-                input = sol_p
-            end
-            sol_p = amplitude .* tanh.(input)
-        end
         for i in 1:N
-            CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.3, color=:grey)
+            lower_bound = sol_p[i,:] .- σ
+            upper_bound = sol_p[i,:] .+ σ
+            if show_variance
+                CairoMakie.band!(axs[i], t, lower_bound, upper_bound; color=(:grey,0.1))
+                CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.9, color=:black)
+            end
+            CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.5, color=:grey)
         end
     end
 
@@ -1077,9 +1018,9 @@ end
 #=
 master plotting function (plot everything relevant to inference)
 =#
-function plot_inference(inference, save_path; plotscale=log10)
+function plot_inference(inference, save_path; plotscale=log10, N_samples=300, show_variance=false)
     # load inference simulation 
-    display(inference["chain"])
+    #display(inference["chain"])
 
     # create folder
     try
@@ -1095,7 +1036,7 @@ function plot_inference(inference, save_path; plotscale=log10)
     
     # plot
     #predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
-    plot_retrodiction(inference; save_path=save_path*"/retrodiction");
+    plot_retrodiction(inference; save_path=save_path*"/retrodiction", N_samples=N_samples, show_variance=show_variance);
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
@@ -1141,3 +1082,41 @@ function dictionary_map(vec)
     end
     return dict_map
 end
+
+function lowest_positive(arr::AbstractArray)
+    # Flatten the array to handle both vectors and multi-dimensional arrays
+    flat_arr = vec(arr)
+    
+    # Filter out `missing` values (if any) and values less than or equal to zero
+    filtered_values = filter(x -> (!ismissing(x)) && x > 0, flat_arr)
+    
+    # Check if there are any valid positive values
+    if isempty(filtered_values)
+        return missing  # Return `missing` if there are no positive values
+    else
+        return minimum(filtered_values)
+    end
+end
+
+
+function create_data2(data::Array{Union{Missing, Float64}, 3})
+    # Get the dimensions of the input 3D array
+    dim1, dim2, dim3 = size(data)
+    
+    # Initialize an empty 2D array where each element is a vector of Float64
+    data2 = Array{Vector{Float64}, 2}(undef, dim1, dim2)
+    
+    # Iterate over each (i, j) index in the 2D slice
+    for i in 1:dim1
+        for j in 1:dim2
+            # Extract the 1D slice for data[i, j, :]
+            slice = data[i, j, :]
+            
+            # Filter out the missing values and collect the remaining values
+            data2[i, j] = collect(filter(x -> !ismissing(x), slice))
+        end
+    end
+    
+    return data2
+end
+

@@ -1,11 +1,10 @@
 #=
 here we create a folder of analysis plots of interence results
 =#
-using Serialization
 include("helpers.jl");
 
 # simulation to analyze
-simulation = "total_sir_N=40_threads=1_var1_local_infection_recovery_death_transpose_noseed_test";
+simulation = "total_death_N=40_threads=1_var1_sis_inspired_meandata_TNormal";
 
 # plot 
 inference_obj = deserialize("simulations/"*simulation*".jls")
@@ -16,4 +15,5 @@ inference_obj = deserialize("simulations/"*simulation*".jls")
 #W = (W,size(W)[1])
 #inference_obj["L"] = W
 
-plot_inference(inference_obj,"figures/"*simulation;plotscale=log10)  
+
+plot_inference(inference_obj,"figures/"*simulation;plotscale=log10,N_samples=100,show_variance=true)  
