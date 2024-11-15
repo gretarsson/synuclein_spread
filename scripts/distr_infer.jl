@@ -20,10 +20,6 @@ end
 # -----------------------------------
 #=
 Infer parameters of ODE using Bayesian framework
-NOTE:
-the diffusion-only model does not do well when
-trained on all the data. It does much better when trained
-on t=1,3,6,9 skipping the first four timepoints.
 =#
 # pick ode
 ode = diffusion;
@@ -55,9 +51,6 @@ data = deserialize("data/total_path_3D.jls");
 N = size(data)[1];
 display("N = $(N)")
 u0 = [0. for _ in 1:(N)];
-
-# INFORM PRIORS
-#data2, maxima2, endpoints2 = inform_priors(data,4)
 
 # DEFINE PRIORS
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 

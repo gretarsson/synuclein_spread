@@ -278,6 +278,20 @@ function death(du,u,p,t;L=L,factors=(1.,1.))
     α = p[2]
     β = p[3:(N+2)]
     d = p[(N+3):(2*N+2)]
+    γ = p[end]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+end
+function death_sis(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
@@ -392,7 +406,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                benchmark=false,
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
-               transform_observable=false,
                )
     # verify that choice of ODE is correct wrp to retro- and anterograde
     retro_and_antero = false
@@ -441,8 +454,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # Define prob
     p = zeros(Float64, N_pars)
     tspan = (timepoints[1],timepoints[end])
-    # EXP
-    # ------
     if string(ode) == "sis" || string(ode) == "sir"
         for i in 1:N
             W[i,i] = 0
@@ -450,9 +461,17 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #W = (Matrix(transpose(W)),N)  # transposing gives bad results
         L = (Matrix(W),N)  # not transposing gives excellent results
     end
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     # ------
-    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    # SDE
+    # ------
+    #function stochastic!(du,u,p,t)
+    #        du[1:N] .= 0.0001
+    #        du[(N+1):(2*N)] .= 0.0001
+    #end
+    #prob = SDEProblem(rhs, stochastic!, u0, tspan, p; alg=alg)
+    # ------
+    # ------
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
@@ -468,7 +487,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     vec_data = vec_data[nonmissing]
     vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
 
-    ## EXPERIMENTAL make data array with rows that only have their (uniquely sized) nonmissing columns
+    ## make data array with rows that only have their (uniquely sized) nonmissing columns
     row_data = Vector{Vector{Float64}}([[] for _ in 1:size(data)[1]])
     row_nonmiss = Vector{Vector{Int}}([[] for _ in 1:size(data)[1]])
     for i in axes(data,1)
@@ -495,6 +514,26 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     else
         final_data = row_data
     end
+
+    # EXP
+    # -------
+    # Organize data according to Markov chain type inference
+    #data2 = create_data2(data)
+    #N_samples = Int.(ones(size(data2)))
+    #for i in 1:size(data2)[1]
+    #    for j in 1:size(data2)[2]
+    #        N_samples[i,j] = Int(size(data2[i,j])[1])
+    #    end
+    #end
+    #data1 = [Float64[] for _ in 1:size(data2)[2]]
+    #for j in 1:size(data2)[2]
+    #    elm = []
+    #    for i in 1:size(data2)[1]
+    #        append!(elm,data2[i,j])
+    #    end
+    #    data1[j] = elm
+    #end
+    # -------
 
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
@@ -529,10 +568,10 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #    return
         #end
 
-        # Transform prediction
+        # pick out the variables of interest (ignore auxiliary variables)
         predicted = predicted[sol_idxs,:]
 
-        ## Observations. REAL one
+        # package predictions to match observation (when vectorizing data)
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
 
@@ -545,10 +584,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     end
 
     # define Turing model
-    #model = bayesian_model(vec_data, prob)  # NORMAL
-    #model = bayesian_model(row_data, prob)  # PER ROW
-    model = bayesian_model(final_data, prob)  # NEW
-
+    model = bayesian_model(final_data, prob)  # OG
+    #model = bayesian_model(data1, prob)  # EXP Markov chain
 
     # test if typestable if told to, red marking in read-out means something is unstable
     #if test_typestable
@@ -572,7 +609,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # Sample to approximate posterior
     if n_threads == 1
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true, initial_params=[0.01 for _ in 1:(2*N+4)])  # time estimated is shown
-        chain = sample(model, NUTS(2000,0.65;adtype=adtype), 1000; progress=true)  # time estimated is shown
+        chain = sample(model, NUTS(2000,0.65;adtype=adtype), 1000; progress=true)  
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
@@ -602,7 +639,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     chain = replacenames(chain, "u00[$(seed)]" => "seed")
 
     # save chains and metadata to a dictionary
-    display(chain)  
     inference = Dict("chain" => chain, 
                      "priors" => priors, 
                      "data" => data,
@@ -611,7 +647,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                      "seed_idx" => seed,
                      "bayesian_seed" => bayesian_seed,
                      "seed_value" => seed_value,
-                     "transform_observable" => transform_observable,
+                     "transform_observable" => false,
                      "ode" => string(ode),  # store var name of ode (functions cannot be saved)
                      "factors" => factors,
                      "sol_idxs" => sol_idxs,
@@ -809,7 +845,7 @@ end
 #=
 plot retrodictino from inference result
 =#
-function plot_retrodiction(inference; save_path=nothing, N_samples=300)
+function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_variance=false)
     # try creating folder to save in
     try
         mkdir(save_path) 
@@ -863,30 +899,20 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=300)
         else    
             u0[seed] = inference["seed_value"]
         end
+        σ = sample[end]
         
         # solve
         sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
         t = sol_p.t
         sol_p = Array(sol_p[sol_idxs,:])
-        if inference["transform_observable"]
-            if haskey(priors,"c")
-                c_ch_idx = findall(x->x==:c,par_names)[1]
-                c = sample[c_ch_idx]
-                amplitude = 1 .- c*sol_p
-            else
-                amplitude = 1
-            end
-            if haskey(priors,"k")
-                k_ch_idx = findall(x->x==:c,par_names)[1]
-                k = sample[k_ch_idx]
-                input = k*sol_p
-            else
-                input = sol_p
-            end
-            sol_p = amplitude .* tanh.(input)
-        end
         for i in 1:N
-            CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.3, color=:grey)
+            lower_bound = sol_p[i,:] .- σ
+            upper_bound = sol_p[i,:] .+ σ
+            if show_variance
+                CairoMakie.band!(axs[i], t, lower_bound, upper_bound; color=(:grey,0.1))
+                CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.9, color=:black)
+            end
+            CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.5, color=:grey)
         end
     end
 
@@ -983,9 +1009,9 @@ end
 #=
 master plotting function (plot everything relevant to inference)
 =#
-function plot_inference(inference, save_path; plotscale=log10)
+function plot_inference(inference, save_path; plotscale=log10, N_samples=300, show_variance=false)
     # load inference simulation 
-    display(inference["chain"])
+    #display(inference["chain"])
 
     # create folder
     try
@@ -1000,8 +1026,8 @@ function plot_inference(inference, save_path; plotscale=log10)
     end
     
     # plot
-    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
-    plot_retrodiction(inference; save_path=save_path*"/retrodiction");
+    #predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
+    plot_retrodiction(inference; save_path=save_path*"/retrodiction", N_samples=N_samples, show_variance=show_variance);
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
@@ -1046,4 +1072,151 @@ function dictionary_map(vec)
         dict_map[vec[i]] = i
     end
     return dict_map
+end
+
+function lowest_positive(arr::AbstractArray)
+    # Flatten the array to handle both vectors and multi-dimensional arrays
+    flat_arr = vec(arr)
+    
+    # Filter out `missing` values (if any) and values less than or equal to zero
+    filtered_values = filter(x -> (!ismissing(x)) && x > 0, flat_arr)
+    
+    # Check if there are any valid positive values
+    if isempty(filtered_values)
+        return missing  # Return `missing` if there are no positive values
+    else
+        return minimum(filtered_values)
+    end
+end
+
+
+function create_data2(data::Array{Union{Missing, Float64}, 3})
+    # Get the dimensions of the input 3D array
+    dim1, dim2, dim3 = size(data)
+    
+    # Initialize an empty 2D array where each element is a vector of Float64
+    data2 = Array{Vector{Float64}, 2}(undef, dim1, dim2)
+    
+    # Iterate over each (i, j) index in the 2D slice
+    for i in 1:dim1
+        for j in 1:dim2
+            # Extract the 1D slice for data[i, j, :]
+            slice = data[i, j, :]
+            
+            # Filter out the missing values and collect the remaining values
+            data2[i, j] = collect(filter(x -> !ismissing(x), slice))
+        end
+    end
+    
+    return data2
+end
+
+
+# --- WAIC Computation ---
+function compute_waic(inference; S=10)
+    # unpack the inference object
+    priors = inference["priors"]
+    ks = collect(keys(priors))
+    chain = inference["chain"]
+    data = inference["data"]
+    seed = inference["seed_idx"]
+    ode = odes[inference["ode"]]
+    u0 = inference["u0"]
+    timepoints = inference["timepoints"]
+    L = inference["L"]
+    if typeof(L) != Tuple{Matrix{Float64},Int64}
+        N = size(L)[1]
+        L = (L,N)
+    else
+        N = size(L[1])[1]
+    end
+    factors = inference["factors"]
+    N_pars = findall(x->x=="σ",ks)[1] - 1
+    par_names = chain.name_map.parameters
+    if inference["bayesian_seed"]
+        seed_ch_idx = findall(x->x==:seed,par_names)[1]  
+    end
+
+    # reshape data
+    N_samples = size(data)[3]
+    vec_data = vec(data)
+    nonmissing = findall(vec_data .!== missing)
+    vec_data = vec_data[nonmissing]
+    vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
+    n = length(vec_data)
+
+    # define ODE problem
+    tspan = (0, timepoints[end])
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+
+    # sample from posterior and store solutions of ODE for each sample
+    posterior_samples = sample(chain, S; replace=false)
+    solutions = Vector{Vector{Float64}}()  # Array to hold matrices of size (N, length(timepoints))
+    sigmas = []
+    for sample in eachrow(Array(posterior_samples))
+        # samples
+        p = sample[1:N_pars]  # last index is ω
+        if inference["bayesian_seed"]
+            u0[seed] = sample[seed_ch_idx]  
+        else    
+            u0[seed] = inference["seed_value"]
+        end
+        # solve
+        σ = sample[end]
+        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-6, reltol=1e-3)
+        sol_p = Array(sol_p[1:N,:])
+        solution = vec(cat([sol_p for _ in 1:N_samples]...,dims=3))
+        solution = solution[nonmissing]
+        push!(solutions,solution)
+        push!(sigmas,σ)
+    end
+    means = transpose(hcat(solutions...))  # Sxn matrix (S = number of posterior samples, n = length of data)
+    
+    # Compute pointwise log-likelihoods
+    log_lik = zeros(S, n)  # Posterior samples × data points
+    for s in 1:S
+        for i in 1:n
+            log_lik[s, i] = logpdf(Normal(means[s,i], sigmas[s]), vec_data[i])
+        end
+    end
+
+    # Compute WAIC components
+    lppd = sum(log.(mean(exp.(log_lik), dims=1)))  # Log Pointwise Predictive Density
+    p_waic = sum(var(log_lik, dims=1))           # Effective number of parameters
+    waic = -2 * (lppd - p_waic)                  # WAIC formula
+    #display("lppd: $(lppd), p_eff: $(p_waic)")
+
+    return waic
+end
+
+function compute_aic_bic(inference)
+    # unpack the inference object
+    chain = inference["chain"]
+    data = inference["data"]
+    L = inference["L"]
+    if typeof(L) != Tuple{Matrix{Float64},Int64}
+        N = size(L)[1]
+        L = (L,N)
+    else
+        N = size(L[1])[1]
+    end
+    par_names = chain.name_map.parameters
+    N_pars = length(par_names)
+
+    # reshape data
+    vec_data = vec(data)
+    nonmissing = findall(vec_data .!== missing)
+    vec_data = vec_data[nonmissing]
+    vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
+    n = length(vec_data)
+
+    # maximu likelihood
+    max_lp, _ = findmax(chain[:lp])
+
+    # Compute AIC & BIC
+    #display("N parameters = $(N_pars), log(n) = $(log(n)), max_lp = $(max_lp)")
+    aic = -2*max_lp + 2*N_pars
+    bic = -2*max_lp + N_pars * log(n)
+    return aic, bic
 end
