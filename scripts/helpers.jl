@@ -278,6 +278,20 @@ function death(du,u,p,t;L=L,factors=(1.,1.))
     α = p[2]
     β = p[3:(N+2)]
     d = p[(N+3):(2*N+2)]
+    γ = p[end]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α  .* x .* (β .- d .* y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+end
+function death_sis(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
@@ -1096,3 +1110,112 @@ function create_data2(data::Array{Union{Missing, Float64}, 3})
     return data2
 end
 
+
+# --- WAIC Computation ---
+function compute_waic(inference; S=10)
+    # unpack the inference object
+    priors = inference["priors"]
+    ks = collect(keys(priors))
+    chain = inference["chain"]
+    data = inference["data"]
+    seed = inference["seed_idx"]
+    ode = odes[inference["ode"]]
+    u0 = inference["u0"]
+    timepoints = inference["timepoints"]
+    L = inference["L"]
+    if typeof(L) != Tuple{Matrix{Float64},Int64}
+        N = size(L)[1]
+        L = (L,N)
+    else
+        N = size(L[1])[1]
+    end
+    factors = inference["factors"]
+    N_pars = findall(x->x=="σ",ks)[1] - 1
+    par_names = chain.name_map.parameters
+    if inference["bayesian_seed"]
+        seed_ch_idx = findall(x->x==:seed,par_names)[1]  
+    end
+
+    # reshape data
+    N_samples = size(data)[3]
+    vec_data = vec(data)
+    nonmissing = findall(vec_data .!== missing)
+    vec_data = vec_data[nonmissing]
+    vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
+    n = length(vec_data)
+
+    # define ODE problem
+    tspan = (0, timepoints[end])
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+
+    # sample from posterior and store solutions of ODE for each sample
+    posterior_samples = sample(chain, S; replace=false)
+    solutions = Vector{Vector{Float64}}()  # Array to hold matrices of size (N, length(timepoints))
+    sigmas = []
+    for sample in eachrow(Array(posterior_samples))
+        # samples
+        p = sample[1:N_pars]  # last index is ω
+        if inference["bayesian_seed"]
+            u0[seed] = sample[seed_ch_idx]  
+        else    
+            u0[seed] = inference["seed_value"]
+        end
+        # solve
+        σ = sample[end]
+        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-6, reltol=1e-3)
+        sol_p = Array(sol_p[1:N,:])
+        solution = vec(cat([sol_p for _ in 1:N_samples]...,dims=3))
+        solution = solution[nonmissing]
+        push!(solutions,solution)
+        push!(sigmas,σ)
+    end
+    means = transpose(hcat(solutions...))  # Sxn matrix (S = number of posterior samples, n = length of data)
+    
+    # Compute pointwise log-likelihoods
+    log_lik = zeros(S, n)  # Posterior samples × data points
+    for s in 1:S
+        for i in 1:n
+            log_lik[s, i] = logpdf(Normal(means[s,i], sigmas[s]), vec_data[i])
+        end
+    end
+
+    # Compute WAIC components
+    lppd = sum(log.(mean(exp.(log_lik), dims=1)))  # Log Pointwise Predictive Density
+    p_waic = sum(var(log_lik, dims=1))           # Effective number of parameters
+    waic = -2 * (lppd - p_waic)                  # WAIC formula
+    #display("lppd: $(lppd), p_eff: $(p_waic)")
+
+    return waic
+end
+
+function compute_aic_bic(inference)
+    # unpack the inference object
+    chain = inference["chain"]
+    data = inference["data"]
+    L = inference["L"]
+    if typeof(L) != Tuple{Matrix{Float64},Int64}
+        N = size(L)[1]
+        L = (L,N)
+    else
+        N = size(L[1])[1]
+    end
+    par_names = chain.name_map.parameters
+    N_pars = length(par_names)
+
+    # reshape data
+    vec_data = vec(data)
+    nonmissing = findall(vec_data .!== missing)
+    vec_data = vec_data[nonmissing]
+    vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
+    n = length(vec_data)
+
+    # maximu likelihood
+    max_lp, _ = findmax(chain[:lp])
+
+    # Compute AIC & BIC
+    #display("N parameters = $(N_pars), log(n) = $(log(n)), max_lp = $(max_lp)")
+    aic = -2*max_lp + 2*N_pars
+    bic = -2*max_lp + N_pars * log(n)
+    return aic, bic
+end
