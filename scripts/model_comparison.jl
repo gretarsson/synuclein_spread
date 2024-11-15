@@ -3,10 +3,11 @@ include("helpers.jl");
 
 
 # read inference results
-simulation_diffusion = "total_diffusion_N=448_threads=1_var1";
+simulation_diffusion = "total_diffusion_N=448_threads=4_var1_normalpriors";
 simulation_aggregation = "total_aggregation_N=448_threads=4_var1_normalpriors";
 simulation_decay = "total_death_N=448_threads=4_var1_normalpriors";
 simulations = [simulation_diffusion, simulation_aggregation, simulation_decay];
+#simulations = [simulation_aggregation];
 inferences = [];
 for simulation in simulations
     push!(inferences,deserialize("simulations/"*simulation*".jls"))

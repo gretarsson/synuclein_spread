@@ -899,7 +899,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_varia
         else    
             u0[seed] = inference["seed_value"]
         end
-        σ = sample[end]
+        σ = sample[end-1]
         
         # solve
         sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
@@ -1026,7 +1026,7 @@ function plot_inference(inference, save_path; plotscale=log10, N_samples=300, sh
     end
     
     # plot
-    #predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
+    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
     plot_retrodiction(inference; save_path=save_path*"/retrodiction", N_samples=N_samples, show_variance=show_variance);
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     plot_posteriors(inference, save_path=save_path*"/posteriors");
@@ -1136,6 +1136,7 @@ function compute_waic(inference; S=10)
     if inference["bayesian_seed"]
         seed_ch_idx = findall(x->x==:seed,par_names)[1]  
     end
+    sigma_idx = findall(x->x==:σ,par_names)[1]  
 
     # reshape data
     N_samples = size(data)[3]
@@ -1156,22 +1157,23 @@ function compute_waic(inference; S=10)
     sigmas = []
     for sample in eachrow(Array(posterior_samples))
         # samples
-        p = sample[1:N_pars]  # last index is ω
+        p = sample[1:N_pars]  
         if inference["bayesian_seed"]
             u0[seed] = sample[seed_ch_idx]  
         else    
             u0[seed] = inference["seed_value"]
         end
         # solve
-        σ = sample[end]
-        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-6, reltol=1e-3)
-        sol_p = Array(sol_p[1:N,:])
+        σ = sample[sigma_idx]  # this should be done programmatically
+        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-9)
+        sol_p = Array(sol_p[inference["sol_idxs"],:])
         solution = vec(cat([sol_p for _ in 1:N_samples]...,dims=3))
         solution = solution[nonmissing]
         push!(solutions,solution)
         push!(sigmas,σ)
     end
     means = transpose(hcat(solutions...))  # Sxn matrix (S = number of posterior samples, n = length of data)
+    #return means
     
     # Compute pointwise log-likelihoods
     log_lik = zeros(S, n)  # Posterior samples × data points
