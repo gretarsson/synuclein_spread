@@ -45,15 +45,14 @@ data = deserialize("data/total_path_3D.jls");
 #data = data[:,5:end,:];
 #timepoints = timepoints[5:end];
 #data = Array(reshape(mean3(data),(size(data)[1],size(data)[2],1)));
-data = clamp.(data, 1e-6, Inf)
-data = log.(data)
-_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-idxs = findall(idxs);
+#data = log.(data .+ 1e-6)
+#_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+#idxs = findall(idxs);
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-N = length(idxs);
-#N = size(data)[1];
+#N = length(idxs);
+N = size(data)[1];
 display("N = $(N)")
 u0 = [0. for _ in 1:(N)];
 
@@ -77,9 +76,9 @@ end
 #    priors["d[$(i)]"] = truncated(Normal(0,0.1),lower=0);
 #end
 #priors["γ"] = truncated(Normal(0,0.1),lower=0);
-#priors["γ"] = LogNormal(0,1);
+priors["σ"] = LogNormal(0,1);
 #priors["σ"] = truncated(Normal(0,0.01));
-priors["σ"] = InverseGamma(3,0.5);
+#priors["σ"] = InverseGamma(3,0.5);
 
 #priors["σ"] = truncated(Normal(0,0.01),lower=0);  # regional variance
 #priors["σ"] = filldist(LogNormal(0,1),N); 
@@ -110,7 +109,7 @@ inference = infer(ode,
                 "data/W_labeled.csv"; 
                 factors=factors,
                 u0=u0,
-                idxs=idxs,
+                #idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 seed_value=100,
@@ -126,5 +125,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_loglikelihood.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_logpriors.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)

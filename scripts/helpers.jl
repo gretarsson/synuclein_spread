@@ -537,9 +537,10 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         predicted = predicted[nonmissing]
 
         #data ~ arraydist([ truncated(Normal(predicted[i],σ),lower=0) for i in 1:size(predicted)[1] ]) 
-        ϵ = 1e-6
-        predicted = clamp.(predicted, ϵ, Inf)
-        data ~ MvNormal(log.(predicted),σ*I) 
+        #ϵ = 1e-6
+        #predicted = clamp.(predicted, ϵ, Inf)
+        #data ~ MvNormal(log.(predicted),σ*I) 
+        data ~ MvNormal(predicted,σ*I) 
         return nothing
     end
 
