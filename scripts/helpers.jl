@@ -540,7 +540,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #ϵ = 1e-6
         #predicted = clamp.(predicted, ϵ, Inf)
         #data ~ MvNormal(log.(predicted),σ*I) 
-        data ~ MvNormal(predicted,σ*I) 
+        data ~ MvNormal(predicted,σ^2*I) 
         return nothing
     end
 
@@ -572,7 +572,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # Sample to approximate posterior
     if n_threads == 1
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true, initial_params=[0.01 for _ in 1:(2*N+4)])  # time estimated is shown
-        chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  # time estimated is shown
+        chain = sample(model, NUTS(2000,0.65;adtype=adtype), 1000; progress=true)  # time estimated is shown
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
