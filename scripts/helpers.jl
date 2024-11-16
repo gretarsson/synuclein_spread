@@ -885,7 +885,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_varia
     axs = Any[NaN for _ in 1:N]
     for i in 1:N
         f = CairoMakie.Figure(fontsize=20)
-        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,0,1.))
+        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
         fs[i] = f
         axs[i] = ax
     end
