@@ -22,7 +22,7 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = diffusion;
+ode = death;
 n_threads = 4;
 
 # read data
@@ -50,25 +50,25 @@ data = deserialize("data/total_path_3D.jls");
 #N = length(idxs);
 N = size(data)[1];
 display("N = $(N)")
-u0 = [0. for _ in 1:(N)];
+u0 = [0. for _ in 1:(2*N)];
 
 # DEFINE PRIORS
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1) ); 
 priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
+priors["α"] = truncated(Normal(0,0.1),lower=0);
 #priors["α"] = LogNormal(0,1);
 #priors = OrderedDict{Any,Any}( "ρ" => Gamma(1,1) ); 
 #priors["α"] = Gamma(1,1);
 #priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0)); 
 #priors["α"] = LogNormal(0,1);
-#priors["α"] = truncated(Normal(0,0.1),lower=0);
-#for i in 1:N
-#    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
-#end
-#for i in 1:N
-#    priors["d[$(i)]"] = truncated(Normal(0,0.1),lower=0);
-#end
-#priors["γ"] = truncated(Normal(0,0.1),lower=0);
+for i in 1:N
+    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
+end
+for i in 1:N
+    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
+end
+priors["γ"] = truncated(Normal(0,0.1),lower=0);
 priors["σ"] = LogNormal(0,1);
 #priors["σ"] = truncated(Normal(0,0.01));
 #priors["σ"] = InverseGamma(3,0.5);
@@ -78,8 +78,8 @@ priors["σ"] = LogNormal(0,1);
 #priors["σ"] = filldist(InverseGamma(2,3),N); # global variance
 #priors["σ"] = InverseGamma(2,3); # global variance
 #priors["σ"] = truncated(Normal(0,0.01),lower=0,upper=0.01); # global variance
-#priors["seed"] = truncated(Normal(100,10),lower=0);
-priors["seed"] = LogNormal(4.6,0.5)
+priors["seed"] = truncated(Normal(0,0.1),lower=0);
+#priors["seed"] = LogNormal(4.6,0.5)
 #priors["seed"] = truncated(Normal(100,5),lower=0);
 #priors["seed"] = Uniform(0,0.1);
 #priors["seed"] = LogNormal(0,1);
@@ -89,8 +89,8 @@ priors["seed"] = LogNormal(4.6,0.5)
 #priors["seed"] = truncated(Normal(seed_m,seed_v),0,Inf)
 #
 # parameter refactorization
-#factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]...,];  # death
-factors = [1.]
+factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.];  # death
+#factors = [1.]
 #factors = [1., 1., [1 for _ in 1:N]...];  # aggregation
 #factors = [1.]  # diffusion
 
@@ -107,7 +107,6 @@ inference = infer(ode,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 seed_value=100,
-                transform_observable=false,
                 alg=Tsit5(),
                 abstol=1e-6,
                 reltol=1e-3,
@@ -119,5 +118,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_normalpriors.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_normalpriors_notransform.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
