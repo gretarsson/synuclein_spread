@@ -1,14 +1,12 @@
 using DelimitedFiles
 using KernelDensity
 using Plots
-using DataFrames, StatsBase, GLM
+using DataFrames, StatsBase, GLM, Plots, Statistics
 include("helpers.jl");
 #=
-Here we run linear regression to find correlations
-between the posteriors of the inferred model parameters
-to regional gene expression data
+Here we look at correlations in the posterior distribution between parameters
 =#
-simulation = "simulations/total_death_N=448_threads=4_var1_normalpriors.jls"
+simulation = "simulations/total_death_N=448_threads=4_var1_normalpriors_notransform.jls"
 # read gene data
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
@@ -85,4 +83,57 @@ end
 
 # the zero regions are the ones that seem to have random decay. 
 # maybe a stricter prior on the decay will fix this, and just set the decay to zero.
-Plots.scatter(all_modes,all_modes2; color=colors, alpha=0.7, ylabel="d", xlabel="\\beta", legend=false)  # TODO investigate correlations in optimal parameters
+Plots.scatter(all_modes,all_modes2; color=colors, alpha=0.7, ylabel="d", xlabel="\\beta", legend=false) 
+
+# okay that is cool what about samplings from the posterior and looking at correlations therein
+# find indices of beta and decay parameters in chain
+parameter_names = collect(keys(priors))
+beta_idxs = findall(key -> occursin("β[",key), parameter_names)
+deca_idxs = findall(key -> occursin("d[",key), parameter_names)
+
+# sample from the posterior
+S = 1000;
+posterior_samples = sample(chain, S; replace=false);
+
+# look at beta and decay samples, and store them in arrays (S x regions)
+betas = Array(posterior_samples[:,beta_idxs,1])
+decas = Array(posterior_samples[:,deca_idxs,1])
+for i in 1:N
+    samples1 = betas[:,i]
+    samples2 = decas[:,i]
+
+    # Calculate Pearson correlation
+    pearson_corr = cor(samples1, samples2)
+
+    # Prepare data for linear regression
+    X = hcat(ones(length(samples1)), samples1)  # Add a column of ones for the intercept
+    y = samples2
+
+    # Perform linear regression
+    model = lm(X, y)
+
+    # Get slope and intercept from the model
+    intercept = coef(model)[1]
+    slope = coef(model)[2]
+
+    # Generate points for the line
+    x_fit = range(minimum(samples1), maximum(samples1), length=100)  # x-values for line
+    y_fit = intercept .+ slope .* x_fit  # Corresponding y-values
+
+    # Plot the ordered pairs with your custom labels
+    p = Plots.scatter(samples1, samples2, 
+        xlabel="β", 
+        ylabel="d", 
+        title="Region $(i)",
+        legend=false);
+
+    # Add the line of best fit
+    Plots.plot!(x_fit, y_fit, label="Line of Best Fit", color=:red);
+
+    # Overlay Pearson correlation coefficient on the plot
+    annotate!((maximum(samples1)+minimum(samples1))/2, maximum(samples2), 
+            Plots.text("Pearson r = $(round(pearson_corr, digits=2)), slope = $(round(slope,digits=2)), intercept = $(round(intercept,digits=2))", :center, 10))
+
+    # Save the plot
+    Plots.savefig(p,"figures/posterior_correlation/beta_decay_region_$(i).png")
+end
