@@ -83,7 +83,7 @@ end
 
 # the zero regions are the ones that seem to have random decay. 
 # maybe a stricter prior on the decay will fix this, and just set the decay to zero.
-Plots.scatter(all_modes,all_modes2; color=colors, alpha=0.7, ylabel="d", xlabel="\\beta", legend=false) 
+Plots.scatter(all_modes,all_modes2; color=colors, alpha=0.7, ylabel="d", xlabel="\\beta", legend=false);
 
 # okay that is cool what about samplings from the posterior and looking at correlations therein
 # find indices of beta and decay parameters in chain
@@ -125,14 +125,19 @@ for i in 1:N
         xlabel="β", 
         ylabel="d", 
         title="Region $(i)",
-        legend=false);
+        label=nothing,
+        legend=true);
 
     # Add the line of best fit
-    Plots.plot!(x_fit, y_fit, label="Line of Best Fit", color=:red);
+    maxi = max(maximum(samples1),maximum(samples2))
+    mini = min(minimum(samples1),minimum(samples2))
+    Plots.plot!(x_fit, y_fit, 
+                label="Pearson r = $(round(pearson_corr, digits=2)), slope = $(round(slope,digits=2)), intercept = $(round(intercept,digits=2))", 
+                color=:red, xlims=(0,maxi), ylims=(0,maxi));
 
     # Overlay Pearson correlation coefficient on the plot
-    annotate!((maximum(samples1)+minimum(samples1))/2, maximum(samples2), 
-            Plots.text("Pearson r = $(round(pearson_corr, digits=2)), slope = $(round(slope,digits=2)), intercept = $(round(intercept,digits=2))", :center, 10))
+    #annotate!((maximum(samples1)+minimum(samples1))/2, maximum(samples2), 
+    #        Plots.text("Pearson r = $(round(pearson_corr, digits=2)), slope = $(round(slope,digits=2)), intercept = $(round(intercept,digits=2))", :center, 10))
 
     # Save the plot
     Plots.savefig(p,"figures/posterior_correlation/beta_decay_region_$(i).png")
