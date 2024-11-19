@@ -22,7 +22,7 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = death;
+ode = aggregation;
 n_threads = 4;
 
 # read data
@@ -50,7 +50,7 @@ data = deserialize("data/total_path_3D.jls");
 #N = length(idxs);
 N = size(data)[1];
 display("N = $(N)")
-u0 = [0. for _ in 1:(2*N)];
+u0 = [0. for _ in 1:(N)];
 
 # DEFINE PRIORS
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 
@@ -65,10 +65,10 @@ priors["α"] = truncated(Normal(0,0.1),lower=0);
 for i in 1:N
     priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
-for i in 1:N
-    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
-end
-priors["γ"] = truncated(Normal(0,0.1),lower=0);
+#for i in 1:N
+#    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
+#end
+#priors["γ"] = truncated(Normal(0,0.1),lower=0);
 priors["σ"] = LogNormal(0,1);
 #priors["σ"] = truncated(Normal(0,0.01));
 #priors["σ"] = InverseGamma(3,0.5);
@@ -89,9 +89,9 @@ priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #priors["seed"] = truncated(Normal(seed_m,seed_v),0,Inf)
 #
 # parameter refactorization
-factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.];  # death
+#factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.];  # death
 #factors = [1.]
-#factors = [1., 1., [1 for _ in 1:N]...];  # aggregation
+factors = [1., 1., [1 for _ in 1:N]...];  # aggregation
 #factors = [1.]  # diffusion
 
 
