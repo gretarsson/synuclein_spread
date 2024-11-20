@@ -6,7 +6,15 @@ include("helpers.jl");
 #=
 Here we look at correlations in the posterior distribution between parameters
 =#
-simulation = "simulations/total_death_N=448_threads=4_var1_normalpriors_notransform.jls"
+folder_name = "death_simplifiedii"
+simulation = "simulations/total_death_simplifiedii_N=448_threads=1_var1_normalpriors.jls"
+
+# create directory to save figures in
+save_path = "figures/posterior_correlation/"*folder_name
+try
+    mkdir(save_path) 
+catch
+end
 # read gene data
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
@@ -83,7 +91,8 @@ end
 
 # the zero regions are the ones that seem to have random decay. 
 # maybe a stricter prior on the decay will fix this, and just set the decay to zero.
-Plots.scatter(all_modes,all_modes2; color=colors, alpha=0.7, ylabel="d", xlabel="\\beta", legend=false) 
+p = Plots.scatter(all_modes,all_modes2; color=colors, alpha=0.7, ylabel="d", xlabel="\\beta", legend=false);
+Plots.savefig(p, "figures/posterior_correlation/"*folder_name*"/all_regions_modes.png")
 
 # okay that is cool what about samplings from the posterior and looking at correlations therein
 # find indices of beta and decay parameters in chain
@@ -125,15 +134,16 @@ for i in 1:N
         xlabel="β", 
         ylabel="d", 
         title="Region $(i)",
-        legend=false);
+        label=nothing,
+        legend=true);
 
     # Add the line of best fit
-    Plots.plot!(x_fit, y_fit, label="Line of Best Fit", color=:red);
-
-    # Overlay Pearson correlation coefficient on the plot
-    annotate!((maximum(samples1)+minimum(samples1))/2, maximum(samples2), 
-            Plots.text("Pearson r = $(round(pearson_corr, digits=2)), slope = $(round(slope,digits=2)), intercept = $(round(intercept,digits=2))", :center, 10))
+    maxi = max(maximum(samples1),maximum(samples2))
+    mini = min(minimum(samples1),minimum(samples2))
+    Plots.plot!(x_fit, y_fit, 
+                label="Pearson r = $(round(pearson_corr, digits=2)), slope = $(round(slope,digits=2)), intercept = $(round(intercept,digits=2))", 
+                color=:red, xlims=(mini,maxi), ylims=(mini,maxi));
 
     # Save the plot
-    Plots.savefig(p,"figures/posterior_correlation/beta_decay_region_$(i).png")
+    Plots.savefig(p,"figures/posterior_correlation/" * folder_name * "/beta_decay_region_$(i).png")
 end

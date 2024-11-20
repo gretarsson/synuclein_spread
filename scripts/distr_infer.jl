@@ -1,6 +1,6 @@
 using Turing
 using Distributed
-addprocs(4)
+addprocs(0)
 
 # instantiate and precompile environment in all processes
 @everywhere begin
@@ -22,8 +22,8 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = aggregation;
-n_threads = 4;
+ode = death_simplifiedii;
+n_threads = 1;
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
@@ -50,7 +50,7 @@ data = deserialize("data/total_path_3D.jls");
 #N = length(idxs);
 N = size(data)[1];
 display("N = $(N)")
-u0 = [0. for _ in 1:(N)];
+u0 = [0. for _ in 1:(2*N)];
 
 # DEFINE PRIORS
 #priors = OrderedDict{Any,Any}( "ρ" => LogNormal(0,1), "ρᵣ" =>  LogNormal(0,1)); 
@@ -65,10 +65,10 @@ priors["α"] = truncated(Normal(0,0.1),lower=0);
 for i in 1:N
     priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
-#for i in 1:N
-#    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
-#end
-#priors["γ"] = truncated(Normal(0,0.1),lower=0);
+for i in 1:N
+    priors["d[$(i)]"] = truncated(Normal(0,1), upper=0);
+end
+priors["γ"] = truncated(Normal(0,0.1),lower=0);
 priors["σ"] = LogNormal(0,1);
 #priors["σ"] = truncated(Normal(0,0.01));
 #priors["σ"] = InverseGamma(3,0.5);
@@ -89,9 +89,9 @@ priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #priors["seed"] = truncated(Normal(seed_m,seed_v),0,Inf)
 #
 # parameter refactorization
-#factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.];  # death
+factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.];  # death
 #factors = [1.]
-factors = [1., 1., [1 for _ in 1:N]...];  # aggregation
+#factors = [1., 1., [1 for _ in 1:N]...];  # aggregation
 #factors = [1.]  # diffusion
 
 
@@ -118,5 +118,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_normalpriors_notransform.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_normalpriors_negonly.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
