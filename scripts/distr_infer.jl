@@ -66,7 +66,7 @@ for i in 1:N
     priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 for i in 1:N
-    priors["d[$(i)]"] = Normal(0,1);
+    priors["d[$(i)]"] = truncated(Normal(0,1), upper=0);
 end
 priors["γ"] = truncated(Normal(0,0.1),lower=0);
 priors["σ"] = LogNormal(0,1);
@@ -118,5 +118,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_normalpriors.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_normalpriors_negonly.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
