@@ -860,15 +860,17 @@ function plot_posteriors(inference; save_path="")
     chain = inference["chain"]
     vars = collect(keys(inference["priors"]))
     master_fig = StatsPlots.plot(chain) 
-    posterior_figs = []
+    #posterior_figs = []
     for (i,var) in enumerate(vars)
         posterior_i = StatsPlots.plot(master_fig[i,2], title=var)
         if !isempty(save_path)
             savefig(posterior_i, save_path*"/posterior_$(var).png")
         end
-        push!(posterior_figs,posterior_i)
+        StatsPlots.closeall()
+        #push!(posterior_figs,posterior_i)
     end
-    return posterior_figs
+    #return posterior_figs
+    return nothing
 end
 
 #=
