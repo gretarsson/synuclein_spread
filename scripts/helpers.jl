@@ -1313,7 +1313,7 @@ end
 
 
 # do multiple linear progression, show will display significant results after Bonferroni correction
-function multiple_linear_regression(vect,matr;labels=nothing,alpha=0.05,show=false)
+function multiple_linear_regression(vect,matr;labels=nothing,alpha=0.05,show=false,null=false)
     # do linear regression with Bonferroni
     alpha = 0.05  # significance threshold before correction
     lms = []
@@ -1336,7 +1336,7 @@ function multiple_linear_regression(vect,matr;labels=nothing,alpha=0.05,show=fal
 end
 
 # do full gene analysis, with Holm-Bonferroni correction
-function gene_analysis(simulation, parameter_symbol; mode=true, show=false, alpha=0.05)
+function gene_analysis(simulation, parameter_symbol; mode=true, show=false, alpha=0.05, null=false)
     # read gene data
     gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
     gene_labels = gene_data_full[1,2:end];
@@ -1382,6 +1382,11 @@ function gene_analysis(simulation, parameter_symbol; mode=true, show=false, alph
     nonmissing = findall(e -> !ismissing(e), para_vector)
     para_vector = identity.(para_vector[nonmissing])
     gene_matrix = identity.(gene_data[nonmissing,:])
+
+    # shuffle gene matrix if null
+    if null
+        gene_matrix = shuffle(gene_matrix)
+    end
 
     # do multiple linear regression over genes
     lms,pvals = multiple_linear_regression(para_vector,gene_matrix;labels=gene_labels,alpha=alpha,show=false);
