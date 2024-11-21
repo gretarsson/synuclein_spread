@@ -4,7 +4,7 @@ here we create a folder of analysis plots of interence results
 include("helpers.jl");
 
 # simulation to analyze
-simulation = "total_aggregation_N=448_threads=4_var1_normalpriors_notransform";
+simulation = "total_sir_N=40_threads=1_var1_correctunits_globaltheta";
 
 # plot 
 inference_obj = deserialize("simulations/"*simulation*".jls")
