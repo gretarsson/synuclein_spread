@@ -50,20 +50,22 @@ idxs = findall(idxs);
 N = length(idxs);
 #N = size(data)[1];
 display("N = $(N)")
-u0 = [0. for _ in 1:(2*N)];
+u0 = [0.01 for _ in 1:(2*N)];
 
 # DEFINE PRIORS
 priors = OrderedDict{Any,Any}( )
-priors["τ"] = truncated(Normal(0,1),lower=0);
 for i in 1:N
-    priors["γ[$(i)]"] = truncated(Normal(0,10),lower=0);
+    priors["τ[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
-#for i in 1:N
-#    #priors["θ[$(i)]"] = truncated(Normal(0,1),lower=0);
-#    priors["θ[$(i)]"] = truncated(Normal(0,10),lower=0);
-#end
-priors["θ"] = truncated(Normal(0,10),lower=0);
-priors["ϵ"] = truncated(Normal(0,1),lower=0);
+for i in 1:N
+    priors["γ[$(i)]"] = truncated(Normal(0,1),lower=0);
+end
+for i in 1:N
+    #priors["θ[$(i)]"] = truncated(Normal(0,1),lower=0);
+    priors["θ[$(i)]"] = truncated(Normal(0,1),lower=0);
+end
+#priors["θ"] = truncated(Normal(0,10),lower=0);
+#priors["ϵ"] = truncated(Normal(0,1),lower=0);
 #priors["ϵ"] = LogNormal(0,1);
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0,upper=1);
@@ -71,7 +73,7 @@ priors["seed"] = truncated(Normal(0,0.1),lower=0,upper=1);
 # parameter refactorization
 #factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]...,[1 for _ in 1:N]..., 1]
 #factors = [[1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.]
-factors = [1/100, [1 for _ in 1:N]..., 1., 1/100]
+factors = [[1/100 for _ in 1:N]..., [10 for _ in 1:N]..., [10. for _ in 1:N]...]
 
 
 # INFER
@@ -84,7 +86,7 @@ inference = infer(ode,
                 u0=u0,
                 idxs=idxs,
                 n_threads=n_threads,
-                bayesian_seed=true,
+                bayesian_seed=false,
                 seed_value=0.01,
                 alg=Tsit5(),
                 abstol=1e-6,
@@ -97,5 +99,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_correctunits_globaltheta.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_correctunits_decoupled.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
