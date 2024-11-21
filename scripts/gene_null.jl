@@ -3,21 +3,27 @@ using Serialization
 include("helpers.jl");
 
 # read the gene anlysis results
-file_name = "gene_significance_d"
-counts, labeled_counts, S, mode_significant = deserialize("simulations/"*file_name*".jls")  
+file_name = "null_β"
+counts, labeled_counts, S, _ = deserialize("simulations/"*file_name*".jls")  
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
 
 # Create the histogram
 all_labeled_counts = Dict(label => get(labeled_counts, label, 0) for label in gene_labels)  # add count of genes with no significance
 portions = Dict(key => value / S for (key,value) in all_labeled_counts)
+
+# ----------------------
 num_bins = ceil(Int, sqrt(length(all_labeled_counts)))
 hist = histogram(portions, bins=num_bins, 
     xlabel="Significance portion (S=$(S))", 
     ylabel="Frequency", 
-    title="Number of times gene is found significant", 
-    yscale=:log10,
+    title="Null distribution", 
+    yscale=:identity,
     legend=false);
+
+# Kernel Density
+pdf = kde(collect(values(portions)))
+Plots.plot!(pdf,linewidth=2,color=:red)
 
 # Display the sorted labels and their counts
 sorted_labels = sort(collect(labeled_counts), by=x->x[2], rev=false);
