@@ -11,15 +11,15 @@ We save the number of occurences of each significant gene in a dictionary and sa
 gene_labels = readdlm("data/avg_Pangea_exp.csv",',')[1,2:end];  # names of genes
 # pick simulation and parameter
 simulation = "simulations/total_death_simplifiedii_N=448_threads=1_var1_normalpriors.jls";
-parameter = "β";
-file_name = "null";
-S = 10000  # number of iterations
+parameter = "d+β";
+file_name = "gene_significance";
+S = 1000  # number of iterations
 
 # Find significant genes in each iterate from posterior
 significants = Vector{Any}(undef, S);
 @showprogress Threads.@threads for s in 1:S
     # Perform gene analysis
-    r2s, pvals, significant, gene_labels = gene_analysis(simulation, parameter; mode=false, show=false, null=true)
+    r2s, pvals, significant, gene_labels = gene_analysis(simulation, parameter; mode=false, show=false, null=false)
     significants[s] = significant
 end
 
