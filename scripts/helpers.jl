@@ -1385,7 +1385,12 @@ function gene_analysis(simulation, parameter_symbol; mode=true, show=false, alph
 
     # shuffle gene matrix if null
     if null
-        gene_matrix = shuffle(gene_matrix)
+        # Shuffle each column (gene) independently
+        shuffled_gene_data = similar(gene_matrix)  # Create a matrix of the same size
+        for g in 1:size(gene_matrix)[2]
+            shuffled_gene_data[:, g] = shuffle(gene_matrix[:, g])
+        end
+        gene_matrix = shuffled_gene_data
     end
 
     # do multiple linear regression over genes
