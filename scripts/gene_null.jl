@@ -47,4 +47,4 @@ display("Total number of significant genes: $(length(sorted_labels))")
 
 # Show the plot
 display(current())
-Plots.savefig(hist,"figures/gene_analysis/histogram_"*file_name*".pdf")
+Plots.savefig(hist,"figures/gene_analysis/histogram_big_"*file_name*".pdf")
