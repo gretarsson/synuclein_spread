@@ -346,16 +346,16 @@ end
 function sir(du,u,p,t;L=W,factors=(1.,1.))
     W,N = L
     p = factors .* p
-    τ = p[1]
-    γ = p[2:(N+1)]
-    θ = p[(N+2)]
+    τ = p[1:N]
+    γ = p[(N+1):(2*N)]
+    θ = p[(2*N+1):(3*N)]
     #ϵ = p[end]
 
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
     #du[1:N] .= ϵ*W*x .* (100 .- y .- x) .+ τ .* x .* (100 .- y .- x) .- (γ .+ θ) .* x   
-    du[1:N] .= τ .* x .* (1 .- y .- x) .- (γ .+ θ) .* x   
+    du[1:N] .= τ .* x .* (100 .- y .- x) .- (γ .+ θ) .* x   
     du[(N+1):(2*N)] .=  θ .* x  
 end
 function death2(du,u,p,t;L=L,factors=(1.,1.))
@@ -644,7 +644,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # Sample to approximate posterior
     if n_threads == 1
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true, initial_params=[0.01 for _ in 1:(2*N+4)])  # time estimated is shown
-        chain = sample(model, NUTS(2000,0.65;adtype=adtype), 1000; progress=true)  
+        chain = sample(model, NUTS(5000,0.65;adtype=adtype), 1000; progress=true)  
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
@@ -787,17 +787,18 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     x = x[nonmissing]
     y = y[nonmissing]
     minxy = min(minimum(x),minimum(y))
-    minxy = 1e-5
     if plotscale==log10 && ((sum(x .== 0) + sum(y .== 0)) > 0)  # if zeros present, add the smallest number in plot
-        minx = minimum(x[x.>0])
-        miny = minimum(y[y.>0])
-        minxy = min(minx, miny)
+        #minx = minimum(x[x.>0])  # change back to this if plots are weird also see below if statemetn
+        #miny = minimum(y[y.>0])
+        #minxy = min(minx, miny)
+        minxy = minimum(x[x.>0])  # change minimum to minimum of data to avoid super low value i.e e-44 from sims
         x = x .+ minxy
         y = y .+ minxy
     end
 
     CairoMakie.scatter!(ax,x,y, alpha=0.5)
     maxxy = max(maximum(x), maximum(y))
+    display(minxy)
     CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
     if !isempty(save_path)
         CairoMakie.save(save_path * "/predicted_observed_mode.png", f)
@@ -815,9 +816,13 @@ function predicted_observed(inference; save_path="", plotscale=log10)
         nonmissing = findall(x .!== missing)
         x = x[nonmissing]
         y = y[nonmissing]
-        if plotscale==log10 && ((sum(x .== 0) + sum(y .== 0)) > 0)  # if zeros present, add the smallest number in plot
+        #if plotscale==log10 && ((sum(x .<= 0) + sum(y .<= 0)) > 0)  # if doesn't work change back to this
+        if plotscale==log10 && ((sum(x .<= 1e-8) + sum(y .<= 1e-8)) > 0)  # if zeros (or very small) present, add the smallest number in plot
+            
             x = x .+ minxy
             y = y .+ minxy
+        else
+            display("hello")
         end
 
         CairoMakie.scatter!(ax,x,y, alpha=0.5)
