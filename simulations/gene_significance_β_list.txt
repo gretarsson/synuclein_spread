@@ -1,1 +1,1 @@
-Lmo4,Lix1,Snca,Ube2d2b,Septin5,Selenow,Slc39a10,Rpl23a,Pgm2l1,Camk2n1,Rimbp2
+Rps27a,Snca,Lmo4,Slc39a10,Septin5,Ube2d2b,Rpl23a,Pgm2l1,Camk2n1,Rimbp2
