@@ -1341,7 +1341,7 @@ function multiple_linear_regression(vect,matr;labels=nothing,alpha=0.05,show=fal
 end
 
 # do full gene analysis, with Holm-Bonferroni correction
-function gene_analysis(simulation, parameter_symbol; mode=true, show=false, alpha=0.05, null=false)
+function gene_analysis(simulation, parameter_symbol::String; mode=true, show=false, alpha=0.05, null=false)
     # read gene data
     gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
     gene_labels = gene_data_full[1,2:end];
@@ -1352,18 +1352,32 @@ function gene_analysis(simulation, parameter_symbol; mode=true, show=false, alph
     # find label indexing per the computational model / structural connectome
     W_labels = readdlm("data/W_labeled.csv",',')[2:end,1];
     W_label_map = dictionary_map(W_labels);
+    N = length(W_labels)
 
     # read the inference file, and find indices for beta and decay parameters 
     inference = deserialize(simulation);
     chain = inference["chain"];
     priors = inference["priors"];
     parameter_names = collect(keys(priors))
-    para_idxs = findall(key -> occursin(parameter_symbol*"[",key), parameter_names)
+    if parameter == "d+β"
+        para_idxs1 = findall(key -> occursin("β[",key), parameter_names)
+        para_idxs2 = findall(key -> occursin("d[",key), parameter_names)
+    else
+        para_idxs = findall(key -> occursin(parameter_symbol*"[",key), parameter_names)
+    end
 
     # find modes of parameters
     if mode
-        mode = posterior_mode(chain)
-        params = mode[para_idxs]
+        if parameter == "d+β"
+            mode = posterior_mode(chain)
+            params = mode[para_idxs1] .+ mode[para_idxs2]
+        else
+            mode = posterior_mode(chain)
+            params = mode[para_idxs]
+        end
+    elseif parameter == "d+β"
+        params_all = Array(sample(chain,1))[1,vcat(para_idxs1,para_idxs2)]
+        params = params_all[1:N] .+ params_all[(N+1):end]
     else
         params = Array(sample(chain,1))[1,para_idxs]
     end

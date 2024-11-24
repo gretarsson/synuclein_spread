@@ -3,10 +3,12 @@ using Serialization
 include("helpers.jl");
 
 # read the gene anlysis results
-file_name = "gene_significance_β"
+file_name = "gene_significance_d+β"
 counts, labeled_counts, S, mode_significant = deserialize("simulations/"*file_name*".jls")  
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
+threshold = 0.0503  # 0.0512 for beta, 0.0503 for d
+S
 
 # Create the histogram
 all_labeled_counts = Dict(label => get(labeled_counts, label, 0) for label in gene_labels)  # add count of genes with no significance
@@ -18,14 +20,33 @@ hist = histogram(portions, bins=num_bins,
     title="Number of times gene is found significant", 
     yscale=:log10,
     legend=false);
+# add threshodl line
+vline!([threshold], color=:red, lw=2, label=false);
 
 # Display the sorted labels and their counts
-sorted_labels = sort(collect(labeled_counts), by=x->x[2], rev=false);
+sorted_labels = sort(collect(portions), by=x->x[2], rev=false);
+significant_labels = []
 println("Labels sorted by counts:")
 for (label, count) in sorted_labels
-    println("$label: $count")
+    if count > threshold
+        println("$label: $count")
+        push!(significant_labels,label)
+    end
 end
-display("Total number of significant genes: $(length(sorted_labels))")
+display("Total number of significant genes: $(length(significant_labels))")
+# save as jls as well as text file
+serialize("simulations/"*file_name*"_list.jls",significant_labels)
+open("simulations/"*file_name*"_list.txt", "w") do file
+    write(file, join(significant_labels, ","))
+end;
+mode_significant_labels = gene_labels[mode_significant];
+display("Total number of mode significant genes: $(length(mode_significant_labels))")
+open("simulations/"*file_name*"_list_mode.txt", "w") do file
+    write(file, join(mode_significant_labels, ","))
+end;
+# what is the intersection between distribution signifcance and mode significance
+both_labels = intersect(significant_labels, mode_significant_labels)
+
 
 # Show the plot
 display(current())
