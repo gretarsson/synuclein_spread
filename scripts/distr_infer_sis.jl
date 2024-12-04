@@ -56,18 +56,18 @@ u0 = [0.01 for _ in 1:(2*N)];
 priors = OrderedDict{Any,Any}( )
 for i in 1:N
     #priors["τ[$(i)]"] = truncated(Normal(0,1),lower=0);
-    priors["τ[$(i)]"] = LogNormal(0,1);
-    #priors["τ[$(i)]"] = LogUniform(log(0.01),1);
+    #priors["τ[$(i)]"] = LogNormal(0,1);
+    priors["τ[$(i)]"] = LogUniform(1e-4,1e2);
 end
 for i in 1:N
     #priors["γ[$(i)]"] = truncated(Normal(0,1),lower=0);
-    priors["γ[$(i)]"] = LogNormal(0,1);
-    #priors["γ[$(i)]"] = LogUniform(log(1),1);
+    #priors["γ[$(i)]"] = LogNormal(0,1);
+    priors["γ[$(i)]"] = LogUniform(1e-4,1e2);
 end
 for i in 1:N
     #priors["θ[$(i)]"] = truncated(Normal(0,1),lower=0);
-    priors["θ[$(i)]"] = LogNormal(0,1);
-    #priors["θ[$(i)]"] = LogUniform(1e-2,1e2);
+    #priors["θ[$(i)]"] = LogNormal(0,1);
+    priors["θ[$(i)]"] = LogUniform(1e-4,1e2);
 end
 #priors["θ"] = truncated(Normal(0,10),lower=0);
 #priors["ϵ"] = truncated(Normal(0,1),lower=0);
@@ -79,7 +79,7 @@ priors["seed"] = truncated(Normal(0,0.1),lower=0,upper=1);
 #factors = [[1. for _ in 1:N]..., [1 for _ in 1:N]...,[1 for _ in 1:N]..., 1]
 #factors = [[1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.]
 #factors = [[1/100 for _ in 1:N]..., [10 for _ in 1:N]..., [10. for _ in 1:N]...]
-factors = [[1/100 for _ in 1:N]..., [1 for _ in 1:N]..., [1 for _ in 1:N]...]
+factors = [[1 for _ in 1:N]..., [1 for _ in 1:N]..., [1 for _ in 1:N]...]
 
 
 # INFER
