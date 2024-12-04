@@ -1,6 +1,6 @@
 using Turing
 using Distributed
-addprocs(0)
+addprocs(4)
 
 # instantiate and precompile environment in all processes
 @everywhere begin
@@ -23,7 +23,7 @@ Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
 ode = death_simplifiedii;
-n_threads = 1;
+n_threads = 4;
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
@@ -66,7 +66,7 @@ for i in 1:N
     priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 for i in 1:N
-    priors["d[$(i)]"] = truncated(Normal(0,1), upper=0);
+    priors["d[$(i)]"] = Normal(0,1);
 end
 priors["γ"] = truncated(Normal(0,0.1),lower=0);
 priors["σ"] = LogNormal(0,1);
@@ -118,5 +118,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_normalpriors_negonly.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_normalpriors.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)

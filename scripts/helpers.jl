@@ -586,7 +586,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         end
 
         # Simulate diffusion model 
-        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=5000)
+        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=6000)
         #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
         #try
         #    predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=10000)
@@ -644,7 +644,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # Sample to approximate posterior
     if n_threads == 1
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true, initial_params=[0.01 for _ in 1:(2*N+4)])  # time estimated is shown
-        chain = sample(model, NUTS(5000,0.65;adtype=adtype), 1000; progress=true)  
+        chain = sample(model, NUTS(10000,0.65;adtype=adtype), 1000; progress=true)  
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)

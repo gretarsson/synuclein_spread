@@ -57,17 +57,17 @@ priors = OrderedDict{Any,Any}( )
 for i in 1:N
     #priors["τ[$(i)]"] = truncated(Normal(0,1),lower=0);
     #priors["τ[$(i)]"] = LogNormal(0,1);
-    priors["τ[$(i)]"] = LogUniform(1e-4,1e2);
+    priors["τ[$(i)]"] = LogUniform(1e-6,1e2);
 end
 for i in 1:N
     #priors["γ[$(i)]"] = truncated(Normal(0,1),lower=0);
     #priors["γ[$(i)]"] = LogNormal(0,1);
-    priors["γ[$(i)]"] = LogUniform(1e-4,1e2);
+    priors["γ[$(i)]"] = LogUniform(1e-6,1e2);
 end
 for i in 1:N
     #priors["θ[$(i)]"] = truncated(Normal(0,1),lower=0);
     #priors["θ[$(i)]"] = LogNormal(0,1);
-    priors["θ[$(i)]"] = LogUniform(1e-4,1e2);
+    priors["θ[$(i)]"] = LogUniform(1e-6,1e2);
 end
 #priors["θ"] = truncated(Normal(0,10),lower=0);
 #priors["ϵ"] = truncated(Normal(0,1),lower=0);
@@ -105,5 +105,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_correctunits_decoupled.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_correctunits_normalpriors_decoupled.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
