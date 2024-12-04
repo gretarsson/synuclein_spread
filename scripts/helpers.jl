@@ -798,7 +798,6 @@ function predicted_observed(inference; save_path="", plotscale=log10)
 
     CairoMakie.scatter!(ax,x,y, alpha=0.5)
     maxxy = max(maximum(x), maximum(y))
-    display(minxy)
     CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
     if !isempty(save_path)
         CairoMakie.save(save_path * "/predicted_observed_mode.png", f)
@@ -818,11 +817,8 @@ function predicted_observed(inference; save_path="", plotscale=log10)
         y = y[nonmissing]
         #if plotscale==log10 && ((sum(x .<= 0) + sum(y .<= 0)) > 0)  # if doesn't work change back to this
         if plotscale==log10 && ((sum(x .<= 1e-8) + sum(y .<= 1e-8)) > 0)  # if zeros (or very small) present, add the smallest number in plot
-            
             x = x .+ minxy
             y = y .+ minxy
-        else
-            display("hello")
         end
 
         CairoMakie.scatter!(ax,x,y, alpha=0.5)
