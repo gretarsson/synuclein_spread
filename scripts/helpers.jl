@@ -349,13 +349,14 @@ function sir(du,u,p,t;L=W,factors=(1.,1.))
     τ = p[1:N]
     γ = p[(N+1):(2*N)]
     θ = p[(2*N+1):(3*N)]
+    M = p[(3*N+1):(4*N)]
     #ϵ = p[end]
 
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
     #du[1:N] .= ϵ*W*x .* (100 .- y .- x) .+ τ .* x .* (100 .- y .- x) .- (γ .+ θ) .* x   
-    du[1:N] .= τ .* x .* (100 .- y .- x) .- (γ .+ θ) .* x   
+    du[1:N] .= τ .* x .* (M .- y .- x) .- (γ .+ θ) .* x   
     du[(N+1):(2*N)] .=  θ .* x  
 end
 function death2(du,u,p,t;L=L,factors=(1.,1.))
