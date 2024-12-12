@@ -12,14 +12,15 @@ gene_labels = readdlm("data/avg_Pangea_exp.csv",',')[1,2:end];  # names of genes
 # pick simulation and parameter
 simulation = "simulations/total_death_simplifiedii_N=448_threads=4_var1_normalpriors.jls";
 parameter = "d";
-file_name = "gene_significance";
-S = 1000  # number of iterations
+file_name = "null_new";
+S = 1000;  # number of iterations
+null = true;
 
 # Find significant genes in each iterate from posterior
 significants = Vector{Any}(undef, S);
 @showprogress Threads.@threads for s in 1:S
     # Perform gene analysis
-    r2s, pvals, significant, gene_labels = gene_analysis(simulation, parameter; mode=false, show=false, null=false)
+    r2s, pvals, significant, gene_labels = gene_analysis(simulation, parameter; mode=false, show=false, null=null)
     significants[s] = significant
 end
 
@@ -36,4 +37,4 @@ labeled_counts = Dict(gene_labels[k] => counts[k] for k in keys(counts));
 _, _, mode_significant, _ = gene_analysis(simulation,parameter;mode=true,show=false);
 
 # save
-serialize("simulations/"*file_name*"_"*parameter*".jls", (counts,labeled_counts,S,mode_significant));
+serialize("simulations/"*file_name*"_"*parameter*".jls", (counts,labeled_counts,S,mode_significant,significants));

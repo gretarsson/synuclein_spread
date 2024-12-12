@@ -1315,7 +1315,7 @@ end
 
 
 # do multiple linear progression, show will display significant results after Bonferroni correction
-function multiple_linear_regression(vect,matr;labels=nothing,alpha=0.05,show=false,null=false)
+function multiple_linear_regression(vect,matr;labels=nothing,alpha=0.05,show=false)
     # do linear regression with Bonferroni
     alpha = 0.05  # significance threshold before correction
     lms = []
@@ -1402,11 +1402,16 @@ function gene_analysis(simulation, parameter_symbol::String; mode=true, show=fal
     # shuffle gene matrix if null
     if null
         # Shuffle each column (gene) independently
-        shuffled_gene_data = similar(gene_matrix)  # Create a matrix of the same size
-        for g in 1:size(gene_matrix)[2]
-            shuffled_gene_data[:, g] = shuffle(gene_matrix[:, g])
-        end
-        gene_matrix = shuffled_gene_data
+        #shuffled_gene_data = similar(gene_matrix)  # Create a matrix of the same size
+        #for g in 1:size(gene_matrix)[2]
+        #    shuffled_gene_data[:, g] = shuffle(gene_matrix[:, g])
+        #end
+        #gene_matrix = shuffled_gene_data
+        # Shuffle all the same regions for each gene
+        gene_matrix = gene_matrix[shuffle(1:size(gene_matrix, 1)), :]
+        # Shuffle entire matrix
+        #gene_matrix = Random.shuffle(gene_matrix)
+        #para_vector = shuffle(para_vector)
     end
 
     # do multiple linear regression over genes
@@ -1414,17 +1419,18 @@ function gene_analysis(simulation, parameter_symbol::String; mode=true, show=fal
 
     # Holm-Bonferroni correction (less conservative than Bonferroni)
     r2s = r2.(lms);
-    r2_inds = reverse(sortperm(r2s));
     p_inds = sortperm(pvals);
     significant = []
-    for i in p_inds
-        if pvals[i] < alpha / (N_genes - (i-1))
-            push!(significant,i)
+    for (k,ind) in enumerate(p_inds)
+        if pvals[ind] <= alpha / (N_genes - (k-1))
+            push!(significant,ind)
             if show
-                println("R^2: $(r2s[i]), corr p-value $(pvals[i]), gene name: $(gene_labels[i])")
+                println("R^2: $(r2s[ind]), corr p-value $(pvals[ind]), gene name: $(gene_labels[ind])")
                 #display(Plots.scatter(gene_matrix[:,i],para_vector;title="$(gene_labels[i])"))
             end
+        else
+            break
         end
     end
-    return (r2s,pvals,significant, gene_labels)
+    return (r2s,pvals,significant,gene_labels)
 end
