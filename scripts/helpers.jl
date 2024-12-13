@@ -588,21 +588,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
         # Simulate diffusion model 
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=6000)
-        #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol)
-        #try
-        #    predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=10000)
-        #    # Check for solver failure indirectly via the result size
-        #    if size(predicted)[2] < size(timepointss)[1]  # Check if solution is empty or contains NaNs
-        #        println("Error: Nan of empty solution.")
-        #        Turing.@addlogprob!(-Inf)  # Set log-likelihood to -Inf if solver fails
-        #        return  # Exit early if solver fails
-        #    end
-        #catch e
-        #    Turing.@addlogprob!(-Inf)
-        #    println("Error: DifferentialEquations.jl encountered an error.")
-        #    println("Error message: ", e)
-        #    return
-        #end
 
         # pick out the variables of interest (ignore auxiliary variables)
         predicted = predicted[sol_idxs,:]
@@ -610,11 +595,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         # package predictions to match observation (when vectorizing data)
         predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
         predicted = predicted[nonmissing]
-
-        #data ~ arraydist([ truncated(Normal(predicted[i],σ),lower=0) for i in 1:size(predicted)[1] ]) 
-        #ϵ = 1e-6
-        #predicted = clamp.(predicted, ϵ, Inf)
-        #data ~ MvNormal(log.(predicted),σ*I) 
         data ~ MvNormal(predicted,σ^2*I) 
         return nothing
     end
@@ -648,7 +628,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         chain = sample(model, NUTS(10000,0.65;adtype=adtype), 1000; progress=true)  
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
-        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
+        chain = sample(model, NUTS(10000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
         #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
     end
 
@@ -1418,12 +1398,14 @@ function gene_analysis(simulation, parameter_symbol::String; mode=true, show=fal
     lms,pvals = multiple_linear_regression(para_vector,gene_matrix;labels=gene_labels,alpha=alpha,show=false);
 
     # Holm-Bonferroni correction (less conservative than Bonferroni)
+    lmss = []
     r2s = r2.(lms);
     p_inds = sortperm(pvals);
     significant = []
     for (k,ind) in enumerate(p_inds)
         if pvals[ind] <= alpha / (N_genes - (k-1))
             push!(significant,ind)
+            push!(lmss,lms[ind])
             if show
                 println("R^2: $(r2s[ind]), corr p-value $(pvals[ind]), gene name: $(gene_labels[ind])")
                 #display(Plots.scatter(gene_matrix[:,i],para_vector;title="$(gene_labels[i])"))
@@ -1432,5 +1414,19 @@ function gene_analysis(simulation, parameter_symbol::String; mode=true, show=fal
             break
         end
     end
-    return (r2s,pvals,significant,gene_labels)
+    return (lmss,pvals,significant,gene_labels)
+end
+
+
+function get_rvalue(model)
+    # Calculate R-squared
+    r_squared = GLM.r2(model)
+    
+    # Get the slope of the model
+    slope = GLM.coef(model)[2]
+
+    # Calculate r-value
+    r_value = sqrt(r_squared) * sign(slope)
+    
+    return r_value
 end
