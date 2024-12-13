@@ -7,7 +7,7 @@ file_name = "gene_significance_d"
 counts, labeled_counts, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
-threshold = 0.001  # 0.0512 for beta, 0.001 for d
+threshold = 0.081  # 0.0512 for beta, 0.001 for d
 S
 
 # Create the histogram
