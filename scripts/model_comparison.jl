@@ -6,7 +6,7 @@ include("helpers.jl");
 simulation_diffusion = "total_diffusion_N=448_threads=4_var1_normalpriors";
 simulation_aggregation = "total_aggregation_N=448_threads=4_var1_normalpriors";
 simulation_decay = "total_death_N=448_threads=4_var1_normalpriors";
-simulation_decayii = "total_death_simplifiedii_N=448_threads=1_var1_normalpriors";
+simulation_decayii = "total_death_simplifiedii_N=448_threads=1_var1_truncated_decay";
 simulations = [simulation_diffusion, simulation_aggregation, simulation_decay, simulation_decayii];
 #simulations = [simulation_aggregation];
 inferences = [];
