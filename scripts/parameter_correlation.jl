@@ -6,8 +6,8 @@ include("helpers.jl");
 #=
 Here we look at correlations in the posterior distribution between parameters
 =#
-folder_name = "death_simplifiedii"
-simulation = "simulations/total_death_simplifiedii_N=448_threads=1_var1_normalpriors.jls"
+folder_name = "death_simplifiediii"
+simulation = "simulations/total_death_simplifiediii_N=40_threads=1_var1.jls"
 
 # create directory to save figures in
 save_path = "figures/posterior_correlation/"*folder_name
@@ -37,7 +37,7 @@ for i in 1:length(priors.keys)
         append!(model_par_idxs,i)
     end
 end
-model_par = "d[";
+model_par = "γ[";
 inference = deserialize(simulation);
 chain = inference["chain"];
 priors = inference["priors"];
@@ -98,7 +98,7 @@ Plots.savefig(p, "figures/posterior_correlation/"*folder_name*"/all_regions_mode
 # find indices of beta and decay parameters in chain
 parameter_names = collect(keys(priors))
 beta_idxs = findall(key -> occursin("β[",key), parameter_names)
-deca_idxs = findall(key -> occursin("d[",key), parameter_names)
+deca_idxs = findall(key -> occursin("γ[",key), parameter_names)
 
 # sample from the posterior
 S = 1000;

@@ -4,16 +4,17 @@ using QuadGK
 include("helpers.jl");
 
 # read the gene anlysis results
-file_name = "null_β"
-counts, labeled_counts, rs, labeled_rs, S, _, significants = deserialize("simulations/"*file_name*".jls")  
+file_name = "null_d"
+#counts, labeled_counts, rs, labeled_rs, S, _, significants = deserialize("simulations/"*file_name*".jls")  
+counts, labeled_counts, S, _, significants = deserialize("simulations/"*file_name*".jls")  
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
 S
 
 # Create the histogram
-#all_labeled_counts = Dict(label => get(labeled_counts, label, 0) for label in gene_labels)  # add count of genes with no significance
-#portions = Dict(key => value / S for (key,value) in all_labeled_counts)
-portions = [length(significant) / S for significant in significants]  # count #signifcant genes in each run
+all_labeled_counts = Dict(label => get(labeled_counts, label, 0) for label in gene_labels)  # add count of genes with no significance
+portions = Dict(key => value / S for (key,value) in all_labeled_counts)
+#portions = [length(significant) / S for significant in significants]  # count #signifcant genes in each run
 
 # ----------------------
 num_bins = ceil(Int, sqrt(length(all_labeled_counts)))
@@ -26,7 +27,7 @@ hist = histogram(portions, bins=num_bins,
     legend=true);
 
 # Calculate the 95th percentile
-alpha = 0.05 / length(gene_labels)
+alpha = 0.001 / length(gene_labels)
 upper_95_percentile = quantile(collect(values(portions)), 1-alpha)
 println("The significance threshold is $(upper_95_percentile)")
 

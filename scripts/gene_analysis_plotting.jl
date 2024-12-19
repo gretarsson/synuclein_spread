@@ -3,7 +3,7 @@ using Serialization, CSV
 include("helpers.jl");
 
 # read the gene anlysis results
-file_name = "gene_significance_trunc_d"
+file_name = "gene_significance_β"
 counts, labeled_counts, rs, labeled_rs, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
 #counts, labeled_counts, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
@@ -63,8 +63,8 @@ for (i,label) in enumerate(significant_labels)
 end
 #gene_results = DataFrame(hcat(significant_labels,rs_means,rs_vars,significance_portions),["Label","r, mean", "r, variance","portion"])
 #gene_results = DataFrame(hcat(significant_labels,rs_means,significance_portions),["gene","r","portions"])
-gene_results = DataFrame(hcat(significant_labels,rs_means),["gene","r"])
-CSV.write("simulations/gene_correlation_truncated_decay.csv",gene_results)
+gene_results = DataFrame(hcat(significant_labels,rs_means,significance_portions),["gene","r","portion"])
+CSV.write("simulations/gene_correlation_beta.csv",gene_results)
 
 # Show the plot
 display(current())

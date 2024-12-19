@@ -6,8 +6,8 @@ include("helpers.jl");
 #=
 Here we look at correlations in the posterior distribution between parameters
 =#
-folder_name = "death_simplifiedii"
-simulation = "simulations/total_death_simplifiedii_N=448_threads=1_var1_normalpriors.jls"
+folder_name = "death_simplifiediii"
+simulation = "simulations/total_death_simplifiedii_N=448_threads=4_var1_normalpriors.jls"
 # create directory to save figures in
 
 # find label indexing per the computational model / structural connectome
