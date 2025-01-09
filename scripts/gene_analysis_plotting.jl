@@ -3,8 +3,8 @@ using Serialization, CSV
 include("helpers.jl");
 
 # read the gene anlysis results
-file_name = "gene_significance_β"
-counts, labeled_counts, rs, labeled_rs, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
+file_name = "gene_significance_d"
+counts, labeled_counts, rs, labeled_rs, pvals, labeled_pvals, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
 #counts, labeled_counts, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
@@ -52,19 +52,25 @@ both_labels = intersect(significant_labels, mode_significant_labels)
 # create a CSV file with labels, r-values, and significance portion
 labeled_rs_mean = Dict(key => mean(value) for (key,value) in labeled_rs) 
 labeled_rs_vars = Dict(key => var(value) for (key,value) in labeled_rs) 
+labeled_pval_mean = Dict(key => mean(value) for (key,value) in labeled_pvals) 
+labeled_pval_vars = Dict(key => var(value) for (key,value) in labeled_pvals) 
 labeled_portions = Dict(key => value / S for (key,value) in labeled_counts)
 significance_portions = []
+pval_means = []
+pval_vars = []
 rs_means = []
 rs_vars = []
 for (i,label) in enumerate(significant_labels)
     push!(significance_portions, labeled_portions[label])
     push!(rs_means,labeled_rs_mean[label])
     push!(rs_vars,labeled_rs_vars[label])
+    push!(pval_means,labeled_pval_mean[label])
+    push!(pval_vars,labeled_pval_vars[label])
 end
 #gene_results = DataFrame(hcat(significant_labels,rs_means,rs_vars,significance_portions),["Label","r, mean", "r, variance","portion"])
 #gene_results = DataFrame(hcat(significant_labels,rs_means,significance_portions),["gene","r","portions"])
-gene_results = DataFrame(hcat(significant_labels,rs_means,significance_portions),["gene","r","portion"])
-CSV.write("simulations/gene_correlation_beta.csv",gene_results)
+gene_results = DataFrame(hcat(significant_labels,rs_means, rs_vars, pval_means, pval_vars, significance_portions),["gene","r mean", "r variance", "pval mean", "pval variance", "portion"])
+CSV.write("simulations/gene_correlation_$(file_name[end]).csv",gene_results)
 
 # Show the plot
 display(current())

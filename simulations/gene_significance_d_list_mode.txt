@@ -1,1 +1,1 @@
-Ccdc136,Dact2,Col6a1,Mcm3ap,Nt5dc3,Gsg1l,Kndc1,Adcy8,Nek1,Gdf11,Arpp19,Psd,Zbtb17,Ntng1,Cracd,Enah,Crip2,Ngef,Rbp4,Nkx1-2,Htr2a,Lrrtm1,Camk1g,Spock2,Kcnh4
+Ccdc136,Dact2,Col6a1,Mcm3ap,Nek1,Nt5dc3,Gdf11,Gsg1l,Kndc1,Htr2a,Adcy8,Arpp19,Psd,Ntng1,Cracd
