@@ -22,16 +22,18 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = death_simplifiedii;
+ode = death_simplifiediii;
 n_threads = 1;
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
+_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+idxs = findall(idxs);
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-#N = length(idxs);
-N = size(data)[1];
+N = length(idxs);
+#N = size(data)[1];
 display("N = $(N)")
 u0 = [0. for _ in 1:(2*N)];
 
@@ -42,14 +44,15 @@ for i in 1:N
     priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 for i in 1:N
-    priors["d[$(i)]"] = truncated(Normal(0,1),upper=0);
+    priors["γ[$(i)]"] = truncated(Normal(0,0.1),lower=0);
 end
-priors["γ"] = truncated(Normal(0,0.1),lower=0);
+#priors["γ"] = truncated(Normal(0,0.1),lower=0);
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
-
+#
 # parameter refactorization
-factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]..., 1.];  # death
+factors = [1., 1., [1 for _ in 1:N]..., [1 for _ in 1:N]...];  # death
+
 
 # INFER
 inference = infer(ode, 
@@ -59,6 +62,7 @@ inference = infer(ode,
                 "data/W_labeled.csv"; 
                 factors=factors,
                 u0=u0,
+                idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 seed_value=100,
@@ -73,5 +77,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_truncated_decay.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
