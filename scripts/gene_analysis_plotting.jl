@@ -3,12 +3,12 @@ using Serialization, CSV
 include("helpers.jl");
 
 # read the gene anlysis results
-file_name = "gene_significance_d"
+file_name = "gene_significance_β"
 counts, labeled_counts, rs, labeled_rs, pvals, labeled_pvals, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
 #counts, labeled_counts, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
-threshold = 0.0002  # 0.001 for beta, 0.0002 for d
+threshold = 0.001  # 0.001 for beta, 0.0002 for d
 S
 
 # Create the histogram
