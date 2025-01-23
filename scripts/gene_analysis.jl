@@ -11,9 +11,9 @@ We save the number of occurences of each significant gene in a dictionary and sa
 gene_labels = readdlm("data/avg_Pangea_exp.csv",',')[1,2:end];  # names of genes
 # pick simulation and parameter
 simulation = "simulations/total_death_simplifiedii_N=448_threads=1_var1_normalpriors.jls";
-parameter = "β";
-file_name = "gene_significance_null";
-S = 1000;  # number of iterations
+parameter = "d";
+file_name = "null";
+S = 10000;  # number of iterations
 null = true;
 
 # Find significant genes in each iterate from posterior
