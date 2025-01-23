@@ -1340,114 +1340,114 @@ function multiple_linear_regression(vect,matr;labels=nothing,alpha=0.05,show=fal
 end
 
 # do full gene analysis, with Holm-Bonferroni correction
+#function gene_analysis(simulation, parameter_symbol::String; mode=true, show=false, alpha=0.05, null=false, save_plots=false)
+#    # read gene data
+#    gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
+#    gene_labels = gene_data_full[1,2:end];
+#    gene_region_labels = identity.(gene_data_full[2:end,1])
+#    gene_data = gene_data_full[2:end,2:end];  # region x gene
+#    N_genes = size(gene_data)[2];
+#
+#    # find label indexing per the computational model / structural connectome
+#    W_labels = readdlm("data/W_labeled.csv",',')[2:end,1];
+#    W_label_map = dictionary_map(W_labels);
+#    N = length(W_labels)
+#
+#    # read the inference file, and find indices for beta and decay parameters 
+#    inference = deserialize(simulation);
+#    chain = inference["chain"];
+#    priors = inference["priors"];
+#    parameter_names = collect(keys(priors))
+#    if parameter == "d+β"
+#        para_idxs1 = findall(key -> occursin("β[",key), parameter_names)
+#        para_idxs2 = findall(key -> occursin("d[",key), parameter_names)
+#    else
+#        para_idxs = findall(key -> occursin(parameter_symbol*"[",key), parameter_names)
+#    end
+#
+#    # find modes of parameters
+#    if mode
+#        if parameter == "d+β"
+#            mode = posterior_mode(chain)
+#            params = mode[para_idxs1] .+ mode[para_idxs2]
+#        else
+#            mode = posterior_mode(chain)
+#            params = mode[para_idxs]
+#        end
+#    elseif parameter == "d+β"
+#        params_all = Array(sample(chain,1))[1,vcat(para_idxs1,para_idxs2)]
+#        params = params_all[1:N] .+ params_all[(N+1):end]
+#    else
+#        params = Array(sample(chain,1))[1,para_idxs]
+#    end
+#
+#    # create a dictionary from gene labels to the connectome labels, and print out number of regions not found in connectome
+#    gene_to_struct = submap(gene_region_labels,W_labels)
+#    #regions_not_found = [];
+#    #for (keys,value) in gene_to_struct
+#    #    if isempty(value)
+#    #        push!(regions_not_found,keys)
+#    #    end
+#    #end
+#    #display("Warning: $(length(regions_not_found)) gene regions not found in connectome.")
+#
+#    # CORRELATION ANALYISIS
+#    # ---------------------------------------------------------------------------------------
+#    # create vector with parameter values in same order as genes, and average over regions in gene_to_struct[region]
+#    para_vector = create_parameter_vector_genes(params,gene_to_struct,gene_region_labels,W_label_map)
+#
+#    # regions that are not found are "missing", find regions that we do have
+#    nonmissing = findall(e -> !ismissing(e), para_vector)
+#    para_vector = identity.(para_vector[nonmissing])
+#    gene_matrix = identity.(gene_data[nonmissing,:])
+#
+#    # shuffle gene matrix if null
+#    if null
+#        # Shuffle each column (gene) independently
+#        #shuffled_gene_data = similar(gene_matrix)  # Create a matrix of the same size
+#        #for g in 1:size(gene_matrix)[2]
+#        #    shuffled_gene_data[:, g] = shuffle(gene_matrix[:, g])
+#        #end
+#        #gene_matrix = shuffled_gene_data
+#        # Shuffle all the same regions for each gene
+#        gene_matrix = gene_matrix[shuffle(1:size(gene_matrix, 1)), :]
+#        # Shuffle entire matrix
+#        #gene_matrix = Random.shuffle(gene_matrix)
+#        #para_vector = shuffle(para_vector)
+#    end
+#
+#    # do multiple linear regression over genes
+#    lms,pvals = multiple_linear_regression(para_vector,gene_matrix;labels=gene_labels,alpha=alpha,show=false, save_plots=save_plots);
+#
+#    # Holm-Bonferroni correction (less conservative than Bonferroni)
+#    lmss = []
+#    r2s = r2.(lms);
+#    p_inds = sortperm(pvals);
+#    significant = []
+#    for (k,ind) in enumerate(p_inds)
+#        push!(significant,ind)
+#        push!(lmss,lms[ind])
+#        if show
+#            println("R^2: $(r2s[ind]), corr p-value $(pvals[ind]), gene name: $(gene_labels[ind])")
+#            #display(Plots.scatter(gene_matrix[:,i],para_vector;title="$(gene_labels[i])"))
+#        end
+#        # only store significant results (OLD)
+#        #if pvals[ind] <= alpha / (N_genes - (k-1))
+#        #    push!(significant,ind)
+#        #    push!(lmss,lms[ind])
+#        #    if show
+#        #        println("R^2: $(r2s[ind]), corr p-value $(pvals[ind]), gene name: $(gene_labels[ind])")
+#        #        #display(Plots.scatter(gene_matrix[:,i],para_vector;title="$(gene_labels[i])"))
+#        #    end
+#        #else
+#        #    break
+#        #end
+#    end
+#    return (lmss,pvals,significant,gene_labels)
+#end
+
+
 function gene_analysis(simulation, parameter_symbol::String; mode=true, show=false, alpha=0.05, null=false, save_plots=false)
-    # read gene data
-    gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
-    gene_labels = gene_data_full[1,2:end];
-    gene_region_labels = identity.(gene_data_full[2:end,1])
-    gene_data = gene_data_full[2:end,2:end];  # region x gene
-    N_genes = size(gene_data)[2];
-
-    # find label indexing per the computational model / structural connectome
-    W_labels = readdlm("data/W_labeled.csv",',')[2:end,1];
-    W_label_map = dictionary_map(W_labels);
-    N = length(W_labels)
-
-    # read the inference file, and find indices for beta and decay parameters 
-    inference = deserialize(simulation);
-    chain = inference["chain"];
-    priors = inference["priors"];
-    parameter_names = collect(keys(priors))
-    if parameter == "d+β"
-        para_idxs1 = findall(key -> occursin("β[",key), parameter_names)
-        para_idxs2 = findall(key -> occursin("d[",key), parameter_names)
-    else
-        para_idxs = findall(key -> occursin(parameter_symbol*"[",key), parameter_names)
-    end
-
-    # find modes of parameters
-    if mode
-        if parameter == "d+β"
-            mode = posterior_mode(chain)
-            params = mode[para_idxs1] .+ mode[para_idxs2]
-        else
-            mode = posterior_mode(chain)
-            params = mode[para_idxs]
-        end
-    elseif parameter == "d+β"
-        params_all = Array(sample(chain,1))[1,vcat(para_idxs1,para_idxs2)]
-        params = params_all[1:N] .+ params_all[(N+1):end]
-    else
-        params = Array(sample(chain,1))[1,para_idxs]
-    end
-
-    # create a dictionary from gene labels to the connectome labels, and print out number of regions not found in connectome
-    gene_to_struct = submap(gene_region_labels,W_labels)
-    #regions_not_found = [];
-    #for (keys,value) in gene_to_struct
-    #    if isempty(value)
-    #        push!(regions_not_found,keys)
-    #    end
-    #end
-    #display("Warning: $(length(regions_not_found)) gene regions not found in connectome.")
-
-    # CORRELATION ANALYISIS
-    # ---------------------------------------------------------------------------------------
-    # create vector with parameter values in same order as genes, and average over regions in gene_to_struct[region]
-    para_vector = create_parameter_vector_genes(params,gene_to_struct,gene_region_labels,W_label_map)
-
-    # regions that are not found are "missing", find regions that we do have
-    nonmissing = findall(e -> !ismissing(e), para_vector)
-    para_vector = identity.(para_vector[nonmissing])
-    gene_matrix = identity.(gene_data[nonmissing,:])
-
-    # shuffle gene matrix if null
-    if null
-        # Shuffle each column (gene) independently
-        #shuffled_gene_data = similar(gene_matrix)  # Create a matrix of the same size
-        #for g in 1:size(gene_matrix)[2]
-        #    shuffled_gene_data[:, g] = shuffle(gene_matrix[:, g])
-        #end
-        #gene_matrix = shuffled_gene_data
-        # Shuffle all the same regions for each gene
-        gene_matrix = gene_matrix[shuffle(1:size(gene_matrix, 1)), :]
-        # Shuffle entire matrix
-        #gene_matrix = Random.shuffle(gene_matrix)
-        #para_vector = shuffle(para_vector)
-    end
-
-    # do multiple linear regression over genes
-    lms,pvals = multiple_linear_regression(para_vector,gene_matrix;labels=gene_labels,alpha=alpha,show=false, save_plots=save_plots);
-
-    # Holm-Bonferroni correction (less conservative than Bonferroni)
-    lmss = []
-    r2s = r2.(lms);
-    p_inds = sortperm(pvals);
-    significant = []
-    for (k,ind) in enumerate(p_inds)
-        push!(significant,ind)
-        push!(lmss,lms[ind])
-        if show
-            println("R^2: $(r2s[ind]), corr p-value $(pvals[ind]), gene name: $(gene_labels[ind])")
-            #display(Plots.scatter(gene_matrix[:,i],para_vector;title="$(gene_labels[i])"))
-        end
-        # only store significant results (OLD)
-        #if pvals[ind] <= alpha / (N_genes - (k-1))
-        #    push!(significant,ind)
-        #    push!(lmss,lms[ind])
-        #    if show
-        #        println("R^2: $(r2s[ind]), corr p-value $(pvals[ind]), gene name: $(gene_labels[ind])")
-        #        #display(Plots.scatter(gene_matrix[:,i],para_vector;title="$(gene_labels[i])"))
-        #    end
-        #else
-        #    break
-        #end
-    end
-    return (lmss,pvals,significant,gene_labels)
-end
-
-
-function gene_analysis2(simulation, parameter_symbol::String; mode=true, show=false, alpha=0.05, null=false, save_plots=false)
     # read gene data
     gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
     gene_labels = gene_data_full[1,2:end];
@@ -1521,7 +1521,7 @@ function get_rvalue(model)
     slope = GLM.coef(model)[2]
 
     # Calculate r-value
-    r_value = sqrt(r_squared) * sign(slope)
+    r_value = sqrt(abs(r_squared)) * sign(slope)
     
     return r_value
 end

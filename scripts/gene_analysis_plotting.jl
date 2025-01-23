@@ -4,11 +4,11 @@ include("helpers.jl");
 
 # read the gene anlysis results
 file_name = "gene_significance_β"
-counts, labeled_counts, rs, labeled_rs, pvals, labeled_pvals, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
+labeled_counts,labeled_rs, labeled_pvals, S = deserialize("simulations/"*file_name*".jls");  
 #counts, labeled_counts, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
-threshold = 0.001  # 0.001 for beta, 0.0002 for d
+threshold = 0.0003  # 0.0003 for beta, 0.0002 for d
 S
 
 # Create the histogram
@@ -18,7 +18,7 @@ num_bins = ceil(Int, sqrt(length(all_labeled_counts)))
 hist = histogram(portions, bins=num_bins, 
     xlabel="Significance portion (S=$(S))", 
     ylabel="Frequency", 
-    title="Number of times gene is found significant", 
+    title="Nummber of times gene is found significant", 
     yscale=:log10,
     legend=false);
 # add threshodl line
@@ -40,13 +40,6 @@ serialize("simulations/"*file_name*"_list.jls",significant_labels)
 open("simulations/"*file_name*"_list.txt", "w") do file
     write(file, join(significant_labels, ","))
 end;
-mode_significant_labels = gene_labels[mode_significant];
-display("Total number of mode significant genes: $(length(mode_significant_labels))")
-open("simulations/"*file_name*"_list_mode.txt", "w") do file
-    write(file, join(mode_significant_labels, ","))
-end;
-# what is the intersection between distribution signifcance and mode significance
-both_labels = intersect(significant_labels, mode_significant_labels)
 
 
 # create a CSV file with labels, r-values, and significance portion
@@ -60,7 +53,7 @@ pval_means = []
 pval_vars = []
 rs_means = []
 rs_vars = []
-for (i,label) in enumerate(significant_labels)
+for (i,label) in enumerate(gene_labels)
     push!(significance_portions, labeled_portions[label])
     push!(rs_means,labeled_rs_mean[label])
     push!(rs_vars,labeled_rs_vars[label])
@@ -69,7 +62,7 @@ for (i,label) in enumerate(significant_labels)
 end
 #gene_results = DataFrame(hcat(significant_labels,rs_means,rs_vars,significance_portions),["Label","r, mean", "r, variance","portion"])
 #gene_results = DataFrame(hcat(significant_labels,rs_means,significance_portions),["gene","r","portions"])
-gene_results = DataFrame(hcat(significant_labels,rs_means, rs_vars, pval_means, pval_vars, significance_portions),["gene","r mean", "r variance", "pval mean", "pval variance", "portion"])
+gene_results = DataFrame(hcat(gene_labels,rs_means, rs_vars, pval_means, pval_vars, significance_portions),["gene","r mean", "r variance", "pval mean", "pval variance", "portion"])
 CSV.write("simulations/gene_correlation_$(file_name[end]).csv",gene_results)
 
 # Show the plot

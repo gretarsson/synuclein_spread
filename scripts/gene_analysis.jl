@@ -11,52 +11,32 @@ We save the number of occurences of each significant gene in a dictionary and sa
 gene_labels = readdlm("data/avg_Pangea_exp.csv",',')[1,2:end];  # names of genes
 # pick simulation and parameter
 simulation = "simulations/total_death_simplifiedii_N=448_threads=4_var1_normalpriors.jls";
-parameter = "d";
-file_name = "null";
+parameter = "β";
+file_name = "gene_significance";
 S = 1000;  # number of iterations
 null = false;
 
 # Find significant genes in each iterate from posterior
-significants = Vector{Any}(undef, S);
-lms = Vector{Any}(undef, S);
-pvals = Vector{Any}(undef, S);
+rs = zeros(length(gene_labels),S);
+pvals = zeros(length(gene_labels),S);
 @showprogress Threads.@threads for s in 1:S
     # Perform gene analysis
-    lm, pval, significant, gene_labels = gene_analysis(simulation, parameter; mode=false, show=false, null=null, save_plots=false)
-    significants[s] = significant
-    lms[s] = lm
-    pvals[s] = pval
+    lm = gene_analysis(simulation, parameter; mode=false, show=false, null=null, save_plots=false)
+    rs[:,s] = get_rvalue.(lm)  # a list of r values from iteration sample s
+    pvals[:,s] = get_pvalue.(lm)  # a list of pvals (uncorrected) from sample s
 end
 
-r = get_rvalue.(lms[1])
-significant = significants[1]
+# get dictionaries for r- and p-values for gene labels
+labeled_rs = Dict(gene_labels[k] => rs[k,:] for k in 1:size(gene_labels)[1]);
+labeled_pvals = Dict(gene_labels[k] => pvals[k,:] for k in 1:size(gene_labels)[1]);
 
-rs = Dict{Int,Vector{Float64}}()
-pvalss = Dict{Int,Vector{Float64}}() 
-for i in 1:S
-    r = get_rvalue.(lms[i])  # a list of r values from iteration i
-    significant = significants[i]  # a list of regions significant at iteration i
-    for (k,region) in enumerate(significant)
-        if haskey(rs,region)
-            push!(rs[region],r[k]) 
-        else
-            rs[region] = [r[k]]
-        end
-        if haskey(pvalss,region)
-            push!(pvalss[region],pvals[i][region]) 
-        else
-            pvalss[region] = [pvals[i][region]]
-        end
-    end
+# do significance tests (Holm-Bonferroni)
+significants = [];  # a list of lists with significant genes
+for s in 1:S
+    significant = holm_bonferroni(pvals[:,s])
+    push!(significants,significant)
 end
-labeled_rs = Dict(gene_labels[k] => rs[k] for k in keys(rs))
-labeled_pvals = Dict(gene_labels[k] => pvalss[k] for k in keys(pvalss))
-for (key,item) in labeled_rs  # check if any gene has positive AND negative r values
-    if abs(sum(sign.(item))) != length(item)
-        println(labeled_rs[key])
-    end
-end
-
+    
 # create dictionary of how many times a gene was significant
 counts = Dict{Int, Int}();
 for vec in significants
@@ -64,10 +44,10 @@ for vec in significants
         counts[num] = get(counts, num, 0) + 1  # Increment the count
     end
 end
-labeled_counts = Dict(gene_labels[k] => counts[k] for k in keys(counts));
-
-# compute significant genes with mode
-_, _, mode_significant, _ = gene_analysis(simulation,parameter;mode=true,show=false);
+labeled_counts = Dict(gene_labels[k] => 0 for k in 1:size(gene_labels)[1]);
+for k in keys(counts)
+    labeled_counts[gene_labels[k]] = counts[k]
+end
 
 # save
-serialize("simulations/"*file_name*"_"*parameter*".jls", (counts,labeled_counts,rs,labeled_rs, pvalss, labeled_pvals, S,mode_significant,significants));
+serialize("simulations/"*file_name*"_"*parameter*".jls", (labeled_counts,labeled_rs,labeled_pvals,S));
