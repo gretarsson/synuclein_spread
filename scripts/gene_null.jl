@@ -6,7 +6,7 @@ include("helpers.jl");
 # read the gene anlysis results
 file_name = "null_d"
 #counts, labeled_counts, rs, labeled_rs, S, _, significants = deserialize("simulations/"*file_name*".jls")  
-counts, labeled_counts, S, _, significants = deserialize("simulations/"*file_name*".jls")  
+counts, labeled_counts, rs, labeled_rs, pvals, labeled_pvals, S, mode_significant = deserialize("simulations/"*file_name*".jls");  
 gene_data_full = readdlm("data/avg_Pangea_exp.csv",',');
 gene_labels = gene_data_full[1,2:end];
 S

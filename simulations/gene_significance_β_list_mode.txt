@@ -1,1 +1,1 @@
-Slc39a10,Lmo4,Arpp19,Rimbp2,Stx1a,Septin5,Cap2,Septin11,Camk2n1,St6gal2,Snca,Ppfia4
+Slc39a10,Lmo4,Rimbp2,Arpp19,Ppfia4,Septin11,Stx1a,Cracd
