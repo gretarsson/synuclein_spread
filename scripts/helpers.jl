@@ -315,6 +315,21 @@ function death_simplifiedii(du,u,p,t;L=L,factors=(1.,1.))
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- β .* y .- d .* y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (1 .- y)  
 end
+function death_simplifiedii_bilateral(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    M = Int(N/2)
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = repeat(p[3:(M+2)],2)
+    d = repeat(p[(M+3):(2*M+2)],2)
+    γ = p[2*M+3]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- β .* y .- d .* y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+end
 function death_simplifiediii(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
     p = factors .* p
@@ -431,6 +446,7 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
             "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2, "death" => death, "sir" => sir, "sis" => sis, 
             "death_simplified" => death_simplified,
             "death_simplifiedii" => death_simplifiedii,
+            "death_simplifiedii_bilateral" => death_simplifiedii_bilateral,
             "death_simplifiediii" => death_simplifiediii)
 
 
@@ -683,6 +699,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                      "sol_idxs" => sol_idxs,
                      "u0" => u0,
                      "L" => L,
+                     "labels" => labels,
                      #"elpd" => elpd,
                      "waic" => waic
                      )
@@ -1557,4 +1574,17 @@ function holm_bonferroni(p_values::Vector{Float64}, alpha::Float64 = 0.05)
     end
     
     return significant_indices
+end
+
+# return only idxs that have a bilateral counterpart in its labels
+function only_bilateral(labels)
+    parsed_labels = [(s[1], s[2:end]) for s in labels]
+    grouped = Dict(base => [side for (side, b) in parsed_labels if b == base] for base in unique(s[2] for s in parsed_labels))
+    missing_twins = filter(base -> length(grouped[base]) != 2, keys(grouped))
+    solo_idxs = []
+    for twin in missing_twins
+        push!(solo_idxs,findall(s -> s[2:end] == twin, labels)[1])
+    end
+    idxs = setdiff(1:448,solo_idxs)
+    return idxs
 end
