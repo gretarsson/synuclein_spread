@@ -14,7 +14,7 @@ gene_labels = readdlm("data/avg_Pangea_exp.csv",',')
 simulation = "simulations/total_death_simplifiedii_N=448_threads=4_var1_normalpriors.jls";
 parameter = "β";
 file_name = "gene_significance";
-S = 1000;  # number of iterations
+S = 10000;  # number of iterations
 null = false;
 
 # Find significant genes in each iterate from posterior
