@@ -9,6 +9,7 @@ We draw from the posterior and compute significance with Holm-Bonferroni for a c
 We save the number of occurences of each significant gene in a dictionary and save it. Also including the number of samples
 =#
 gene_labels = readdlm("data/avg_Pangea_exp.csv",',')[1,2:end];  # names of genes
+gene_labels = readdlm("data/avg_Pangea_exp.csv",',')
 # pick simulation and parameter
 simulation = "simulations/total_death_simplifiedii_N=448_threads=4_var1_normalpriors.jls";
 parameter = "β";

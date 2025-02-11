@@ -31,6 +31,21 @@ data = deserialize("data/total_path_3D.jls");
 _, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 idxs = findall(idxs);
 
+
+
+
+W_file = "data/W_labeled.csv"
+W_labelled = readdlm(W_file,',')
+
+if isempty(idxs)
+    idxs = [i for i in 1:(size(W_labelled)[1] - 1)]
+end
+labels = W_labelled[1,2:end]
+W = W_labelled[2:end,2:end]
+W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum
+L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+
+
 # DIFFUSION, RETRO- AND ANTEROGRADE
 N = length(idxs);
 #N = size(data)[1];
