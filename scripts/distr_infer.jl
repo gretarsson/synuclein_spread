@@ -38,21 +38,6 @@ W_file = "data/W_labeled.csv"
 W_labelled = readdlm(W_file,',')
 labels = W_labelled[1,2:end]
 idxs = only_bilateral(labels)
-#
-#seed_idx = findall(s -> contains(s,"iCP"),labels)
-#labels2 = labels[bi_idxs]
-#for i in 1:222
-#    display("$(labels2[i]) + $(labels2[i+222]) ")
-#end
-#idxs = [[bi_idxs[i] for i in 78:88]...,[bi_idxs[i] for i in (78+222):(88+222)]...]
-#labels2 = labels[idxs]
-#for i in 1:Int(length(labels2)/2)
-#    display("$(labels2[i]) + $(labels2[i+Int(length(labels2)/2)]) ")
-#end
-
-
-
-
 
 W_file = "data/W_labeled.csv"
 W_labelled = readdlm(W_file,',')
@@ -75,19 +60,24 @@ u0 = [0. for _ in 1:(2*N)];
 
 # DEFINE PRIORS
 priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
-priors["α"] = truncated(Normal(0,0.1),lower=0);
+#priors["α"] = truncated(Normal(0,0.1),lower=0);
+for i in 1:M
+    priors["α[$(i)]"] = truncated(Normal(0,1),lower=0);
+end
 for i in 1:M
     priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 for i in 1:M
     priors["d[$(i)]"] = Normal(0,1);
 end
-priors["γ"] = truncated(Normal(0,0.1),lower=0);
+for i in 1:M
+    priors["γ[$(i)]"] = truncated(Normal(0,0.1),lower=0);
+end
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
-factors = [1., 1., [1 for _ in 1:M]..., [1 for _ in 1:M]..., 1];  # death
+factors = [1., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]...];  # death
 
 
 # INFER

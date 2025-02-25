@@ -1588,3 +1588,271 @@ function only_bilateral(labels)
     idxs = setdiff(1:448,solo_idxs)
     return idxs
 end
+
+
+
+# ----------------------------------------------------------------------------------------------------------------------------------------
+# Run whole simulations in one place
+# the Priors dict must contain the ODE parameters in order first, and then σ. Other priors can then follow after, with seed always last.
+# ----------------------------------------------------------------------------------------------------------------------------------------
+function infer_clustering(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, W_file; 
+               u0=[]::Vector{Float64},
+               idxs=Vector{Int}()::Vector{Int},
+               n_threads=1,
+               alg=Tsit5(), 
+               sensealg=ForwardDiffSensitivity(), 
+               adtype=AutoForwardDiff(), 
+               factors=[1.]::Vector{Float64},
+               bayesian_seed=false,
+               seed_region="iCP"::String,
+               seed_value=1.::Float64,
+               sol_idxs=Vector{Int}()::Vector{Int},
+               abstol=1e-10, 
+               reltol=1e-10,
+               benchmark=false,
+               benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
+               test_typestable=false,
+               )
+    # verify that choice of ODE is correct wrp to retro- and anterograde
+    retro_and_antero = false
+    if occursin("2",string(ode))
+        retro_and_antero = true 
+        display("Model includes both retrograde and anterograde transport.")
+    else 
+        display("Model includes only retrograde transport.")
+    end
+    if bayesian_seed
+        display("Model is inferring seeding initial conditions")
+    else
+        display("Model has constant initial conditions")
+    end
+
+    # read structural data 
+    W_labelled = readdlm(W_file,',')
+    if isempty(idxs)
+        idxs = [i for i in 1:(size(W_labelled)[1] - 1)]
+    end
+    W = W_labelled[2:end,2:end]
+    W = W[idxs,idxs]
+    W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum
+    L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+    labels = W_labelled[1,2:end][idxs]
+    seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
+    display("Seed at region $(seed)")
+    N = size(L)[1]
+    if retro_and_antero  # include both Laplacians, if told to
+        Lr = copy(L)
+        La = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  
+        if occursin("death",string(ode)) || occursin("pop",string(ode))
+            L = (La,Lr,N)
+        else
+            L = (La,Lr)
+        end
+    else
+        L = (L,N)
+    end
+    data = data[idxs,:,:]  # subindex data (idxs defaults to all regions unless told otherwise)
+
+    # find number of ode parameters by looking at prior dictionary
+    ks = collect(keys(priors))
+    N_pars = findall(x->x=="σ",ks)[1] - 1
+
+    # Define prob
+    p = zeros(Float64, N_pars)
+    tspan = (timepoints[1],timepoints[end])
+    if string(ode) == "sis" || string(ode) == "sir"
+        for i in 1:N
+            W[i,i] = 0
+        end
+        #W = (Matrix(transpose(W)),N)  # transposing gives bad results
+        L = (Matrix(W),N)  # not transposing gives excellent results
+    end
+    # ------
+    # SDE
+    # ------
+    #function stochastic!(du,u,p,t)
+    #        du[1:N] .= 0.0001
+    #        du[(N+1):(2*N)] .= 0.0001
+    #end
+    #prob = SDEProblem(rhs, stochastic!, u0, tspan, p; alg=alg)
+    # ------
+    # ------
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
+    
+    # prior vector from ordered dic
+    priors_vec = collect(values(priors))
+    if isempty(sol_idxs)
+        sol_idxs = [i for i in 1:N]
+    end
+
+    # reshape data into vector and find indices that are not of type missing
+    N_samples = size(data)[3]
+    vec_data = vec(data)
+    nonmissing = findall(vec_data .!== missing)
+    vec_data = vec_data[nonmissing]
+    vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
+
+    ## make data array with rows that only have their (uniquely sized) nonmissing columns
+    row_data = Vector{Vector{Float64}}([[] for _ in 1:size(data)[1]])
+    row_nonmiss = Vector{Vector{Int}}([[] for _ in 1:size(data)[1]])
+    for i in axes(data,1)
+        data_subarray = vec(data[i,:,:])
+        nonmissing_i = findall(data_subarray .!== missing)
+        row_nonmiss[i] = identity.(nonmissing_i)
+        row_data[i] = identity.(data_subarray[nonmissing_i])
+    end
+
+    # check if N_pars and length(factors) 
+    if N_pars !== length(factors)
+        display("Warning: The factor vector has length $(length(factors)) but the number of parameters is $(N_pars) according to the prior dictionary. Quitting...")
+        return nothing
+    end
+    # check if global or regional variance
+    global_variance::Bool = false
+    if length(priors["σ"]) == 1
+        global_variance = true
+    end
+
+    # use correct data type dependent on whether regional or global variance (for optimal Turing model specification)
+    if global_variance
+        final_data = vec_data
+    else
+        final_data = row_data
+    end
+
+    # EXP
+    # -------
+    # Organize data according to Markov chain type inference
+    #data2 = create_data2(data)
+    #N_samples = Int.(ones(size(data2)))
+    #for i in 1:size(data2)[1]
+    #    for j in 1:size(data2)[2]
+    #        N_samples[i,j] = Int(size(data2[i,j])[1])
+    #    end
+    #end
+    #data1 = [Float64[] for _ in 1:size(data2)[2]]
+    #for j in 1:size(data2)[2]
+    #    elm = []
+    #    for i in 1:size(data2)[1]
+    #        append!(elm,data2[i,j])
+    #    end
+    #    data1[j] = elm
+    #end
+    # -------
+
+    @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
+                                    N_samples=N_samples,
+                                    nonmissing=nonmissing::Vector{Int64},
+                                    row_nonmiss=row_nonmiss::Vector{Vector{Int}}
+                                    )
+        u00 = u0  # IC needs to be defined within model to work
+        # draw partitions 
+        
+
+        # ODE priors
+        ρ ~ truncated(Normal(0,0.1), lower=0.)
+        α ~ truncated(Normal(0,0.1), lower=0.)
+        β ~ arraydist([truncated(Normal(0,1), lower=0.) for _ in 1:N])
+        d ~ arraydist([Normal(0,1) for _ in 1:N])
+        γ ~ truncated(Normal(0,0.1), lower=0.)
+
+        p = [ρ, α, β..., d..., γ]
+        #p ~ arraydist([ode_priors[i] for i in 1:N_pars])
+        #σ ~ priors["σ"] 
+        #if bayesian_seed
+        #    u00[seedd] ~ priors["seed"]  
+        #else
+        #    u00[seedd] = seed_value
+        #end
+
+        # Simulate diffusion model 
+        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=6000)
+
+        # pick out the variables of interest (ignore auxiliary variables)
+        predicted = predicted[sol_idxs,:]
+
+        # package predictions to match observation (when vectorizing data)
+        predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        predicted = predicted[nonmissing]
+        data ~ MvNormal(predicted,σ^2*I) 
+        return nothing
+    end
+
+    # define Turing model
+    model = bayesian_model(final_data, prob)  # OG
+    #model = bayesian_model(data1, prob)  # EXP Markov chain
+
+    # test if typestable if told to, red marking in read-out means something is unstable
+    #if test_typestable
+    #    @code_warntype model.f(
+    #        model,
+    #        Turing.VarInfo(model),
+    #        Turing.SamplingContext(
+    #            Random.GLOBAL_RNG, Turing.SampleFromPrior(), Turing.DefaultContext(),
+    #        ),
+    #        model.args...,
+    #    )
+    #end
+
+    # benchmark
+    if benchmark
+        suite = TuringBenchmarking.make_turing_suite(model;adbackends=benchmark_ad)
+        println(run(suite))
+        return nothing
+    end
+
+    # Sample to approximate posterior
+    if n_threads == 1
+        #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true, initial_params=[0.01 for _ in 1:(2*N+4)])  # time estimated is shown
+        chain = sample(model, NUTS(10000,0.65;adtype=adtype), 1000; progress=true)  
+        #chain = sample(model, HMC(0.05,10), 1000; progress=true)
+    else
+        chain = sample(model, NUTS(10000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
+        #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
+    end
+
+    # compute elpd (expected log predictive density)
+    elpd = compute_psis_loo(model,chain)
+    waic = elpd.estimates[2,1] - elpd.estimates[3,1]  # total naive elpd - total p_eff
+
+    # rescale the parameters in the chain and prior distributions
+    factor_matrix = diagm(factors)
+    n_chains = size(chain)[3]
+    for i in 1:n_chains
+        chain[:,1:N_pars,i] = Array(chain[:,1:N_pars,i]) * factor_matrix
+    end
+    i = 1
+    for (key,value) in priors
+        if i <= N_pars
+            priors[key] = value * factors[i]
+            i += 1
+        else
+            break
+        end
+    end
+    # rename parameters
+    chain = replacenames(chain, "u00[$(seed)]" => "seed")
+
+    # save chains and metadata to a dictionary
+    inference = Dict("chain" => chain, 
+                     "priors" => priors, 
+                     "data" => data,
+                     "timepoints" => timepoints,
+                     "data_indices" => idxs, 
+                     "seed_idx" => seed,
+                     "bayesian_seed" => bayesian_seed,
+                     "seed_value" => seed_value,
+                     "transform_observable" => false,
+                     "ode" => string(ode),  # store var name of ode (functions cannot be saved)
+                     "factors" => factors,
+                     "sol_idxs" => sol_idxs,
+                     "u0" => u0,
+                     "L" => L,
+                     "labels" => labels,
+                     #"elpd" => elpd,
+                     "waic" => waic
+                     )
+
+    return inference
+end
