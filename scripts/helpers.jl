@@ -472,6 +472,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                benchmark=false,
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
+               retro=true
                )
     # verify that choice of ODE is correct wrp to retro- and anterograde
     retro_and_antero = false
@@ -495,14 +496,14 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     W = W_labelled[2:end,2:end]
     W = W[idxs,idxs]
     W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum
-    L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+    L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=retro)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
     labels = W_labelled[1,2:end][idxs]
     seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
     display("Seed at region $(seed)")
     N = size(L)[1]
     if retro_and_antero  # include both Laplacians, if told to
         Lr = copy(L)
-        La = Matrix(transpose(laplacian_out(W; self_loops=false, retro=false)))  
+        La = Matrix(transpose(laplacian_out(W; self_loops=false, retro=!retro)))  
         if occursin("death",string(ode)) || occursin("pop",string(ode))
             L = (La,Lr,N)
         else

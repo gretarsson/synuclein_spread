@@ -31,29 +31,29 @@ data = deserialize("data/total_path_3D.jls");
 #_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 #idxs = findall(idxs);
 
-
-
 # get bilateral idxs
 W_file = "data/W_labeled.csv"
 W_labelled = readdlm(W_file,',')
 labels = W_labelled[1,2:end]
 idxs = only_bilateral(labels)
 
-W_file = "data/W_labeled.csv"
-W_labelled = readdlm(W_file,',')
-
-if isempty(idxs)
-    idxs = [i for i in 1:(size(W_labelled)[1] - 1)]
-end
-labels = W_labelled[1,2:end]
-W = W_labelled[2:end,2:end]
-W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum
-L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
+#
+#seed_idx = findall(s -> contains(s,"iCP"),labels)
+#labels2 = labels[bi_idxs]
+#for i in 1:222
+#    display("$(labels2[i]) + $(labels2[i+222]) ")
+#end
+#idxs = [[bi_idxs[i] for i in 78:88]...,[bi_idxs[i] for i in (78+222):(88+222)]...]
+#labels2 = labels[idxs]
+#for i in 1:Int(length(labels2)/2)
+#    display("$(labels2[i]) + $(labels2[i+Int(length(labels2)/2)]) ")
+#end
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
 N = length(idxs);
-M = Int(length(idxs)/2)
+M = Int(length(idxs)/2)  # with bilateral
+#M = N  # without bilateral
 #N = size(data)[1];
 display("N = $(N)")
 u0 = [0. for _ in 1:(2*N)];
@@ -91,6 +91,7 @@ inference = infer(ode,
                 idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
+                retro=false,
                 seed_value=100,
                 alg=Tsit5(),
                 abstol=1e-6,
@@ -103,5 +104,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_antero_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
