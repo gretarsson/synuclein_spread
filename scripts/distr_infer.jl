@@ -22,7 +22,7 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = death_simplifiedii_bilateral;
+ode = death_simplifiedii_bilateral2;
 n_threads = 1;
 
 # read data
@@ -59,7 +59,8 @@ display("N = $(N)")
 u0 = [0. for _ in 1:(2*N)];
 
 # DEFINE PRIORS
-priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
+#priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
+priors = OrderedDict{Any,Any}( "ρa" => truncated(Normal(0,0.1),lower=0), "ρr" => truncated(Normal(0,0.1),lower=0)); 
 priors["α"] = truncated(Normal(0,0.1),lower=0);
 for i in 1:M
     priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
@@ -72,7 +73,7 @@ priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
-factors = [1., 1., [1 for _ in 1:M]..., [1 for _ in 1:M]..., 1];  # death
+factors = [1., 1., 1., [1 for _ in 1:M]..., [1 for _ in 1:M]..., 1];  # death
 
 
 # INFER
@@ -86,7 +87,7 @@ inference = infer(ode,
                 idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
-                retro=false,
+                retro=true,
                 seed_value=100,
                 alg=Tsit5(),
                 abstol=1e-6,
@@ -99,5 +100,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_antero_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_retroantero_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)

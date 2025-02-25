@@ -330,6 +330,22 @@ function death_simplifiedii_bilateral(du,u,p,t;L=L,factors=(1.,1.))
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- β .* y .- d .* y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (1 .- y)  
 end
+function death_simplifiedii_bilateral2(du,u,p,t;L=L,factors=(1.,1.))
+    La,Lr,N = L
+    M = Int(N/2)
+    p = factors .* p
+    ρa = p[1]
+    ρr = p[2]
+    α = p[3]
+    β = repeat(p[4:(M+3)],2)
+    d = repeat(p[(M+4):(2*M+3)],2)
+    γ = p[2*M+4]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρa*La*x - ρr*Lr*x .+ α .* x .* (β .- β .* y .- d .* y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+end
 function death_simplifiediii(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
     p = factors .* p
@@ -447,7 +463,9 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
             "death_simplified" => death_simplified,
             "death_simplifiedii" => death_simplifiedii,
             "death_simplifiedii_bilateral" => death_simplifiedii_bilateral,
+            "death_simplifiedii_bilateral2" => death_simplifiedii_bilateral2,
             "death_simplifiediii" => death_simplifiediii)
+            
 
 
 
