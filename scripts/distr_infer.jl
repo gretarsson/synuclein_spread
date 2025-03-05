@@ -68,7 +68,7 @@ for i in 1:M
     priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 for i in 1:M
-    priors["d[$(i)]"] = Normal(0,1);
+    priors["d[$(i)]"] = Normal(-3,1);
 end
 for i in 1:M
     priors["γ[$(i)]"] = truncated(Normal(0,0.1),lower=0);
