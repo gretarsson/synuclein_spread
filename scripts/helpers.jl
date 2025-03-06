@@ -454,6 +454,43 @@ function death_superlocal2(du,u,p,t;L=L,factors=(1.,1.))
     du[(N+1):(2*N)] .=  γ .* (1 .- y)  
     #du[(N+1):(2*N)] .=  γ .* (x .- y)  
 end
+function death_simplifiedii_clustered(du, u, p, t; L=L, partition_sizes=[1, 1], factors=(1., 1.))
+    L, N_total = L  # Total length of the system
+    K = length(partition_sizes)  # Number of clusters (based on partition_sizes)
+    partition_sizes = Array{Int}(partition_sizes)  # Convert to array if necessary
+    
+    p = factors .* p  # Adjust parameters using the factors
+    
+    # Extract parameters for each cluster
+    ρ = p[1]
+    α = p[2:2+K-1]
+    β = p[2+K:2+2*K-1]
+    d = p[2+2*K:2+3*K-1]
+    γ = p[2+3*K:end]
+
+    # Initialize variables
+    x = u[1:N_total]  # First N elements are x values
+    y = u[(N_total+1):(2*N_total)]  # Second N elements are y values
+
+    # Keep track of the current index offset
+    start_idx = 1
+
+    # Loop through each cluster and compute the gradients
+    for k in 1:K
+        # Determine the number of elements in this cluster (based on partition_sizes)
+        n_cluster = partition_sizes[k]
+        end_idx = start_idx + n_cluster - 1
+
+        # Apply the ODE dynamics for the current cluster
+        du[start_idx:end_idx] .= -ρ * L * x[start_idx:end_idx] .+ α[k] .* x[start_idx:end_idx] .* (β[start_idx:end_idx] .- β[start_idx:end_idx] .* y[start_idx:end_idx] .- d[start_idx:end_idx] .* y[start_idx:end_idx] .- x[start_idx:end_idx])  
+        du[(N_total+start_idx):(N_total+end_idx)] .= γ[k] .* (1 .- y[start_idx:end_idx])  # y dynamics
+        
+        # Update the start index for the next cluster
+        start_idx = end_idx + 1
+    end
+end
+
+
 #=
 a dictionary containing the ODE functions
 =#
@@ -462,6 +499,7 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
             "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2, "death" => death, "sir" => sir, "sis" => sis, 
             "death_simplified" => death_simplified,
             "death_simplifiedii" => death_simplifiedii,
+            "death_simplifiedii_clustered" => death_simplifiedii_clustered,
             "death_simplifiedii_bilateral" => death_simplifiedii_bilateral,
             "death_simplifiedii_bilateral2" => death_simplifiedii_bilateral2,
             "death_simplifiediii" => death_simplifiediii)
@@ -634,6 +672,26 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         else
             u00[seedd] = seed_value
         end
+
+        # EXPERIMENTAL
+        # -----------
+        #ρ ~ truncated(Normal(0, 0.1); lower=0)
+        ## Sample α, β, and γ as vectors using filldist
+        #α ~ filldist(truncated(Normal(0, 0.1); lower=0), M)
+        #β ~ filldist(truncated(Normal(0, 1); lower=0), M)
+        #γ ~ filldist(truncated(Normal(0, 0.1); lower=0), M)
+
+        ## Define `d` based on β
+        #d ~ arraydist([truncated(Normal(-β[i], 1); lower=-β[i], upper=0) for i in 1:M])
+        #σ ~ LogNormal(0, 1)
+        #seed ~ truncated(Normal(0, 0.1); lower=0)
+        #if bayesian_seed
+        #    u00[seedd] ~ priors["seed"]  
+        #else
+        #    u00[seedd] = seed_value
+        #end
+        #p = vcat(ρ, α, β, d, γ) 
+        # -----------
 
         # Simulate diffusion model 
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=6000)
@@ -1631,6 +1689,7 @@ function infer_clustering(ode, priors::OrderedDict, data::Array{Union{Missing,Fl
                benchmark=false,
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
+               K=2
                )
     # verify that choice of ODE is correct wrp to retro- and anterograde
     retro_and_antero = false
@@ -1759,47 +1818,162 @@ function infer_clustering(ode, priors::OrderedDict, data::Array{Union{Missing,Fl
     #    data1[j] = elm
     #end
     # -------
-
-    @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
-                                    N_samples=N_samples,
-                                    nonmissing=nonmissing::Vector{Int64},
-                                    row_nonmiss=row_nonmiss::Vector{Vector{Int}}
-                                    )
-        u00 = u0  # IC needs to be defined within model to work
-        # draw partitions 
         
+    function death_simplifiedii_clustered(du, u, p, t; L=L)
+        L, N = L  # Extract Laplacian and system size
+    
+        # Extract parameters
+        ρ = p[1]
+        α = p[2:2+N-1]
+        β = p[2+N:2+2*N-1]
+        d = p[2+2*N:2+3*N-1]
+        γ = p[2+3*N:end]
+    
+        # Extract state variables
+        x = u[1:N]  
+        y = u[(N+1):(2*N)]  
+    
+        # **Vectorized ODE Computation**
+        du[1:N] .= -ρ .* (L * x) .+ α .* x .* (β .- β .* y .- d .* y .- x)
+        du[(N+1):2*N] .= γ .* (1 .- y)
+    end
 
-        # ODE priors
-        ρ ~ truncated(Normal(0,0.1), lower=0.)
-        α ~ truncated(Normal(0,0.1), lower=0.)
-        β ~ arraydist([truncated(Normal(0,1), lower=0.) for _ in 1:N])
-        d ~ arraydist([Normal(0,1) for _ in 1:N])
-        γ ~ truncated(Normal(0,0.1), lower=0.)
+    @model function bayesian_model_cluster(data, prob; K=2::Int, ode_priors=priors_vec, priors=priors, alg=alg, 
+        timepointss=timepoints::Vector{Float64}, seedd=seed::Int, 
+        u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, 
+        seed_value=seed_value, N_samples=N_samples, 
+        nonmissing=nonmissing::Vector{Int64}, 
+        row_nonmiss=row_nonmiss::Vector{Vector{Int}})
 
-        p = [ρ, α, β..., d..., γ]
-        #p ~ arraydist([ode_priors[i] for i in 1:N_pars])
-        #σ ~ priors["σ"] 
-        #if bayesian_seed
-        #    u00[seedd] ~ priors["seed"]  
-        #else
-        #    u00[seedd] = seed_value
-        #end
+        u00 = u0  # Initial conditions inside model
+        K ~ DiscreteUniform(1,N)
+        # test 
+        #K = 40
 
-        # Simulate diffusion model 
-        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=6000)
+        # Priors for parameters
+        ρ ~ truncated(Normal(0, 0.1),lower=0)
+        α ~ filldist(truncated(Normal(0, 0.1),lower=0),K)  # One α for each cluster
+        β ~ filldist(truncated(Normal(0, 1),lower=0),K)  # One β for each cluster
+        #d ~ filldist(truncated(Normal(0, 1), lower=-Inf),K)  # One d for each cluster
+        d ~ arraydist([truncated(Normal(0, 1), lower=-β[k], upper=0) for k in 1:K])  # One d for each cluster, dependent on β
+        γ ~ filldist(truncated(Normal(0, 0.1),lower=0),K)  # One γ for each cluster
+        
+        # Sample the partition indices (categorical distribution over K clusters)
+        partition_weights = ones(K) ./ K  # Probabilities for each cluster
+        partition_indices ~ filldist(Categorical(partition_weights), N)  # KxN regions
+        # test
+        #partition_indices = rand(1:K,N)
+        # make masks to reorder parameters according to their right partitions
+        partition_masks = [partition_indices .== k for k in 1:K]
+        partition_masks = hcat(partition_masks...)  # NxK
 
-        # pick out the variables of interest (ignore auxiliary variables)
-        predicted = predicted[sol_idxs,:]
+        # **Precompute Weighted Parameter Values Without Indexing**
+        αi = partition_masks * α
+        βi = partition_masks * β
+        di = partition_masks * d
+        γi = partition_masks * γ
 
-        # package predictions to match observation (when vectorizing data)
-        predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+        # Create the parameter vector p which includes all priors
+        p = vcat(ρ, αi, βi, di, γi)  # Combine the parameters into a single vector
+   
+        # sigma and IC
+        σ ~ priors["σ"] 
+        if bayesian_seed
+            u00[seedd] ~ priors["seed"]  
+        else
+            u00[seedd] = seed_value
+        end
+
+        # Solve ODE system using **external function**
+        # Solve ODE system
+        prob = ODEProblem(death_simplifiedii_clustered, u00, tspan, p; alg=alg)
+        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, 
+        abstol=abstol, reltol=reltol, maxiters=6000)
+
+        # Extract relevant variables
+        predicted = predicted[sol_idxs, :]
+
+        # Expand predictions for observed data
+        predicted = vec(cat([predicted for _ in 1:N_samples]..., dims=3))
         predicted = predicted[nonmissing]
-        data ~ MvNormal(predicted,σ^2*I) 
+
+        # Likelihood
+        data ~ MvNormal(predicted, σ^2 * I)
+
+        return nothing
+    end
+    @model function bayesian_model_cluster_soft(data, prob; K=2::Int, ode_priors=priors_vec, priors=priors, alg=alg, 
+        timepointss=timepoints::Vector{Float64}, seedd=seed::Int, 
+        u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, 
+        seed_value=seed_value, N_samples=N_samples, 
+        nonmissing=nonmissing::Vector{Int64}, 
+        row_nonmiss=row_nonmiss::Vector{Vector{Int}})
+
+        u00 = u0  # Initial conditions inside model
+        #K ~ DiscreteUniform(1,N)
+        Kc ~ Uniform(1,N)
+        K = ceil(Int,Kc)
+        # test 
+        #K = 40
+
+        # Priors for parameters
+        ρ ~ truncated(Normal(0, 0.1),lower=0)
+        α ~ filldist(truncated(Normal(0, 0.1),lower=0),K)  # One α for each cluster
+        β ~ filldist(truncated(Normal(0, 1),lower=0),K)  # One β for each cluster
+        #d ~ filldist(truncated(Normal(0, 1), lower=-Inf),K)  # One d for each cluster
+        d ~ arraydist([truncated(Normal(0,1), lower=-β[k], upper=0) for k in 1:K])  # One d for each cluster, dependent on β
+        γ ~ filldist(truncated(Normal(0, 0.1),lower=0),K)  # One γ for each cluster
+        
+        # Sample the partition indices (categorical distribution over K clusters)
+        partition_weights = ones(K)  # Probabilities for each cluster
+        partition_indices ~ filldist(Dirichlet(partition_weights), N)  # N regions
+        partition_mask = transpose(partition_indices)
+        # test
+        #partition_indices = rand(1:K,N)
+        # make masks to reorder parameters according to their right partitions
+        #partition_masks = [partition_indices .== k for k in 1:K]
+        #partition_masks = hcat(partition_masks...)
+
+        # **Precompute Weighted Parameter Values Without Indexing**
+        αi = partition_mask * α
+        βi = partition_mask * β
+        di = partition_mask * d
+        γi = partition_mask * γ
+
+        # Create the parameter vector p which includes all priors
+        p = vcat(ρ, αi, βi, di, γi)  # Combine the parameters into a single vector
+   
+        # sigma and IC
+        σ ~ priors["σ"] 
+        if bayesian_seed
+            u00[seedd] ~ priors["seed"]  
+        else
+            u00[seedd] = seed_value
+        end
+
+        # Solve ODE system using **external function**
+        # Solve ODE system
+        prob = ODEProblem(death_simplifiedii_clustered, u00, tspan, p; alg=alg)
+        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, 
+        abstol=abstol, reltol=reltol, maxiters=6000)
+
+        # Extract relevant variables
+        predicted = predicted[sol_idxs, :]
+
+        # Expand predictions for observed data
+        predicted = vec(cat([predicted for _ in 1:N_samples]..., dims=3))
+        predicted = predicted[nonmissing]
+
+        # Likelihood
+        data ~ MvNormal(predicted, σ^2 * I)
+
         return nothing
     end
 
+
     # define Turing model
-    model = bayesian_model(final_data, prob)  # OG
+    #model = bayesian_model_cluster_soft(final_data, prob)  # OG
+    model = bayesian_model_cluster(final_data, prob)  # OG
     #model = bayesian_model(data1, prob)  # EXP Markov chain
 
     # test if typestable if told to, red marking in read-out means something is unstable
@@ -1824,16 +1998,16 @@ function infer_clustering(ode, priors::OrderedDict, data::Array{Union{Missing,Fl
     # Sample to approximate posterior
     if n_threads == 1
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true, initial_params=[0.01 for _ in 1:(2*N+4)])  # time estimated is shown
-        chain = sample(model, NUTS(10000,0.65;adtype=adtype), 1000; progress=true)  
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
-        chain = sample(model, NUTS(10000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
         #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
     end
 
     # compute elpd (expected log predictive density)
-    elpd = compute_psis_loo(model,chain)
-    waic = elpd.estimates[2,1] - elpd.estimates[3,1]  # total naive elpd - total p_eff
+    #elpd = compute_psis_loo(model,chain)
+    #waic = elpd.estimates[2,1] - elpd.estimates[3,1]  # total naive elpd - total p_eff
 
     # rescale the parameters in the chain and prior distributions
     factor_matrix = diagm(factors)
@@ -1868,10 +2042,167 @@ function infer_clustering(ode, priors::OrderedDict, data::Array{Union{Missing,Fl
                      "sol_idxs" => sol_idxs,
                      "u0" => u0,
                      "L" => L,
-                     "labels" => labels,
+                     "labels" => labels
                      #"elpd" => elpd,
-                     "waic" => waic
+                     #"waic" => waic
                      )
 
     return inference
+end
+
+
+
+function plot_retrodiction_clustered(inference; save_path=nothing, N_samples=1, show_variance=false)
+    # try creating folder to save in
+    try
+        mkdir(save_path) 
+    catch
+    end
+    # unload from simulation
+    data = inference["data"]
+    chain = inference["chain"]
+    priors = inference["priors"]
+    timepoints = inference["timepoints"]
+    seed = inference["seed_idx"]
+    sol_idxs = inference["sol_idxs"]
+    L = inference["L"]
+    ks = collect(keys(inference["priors"]))
+    N_pars = findall(x->x=="σ",ks)[1] - 1
+    factors = [1. for _ in 1:N_pars]
+    ode = odes[inference["ode"]]
+    N = size(data)[1]
+    M = length(timepoints)
+    par_names = chain.name_map.parameters
+    if inference["bayesian_seed"]
+        seed_ch_idx = findall(x->x==:seed,par_names)[1]  # TODO find index of chain programmatically
+    end
+    # if data is 3D, find mean
+    if length(size(data)) > 2
+        var_data = var3(data)
+        mean_data = mean3(data)
+    end
+
+    # define ODE problem 
+    u0 = inference["u0"]
+    tspan = (0, timepoints[end])
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L)
+    prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+
+    fs = Any[NaN for _ in 1:N]
+    axs = Any[NaN for _ in 1:N]
+    for i in 1:N
+        f = CairoMakie.Figure(fontsize=20)
+        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
+        fs[i] = f
+        axs[i] = ax
+    end
+    posterior_samples = sample(chain, N_samples; replace=false)
+    posterior_table = Tables.columntable(posterior_samples)
+    for (s,sample) in enumerate(eachrow(Array(posterior_samples)))
+        alpha_params = filter(name -> startswith(string(name), "α"), names(chain))
+        K = length(alpha_params)
+
+        # Extract the partition posteriors
+        ρ = posterior_table[:ρ][s]
+        αP = [posterior_table[Symbol("α[$i]")][s] for i in 1:K]
+        βP = [posterior_table[Symbol("β[$i]")][s] for i in 1:K]
+        dP = [posterior_table[Symbol("d[$i]")][s] for i in 1:K]
+        γP = [posterior_table[Symbol("γ[$i]")][s] for i in 1:K]
+
+        # sample each region's parameter as a combination of partition posteriors
+        α = [0. for _ in 1:N]
+        β = [0. for _ in 1:N]
+        d = [0. for _ in 1:N]
+        γ = [0. for _ in 1:N]
+        for i in 1:N
+            partition_weight = [posterior_table[Symbol("partition_indices[$k, $i]")][s] for k in 1:K]
+            α[i] = dot(partition_weight, αP)
+            β[i] = dot(partition_weight, βP)
+            d[i] = dot(partition_weight, dP)
+            γ[i] = dot(partition_weight, γP)
+        end
+        function death_simplifiedii_clustered(du, u, p, t; L=L)
+            L, N = L  # Extract Laplacian and system size
+        
+            # Extract parameters
+            ρ = p[1]
+            α = p[2:2+N-1]
+            β = p[2+N:2+2*N-1]
+            d = p[2+2*N:2+3*N-1]
+            γ = p[2+3*N:end]
+        
+            # Extract state variables
+            x = u[1:N]  
+            y = u[(N+1):(2*N)]  
+        
+            # **Vectorized ODE Computation**
+            du[1:N] .= -ρ .* (L * x) .+ α .* x .* (β .- β .* y .- d .* y .- x)
+            du[(N+1):2*N] .= γ .* (1 .- y)
+        end
+
+        # samples
+        p = [ρ, α..., β..., d..., γ...]   # first index is σ and last index is seed
+        if inference["bayesian_seed"]
+            u0[seed] = sample[seed_ch_idx]  # TODO: find seed index automatically
+            #u0[seed] = sample[end]  # TODO: find seed index automatically
+        else    
+            u0[seed] = inference["seed_value"]
+        end
+        σ = sample[end-1]
+        
+        # solve
+        prob = ODEProblem(death_simplifiedii_clustered, u0, tspan; alg=Tsit5())
+        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
+        t = sol_p.t
+        sol_p = Array(sol_p[sol_idxs,:])
+        for i in 1:N
+            lower_bound = sol_p[i,:] .- σ
+            upper_bound = sol_p[i,:] .+ σ
+            if show_variance
+                CairoMakie.band!(axs[i], t, lower_bound, upper_bound; color=(:grey,0.1))
+                CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.9, color=:black)
+            end
+            CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.5, color=:grey)
+        end
+    end
+
+    # Plot simulation and noisy observations.
+    # plot mean and variance
+    for i in 1:N
+        # =-=----
+        nonmissing = findall(mean_data[i,:] .!== missing)
+        data_i = mean_data[i,:][nonmissing]
+        timepoints_i = timepoints[nonmissing]
+        var_data_i = var_data[i,:][nonmissing]
+        indices = findall(x -> isnan(x),var_data_i)
+        var_data_i[indices] .= 0
+        CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1., markersize=15)  
+        # have lower std capped at 0.01 (to be visible in the plots)
+        var_data_i_lower = copy(var_data_i)
+        for (n,var) in enumerate(var_data_i)
+            if sqrt(var) > data_i[n]
+                var_data_i_lower[n] = max(data_i[n]^2-1e-5, 0)
+                #var_data_i_lower[n] = data_i[n]^2
+            end
+        end
+
+        #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
+        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i_lower), sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2, linewidth=3)
+        #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, [0. for _ in 1:length(timepoints_i)], sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
+    end
+    # plot all data points across all samples
+    for i in 1:N
+        jiggle = rand(Normal(0,0.01),size(data)[3])
+        for k in axes(data,3)
+            # =-=----
+            nonmissing = findall(data[i,:,k] .!== missing)
+            data_i = data[i,:,k][nonmissing]
+            timepoints_i = timepoints[nonmissing] .+ jiggle[k]
+            CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 71/255, 171/255), alpha=0.4, markersize=15)  
+        end
+        CairoMakie.save(save_path * "/retrodiction_region_$(i).png", fs[i])
+    end
+
+    # we're done
+    return fs
 end
