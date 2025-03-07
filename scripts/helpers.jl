@@ -657,6 +657,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     #    data1[j] = elm
     #end
     # -------
+    M = Int(length(idxs)/2)  # with bilateral
+    display("M = $(M)")
 
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
@@ -666,6 +668,14 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         u00 = u0  # IC needs to be defined within model to work
         # priors
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
+        # Have to set priors directly for beta-dependent d parameters
+        # -------------------------
+        ρ ~ truncated(Normal(0,0.1),lower=0) 
+        α ~ filldist(truncated(Normal(0,1),lower=0),M);
+        β ~ filldist(truncated(Normal(0,1),lower=0),M);
+        d ~ arraydist([truncated(Normal(0,1), lower=-β[i], upper=0) for i in 1:M]);
+        γ ~ filldist(truncated(Normal(0,0.1),lower=0),M);
+        # -------------------------
         σ ~ priors["σ"] 
         if bayesian_seed
             u00[seedd] ~ priors["seed"]  
@@ -1911,8 +1921,9 @@ function infer_clustering(ode, priors::OrderedDict, data::Array{Union{Missing,Fl
 
         u00 = u0  # Initial conditions inside model
         #K ~ DiscreteUniform(1,N)
-        K ~ Uniform(1,N)
-        K = ceil(Int,K)
+        #K ~ Uniform(1,N)
+        #K = ceil(Int,K)
+        K = 10
         # test 
         #K = 40
 
