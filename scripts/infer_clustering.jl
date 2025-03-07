@@ -28,8 +28,8 @@ n_threads = 1;
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
-_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-idxs = findall(idxs);
+#_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+#idxs = findall(idxs);
 
 # get bilateral idxs
 W_file = "data/W_labeled.csv"
@@ -51,7 +51,8 @@ labels = W_labelled[1,2:end]
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-N = length(idxs);
+#N = length(idxs);
+N = 448
 #M = Int(length(idxs)/2)  # with bilateral
 M = N  # without bilateral
 #N = size(data)[1];
@@ -86,9 +87,9 @@ inference = infer_clustering(ode,
                 data,
                 timepoints, 
                 "data/W_labeled.csv"; 
-                factors=factors,
                 u0=u0,
-                idxs=idxs,
+                factors=factors,
+                #idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 seed_value=100,
@@ -104,7 +105,7 @@ inference = infer_clustering(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_HARDCLUSTER_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_SOFTCLUSTER_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
 
 
@@ -116,7 +117,7 @@ StatsPlots.density(chain["α[6]"])
 alpha_params = filter(name -> startswith(string(name), "α"), names(chain))
 alpha_samples = MCMCChains.group(chain, :α)
 alpha_params = filter(name -> startswith(string(name), "α"), names(chain))
-plot_retrodiction_clustered(inference; save_path="figures/total_death_simplifiedii_clustered_SOFTCLUSTER_N=40_threads=1_var1/", N_samples=100)
+plot_retrodiction_clustered(inference; save_path="figures/total_death_simplifiedii_clustered_SOFTCLUSTER_N=448_threads=1_var1/", N_samples=100)
 
 inference
 

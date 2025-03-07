@@ -1911,8 +1911,8 @@ function infer_clustering(ode, priors::OrderedDict, data::Array{Union{Missing,Fl
 
         u00 = u0  # Initial conditions inside model
         #K ~ DiscreteUniform(1,N)
-        Kc ~ Uniform(1,N)
-        K = ceil(Int,Kc)
+        K ~ Uniform(1,N)
+        K = ceil(Int,K)
         # test 
         #K = 40
 
@@ -1972,8 +1972,8 @@ function infer_clustering(ode, priors::OrderedDict, data::Array{Union{Missing,Fl
 
 
     # define Turing model
-    #model = bayesian_model_cluster_soft(final_data, prob)  # OG
-    model = bayesian_model_cluster(final_data, prob)  # OG
+    model = bayesian_model_cluster_soft(final_data, prob)  # OG
+    #model = bayesian_model_cluster(final_data, prob)  # OG
     #model = bayesian_model(data1, prob)  # EXP Markov chain
 
     # test if typestable if told to, red marking in read-out means something is unstable
