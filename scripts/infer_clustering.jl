@@ -51,6 +51,7 @@ labels = W_labelled[1,2:end]
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
+#N = length(idxs);
 N = length(idxs);
 #M = Int(length(idxs)/2)  # with bilateral
 M = N  # without bilateral
@@ -104,7 +105,7 @@ inference = infer_clustering(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_HARDCLUSTER_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_SOFTCLUSTER2_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
 
 
@@ -116,7 +117,7 @@ StatsPlots.density(chain["α[6]"])
 alpha_params = filter(name -> startswith(string(name), "α"), names(chain))
 alpha_samples = MCMCChains.group(chain, :α)
 alpha_params = filter(name -> startswith(string(name), "α"), names(chain))
-plot_retrodiction_clustered(inference; save_path="figures/total_death_simplifiedii_clustered_SOFTCLUSTER_N=40_threads=1_var1/", N_samples=100)
+plot_retrodiction_clustered(inference; save_path="figures/total_death_simplifiedii_clustered_SOFTCLUSTER2_N=40_threads=1_var1/", N_samples=1000)
 
 inference
 
@@ -128,4 +129,24 @@ for s in 1:N_samples
     for i in 1:N
         partition_weight = [posterior_table[Symbol("partition_indices[$k, $i]")][s] for k in 1:K]
     end
+end
+
+simulation = "total_death_simplifiedii_clustered_SOFTCLUSTER2_N=40_threads=1_var1";
+using Serialization
+
+# plot 
+inference_obj = deserialize("simulations/"*simulation*".jls")
+
+
+
+plot_retrodiction_clustered(inference_obj; save_path="figures/total_death_simplifiedii_clustered_SOFTCLUSTER2_N=40_threads=1_var1/", N_samples=1000)
+chain = inference_obj["chain"]
+K = 10
+N = 40
+for i in 1:N
+    StatsPlots.plot()
+    for k in 1:K
+        StatsPlots.density!(chain["partition_indices[$k, $i]"])
+    end
+    StatsPlots.savefig("figures/total_death_simplifiedii_clustered_SOFTCLUSTER2_N=40_threads=1_var1/partition/node_$i")
 end
