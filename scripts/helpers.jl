@@ -673,7 +673,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         ρ ~ truncated(Normal(0,0.1),lower=0) 
         α ~ filldist(truncated(Normal(0,1),lower=0),M);
         β ~ filldist(truncated(Normal(0,1),lower=0),M);
-        d ~ arraydist([truncated(Normal(0,1), lower=-β[i], upper=0) for i in 1:M]);
+        #d ~ arraydist([truncated(Normal(-β[i],1), lower=-β[i], upper=0) for i in 1:M]);
+        d ~ filldist(Normal(-0.8,1),M);
         γ ~ filldist(truncated(Normal(0,0.1),lower=0),M);
         # -------------------------
         σ ~ priors["σ"] 
@@ -682,26 +683,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         else
             u00[seedd] = seed_value
         end
-
-        # EXPERIMENTAL
-        # -----------
-        #ρ ~ truncated(Normal(0, 0.1); lower=0)
-        ## Sample α, β, and γ as vectors using filldist
-        #α ~ filldist(truncated(Normal(0, 0.1); lower=0), M)
-        #β ~ filldist(truncated(Normal(0, 1); lower=0), M)
-        #γ ~ filldist(truncated(Normal(0, 0.1); lower=0), M)
-
-        ## Define `d` based on β
-        #d ~ arraydist([truncated(Normal(-β[i], 1); lower=-β[i], upper=0) for i in 1:M])
-        #σ ~ LogNormal(0, 1)
-        #seed ~ truncated(Normal(0, 0.1); lower=0)
-        #if bayesian_seed
-        #    u00[seedd] ~ priors["seed"]  
-        #else
-        #    u00[seedd] = seed_value
-        #end
-        #p = vcat(ρ, α, β, d, γ) 
-        # -----------
 
         # Simulate diffusion model 
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=6000)
