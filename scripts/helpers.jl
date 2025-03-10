@@ -19,6 +19,7 @@ using LazyArrays
 using KernelDensity
 using Plots
 using DataFrames, StatsBase, GLM
+using Plots
 #=
 Helper functions for the project
 =#
@@ -328,7 +329,7 @@ function death_simplifiedii_bilateral(du,u,p,t;L=L,factors=(1.,1.))
     x = u[1:N]
     y = u[(N+1):(2*N)]
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- β .* y .- d .* y .- x)   # quick gradient computation
-    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+    du[(N+1):(2*N)] .=  γ .* (1 .- y) .* y  
 end
 function death_simplifiedii_bilateral2(du,u,p,t;L=L,factors=(1.,1.))
     La,Lr,N = L
@@ -659,6 +660,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # -------
     M = Int(length(idxs)/2)  # with bilateral
     display("M = $(M)")
+    μ = zeros(M)
+    Σ = I(M)
 
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
@@ -670,12 +673,19 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
         # Have to set priors directly for beta-dependent d parameters
         # -------------------------
+        #ρ ~ truncated(Normal(0,0.1),lower=0) 
+        #α ~ filldist(truncated(Normal(0,1),lower=0),M);
+        #β ~ filldist(truncated(Normal(0,1),lower=0),M);
+        ##d ~ arraydist([truncated(Normal(-β[i],1), lower=-β[i], upper=0) for i in 1:M]);
+        #d ~ filldist(Normal(-0.8,1),M);
+        #γ ~ filldist(truncated(Normal(0,0.1),lower=0),M);
+        # ------- try non truncated
         ρ ~ truncated(Normal(0,0.1),lower=0) 
-        α ~ filldist(truncated(Normal(0,1),lower=0),M);
-        β ~ filldist(truncated(Normal(0,1),lower=0),M);
+        α ~ MvNormal(μ,Σ);
+        β ~ MvNormal(μ,Σ);
         #d ~ arraydist([truncated(Normal(-β[i],1), lower=-β[i], upper=0) for i in 1:M]);
-        d ~ filldist(Normal(-0.8,1),M);
-        γ ~ filldist(truncated(Normal(0,0.1),lower=0),M);
+        d ~ MvNormal(μ,Σ);
+        γ ~ MvNormal(μ,Σ);
         # -------------------------
         σ ~ priors["σ"] 
         if bayesian_seed
@@ -2198,3 +2208,122 @@ function plot_retrodiction_clustered(inference; save_path=nothing, N_samples=1, 
     # we're done
     return fs
 end
+
+#function correlation_analysis(x::Vector, y::Vector; save_path::Union{String, Nothing}=nothing, xlabel="X", ylabel="Y", title="Correlation analysis")
+#    @assert length(x) == length(y) "Vectors must have the same length"
+#    
+#    # Compute Pearson correlation coefficient
+#    r = cor(x, y)
+#    println("Correlation coefficient (r): ", r)
+#    
+#    # If a save path is provided, generate and save the plot
+#    if save_path !== nothing
+#        Plots.scatter(x, y, label="r = $r", xlabel=xlabel, ylabel=ylabel, title=title)
+#        Plots.savefig(save_path)
+#        println("Plot saved at: ", save_path)
+#    end
+#    
+#    return r
+#end
+
+"""
+    correlation_analysis(x, y; save_path=nothing, xlabel="X", ylabel="Y", title="Correlation analysis",
+                           plot_fit_line=false, alpha=0.05)
+
+Computes the Pearson correlation coefficient between vectors `x` and `y` and generates a scatter plot.
+Optionally, if `plot_fit_line` is true, a linear regression line is plotted along with its confidence interval,
+with the confidence level determined by `alpha` (default is 0.05, i.e. 95% confidence).
+
+# Arguments
+- `x::AbstractVector`: First data vector.
+- `y::AbstractVector`: Second data vector (must be the same length as `x`).
+- `save_path::Union{String, Nothing}`: Path to save the plot image (if provided).
+- `xlabel::String`: Label for the x-axis.
+- `ylabel::String`: Label for the y-axis.
+- `title::String`: Title of the plot.
+- `plot_fit_line::Bool`: Whether to overlay the best-fit line and its confidence interval (default is `false`).
+- `alpha::Real`: Significance level for the confidence interval (default is 0.05).
+
+# Returns
+- The Pearson correlation coefficient.
+"""
+function correlation_analysis(x::AbstractVector, y::AbstractVector;
+                              save_path::Union{String, Nothing}=nothing,
+                              xlabel="X", ylabel="Y", title="Correlation analysis",
+                              plot_fit_line::Bool=false, alpha::Real=0.05)
+    @assert length(x) == length(y) "Vectors must have the same length"
+    
+    # Compute Pearson correlation coefficient
+    r = cor(x, y)
+    println("Correlation coefficient (r): ", r)
+    
+    # Define muted color palette
+    muted_blue = "#4a6fa5"  # Muted blue for scatter markers
+    muted_red = "#a45a52"   # Muted red for the best-fit line and ribbon
+    
+    # Create the base scatter plot with enhanced aesthetics and muted colors
+    plt = Plots.scatter(x, y, 
+                        label="Data (r = $r)", 
+                        xlabel=xlabel, ylabel=ylabel, 
+                        title=title,
+                        markersize=5,             # Slightly smaller markers
+                        markercolor=muted_blue, 
+                        markerstrokewidth=0.5,
+                        legend=:topleft, 
+                        grid=true,
+                        background_color=:white, 
+                        framestyle=:box,
+                        titlefontsize=16,         # Larger title font
+                        guidefontsize=14,         # Larger axes labels font
+                        tickfontsize=12)          # Larger tick labels font
+    
+    # Optionally add best-fit line with confidence interval
+    if plot_fit_line
+        n = length(x)
+        # Compute linear regression parameters
+        b = cov(x, y) / var(x)
+        a = mean(y) - b * mean(x)
+        
+        # Generate a smooth range of x-values for the best-fit line
+        x_line = range(minimum(x), stop=maximum(x), length=100)
+        y_line = a .+ b .* x_line
+        
+        # Calculate residuals and standard error of estimate
+        y_pred = a .+ b .* x
+        resid = y .- y_pred
+        s = sqrt(sum(resid .^ 2) / (n - 2))
+        
+        # Compute the standard error for the predicted mean at each x_line
+        mean_x = mean(x)
+        s_x2 = sum((x .- mean_x).^2)
+        se_fit = s .* sqrt.(1/n .+ ((x_line .- mean_x).^2) ./ s_x2)
+        
+        # Get the t critical value for the desired confidence level
+        tcrit = quantile(TDist(n - 2), 1 - alpha/2)
+        
+        # The ribbon is the half-width of the confidence interval at each x_line
+        ribbon = tcrit .* se_fit
+        
+        # Overlay the best-fit line with its confidence interval on the scatter plot
+        Plots.plot!(plt, x_line, y_line, ribbon=ribbon, 
+                    label="Best-fit line", 
+                    lw=3,              # Thicker best-fit line
+                    linecolor=muted_red,
+                    fillalpha=0.3,
+                    fillcolor=muted_red,
+                    legend=:topleft)
+    end
+    
+    # Save or display the plot
+    if save_path !== nothing
+        Plots.savefig(plt, save_path)
+        println("Plot saved at: ", save_path)
+    else
+        display(plt)
+    end
+    
+    return r
+end
+
+
+
