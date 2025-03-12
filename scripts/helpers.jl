@@ -19,6 +19,8 @@ using LazyArrays
 using KernelDensity
 using Plots
 using DataFrames, StatsBase, GLM
+using Plots
+using LaTeXStrings
 #=
 Helper functions for the project
 =#
@@ -659,6 +661,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # -------
     M = Int(length(idxs)/2)  # with bilateral
     display("M = $(M)")
+    μ = zeros(M)
+    Σ = I(M)
 
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
@@ -670,12 +674,19 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
         # Have to set priors directly for beta-dependent d parameters
         # -------------------------
+        #ρ ~ truncated(Normal(0,0.1),lower=0) 
+        #α ~ filldist(truncated(Normal(0,1),lower=0),M);
+        #β ~ filldist(truncated(Normal(0,1),lower=0),M);
+        ##d ~ arraydist([truncated(Normal(-β[i],1), lower=-β[i], upper=0) for i in 1:M]);
+        #d ~ filldist(Normal(-0.8,1),M);
+        #γ ~ filldist(truncated(Normal(0,0.1),lower=0),M);
+        # ------- try non truncated
         ρ ~ truncated(Normal(0,0.1),lower=0) 
-        α ~ filldist(truncated(Normal(0,1),lower=0),M);
-        β ~ filldist(truncated(Normal(0,1),lower=0),M);
+        α ~ MvNormal(μ,Σ);
+        β ~ MvNormal(μ,Σ);
         #d ~ arraydist([truncated(Normal(-β[i],1), lower=-β[i], upper=0) for i in 1:M]);
-        d ~ filldist(Normal(-0.8,1),M);
-        γ ~ filldist(truncated(Normal(0,0.1),lower=0),M);
+        d ~ MvNormal(μ,Σ);
+        γ ~ MvNormal(μ,Σ);
         # -------------------------
         σ ~ priors["σ"] 
         if bayesian_seed
@@ -2198,3 +2209,282 @@ function plot_retrodiction_clustered(inference; save_path=nothing, N_samples=1, 
     # we're done
     return fs
 end
+
+#function correlation_analysis(x::Vector, y::Vector; save_path::Union{String, Nothing}=nothing, xlabel="X", ylabel="Y", title="Correlation analysis")
+#    @assert length(x) == length(y) "Vectors must have the same length"
+#    
+#    # Compute Pearson correlation coefficient
+#    r = cor(x, y)
+#    println("Correlation coefficient (r): ", r)
+#    
+#    # If a save path is provided, generate and save the plot
+#    if save_path !== nothing
+#        Plots.scatter(x, y, label="r = $r", xlabel=xlabel, ylabel=ylabel, title=title)
+#        Plots.savefig(save_path)
+#        println("Plot saved at: ", save_path)
+#    end
+#    
+#    return r
+#end
+"""
+    correlation_analysis(x, y; save_path=nothing, xlabel="X", ylabel="Y", title="Correlation analysis",
+                         plot_fit_line=false, alpha=0.05, plotscale=identity, xlims=nothing, ylims=nothing)
+
+Computes the Pearson correlation coefficient between vectors `x` and `y` and generates a scatter plot.
+Optionally, if `plot_fit_line` is true, a linear regression line is plotted along with its confidence interval.
+The `plotscale` keyword sets the scaling of both the x- and y-axes.
+Optional keyword arguments `xlims` and `ylims` set the axis limits.
+Returns a tuple `(r, plt)` with the correlation coefficient and the plot object.
+"""
+function correlation_analysis(x::AbstractVector, y::AbstractVector;
+                              save_path::Union{String, Nothing}=nothing,
+                              xlabel="X", ylabel="Y", title="Correlation analysis",
+                              plot_fit_line::Bool=false, alpha::Real=0.05,
+                              plotscale=:identity, xlims=nothing, ylims=nothing, aspect_ratio=:auto)
+    @assert length(x) == length(y) "Vectors must have the same length"
+
+    # Compute Pearson correlation coefficient
+    r = cor(x, y)
+    println("Correlation coefficient (r): ", r)
+
+    # Define muted color palette
+    muted_blue = "#4a6fa5"  # For scatter markers
+    muted_red  = "#a45a52"  # For best-fit line and ribbon
+
+    # Create the base scatter plot with enhanced aesthetics.
+    plt = Plots.scatter(x, y, 
+                  label = "",           # Remove legend
+                  xlabel = xlabel, ylabel = ylabel, 
+                  title = title,
+                  markersize = 5,
+                  markercolor = muted_blue, 
+                  markerstrokewidth = 0.5,
+                  legend = false,
+                  grid = true,
+                  background_color = :white, 
+                  framestyle = :box,
+                  titlefontsize = 16,
+                  guidefontsize = 14,
+                  tickfontsize = 12,
+                  xscale = plotscale,
+                  yscale = plotscale,
+                  xlims = xlims,
+                  ylims = ylims,
+                  aspect_ratio=aspect_ratio)
+
+    # Optionally add best-fit line with confidence interval
+    if plot_fit_line
+        n = length(x)
+        b = cov(x, y) / var(x)
+        a = mean(y) - b * mean(x)
+        x_line = range(minimum(x), stop=maximum(x), length=100)
+        y_line = a .+ b .* x_line
+
+        # Calculate residuals and standard error
+        y_pred = a .+ b .* x
+        resid = y .- y_pred
+        s = sqrt(sum(resid .^ 2) / (n - 2))
+        mean_x = mean(x)
+        s_x2 = sum((x .- mean_x).^2)
+        se_fit = s .* sqrt.(1/n .+ ((x_line .- mean_x).^2) ./ s_x2)
+        tcrit = quantile(TDist(n - 2), 1 - alpha/2)
+        ribbon = tcrit .* se_fit
+
+        Plots.plot!(plt, x_line, y_line, ribbon = ribbon, 
+              label = "", 
+              lw = 3,
+              linecolor = muted_red,
+              fillalpha = 0.3,
+              fillcolor = muted_red)
+    end
+
+    # Position annotation in lower-right corner.
+    # Compute padding relative to the data range.
+    x_min, x_max = extrema(x)
+    y_min, y_max = extrema(y)
+    x_pos = x_max - 0.05*(x_max - x_min)
+    y_pos = y_min + 0.05*(y_max - y_min)
+    # Annotate with bold, slightly larger text.
+    Plots.annotate!(plt, 0.0, -6., Plots.text("r = $(round(r, digits=2))", :black, :right, 16))
+
+
+
+
+    # Save the plot if a save_path is provided.
+    if save_path !== nothing
+        Plots.savefig(plt, save_path)
+        println("Plot saved at: ", save_path)
+    end
+
+    return r, plt
+end
+
+
+
+
+
+
+"""
+    extract_mode_params(inference::Dict)
+
+Extracts the parameter set corresponding to the highest posterior probability (posterior mode)
+from the `inference` dictionary. Also updates the initial conditions based on the Bayesian seed.
+Returns a tuple `(p, u0, N_pars)` where `p` is the vector of mode parameters,
+`u0` is the initial conditions vector, and `N_pars` is the number of parameters.
+"""
+function extract_mode_params(inference::Dict)
+    chain = inference["chain"]
+    ks = collect(keys(inference["priors"]))
+    # Identify the number of parameters by finding the index of the "σ" key.
+    N_pars = findfirst(x -> x == "σ", ks) - 1
+    n_pars = length(chain.info[1])
+    _, argmax = findmax(chain[:lp])
+    mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
+    p = mode_pars[1:N_pars]
+    u0 = copy(inference["u0"])
+    if inference["bayesian_seed"]
+        u0[inference["seed_idx"]] = chain["seed"][argmax]
+    else
+        u0[inference["seed_idx"]] = inference["seed_value"]
+    end
+    return p, u0, N_pars
+end
+
+
+"""
+    simulate_ode(inference::Dict, p, u0)
+
+Sets up and solves the ODE problem using the mode parameters `p` and initial conditions `u0`
+from the `inference` dictionary. Assumes that a global dictionary `odes` exists that maps
+ODE names to their functions. Returns the ODE solution array (subset according to `sol_idxs`).
+"""
+function simulate_ode(inference::Dict, p, u0)
+    timepoints = inference["timepoints"]
+    tspan = (0.0, timepoints[end])
+    # Retrieve the ODE function from a global dictionary `odes`
+    ode_function = odes[inference["ode"]]
+    L = inference["L"]
+    # Use a factor of 1 for each parameter (you can adjust this if needed)
+    factors = ones(length(p))
+    # Define the ODE right-hand side
+    function rhs(du, u, p, t)
+        ode_function(du, u, p, t; L = L, factors = factors)
+    end
+    prob = ODEProblem(rhs, u0, tspan; alg = Tsit5())
+    sol = solve(prob, Tsit5(); p = p, u0 = u0, saveat = timepoints, abstol = 1e-9, reltol = 1e-6)
+    sol = Array(sol[inference["sol_idxs"], :])
+    return sol
+end
+
+
+"""
+    prepare_plot_data(data, sol, time_index)
+
+Extracts and cleans the observed data and corresponding simulated values for the given timepoint.
+Returns a tuple `(x, y)` where `x` is the observed data vector and `y` is the simulated data vector.
+"""
+function prepare_plot_data(data, sol, time_index)
+    # Extract the column corresponding to the given time index
+    x = vec(copy(data[:, time_index]))
+    y = vec(copy(sol[:, time_index]))
+    # Filter out missing values if any
+    nonmissing = findall(x .!== missing)
+    x = x[nonmissing]
+    y = y[nonmissing]
+    return x, y
+end
+
+
+"""
+    predicted_vs_observed_plots(inference; save_path="", plotscale=log10, remove_zero=false)
+
+For each timepoint in the `inference` dictionary, extracts the highest–posterior parameters,
+simulates the ODE, prepares the observed and predicted data, and generates a predicted vs. observed
+scatter plot using `correlation_analysis()`. Each plot includes a best–fit line with confidence interval,
+and the plot title indicates the timepoint. Optionally, figures are saved to `save_path`.
+If `remove_zero` is true, data points with a 0 value (in either observed or predicted data) are removed.
+The `plotscale` keyword sets the scaling for both the x- and y-axes.
+Returns a list of plot objects.
+"""
+function predicted_vs_observed_plots(inference; save_path="", plotscale=:log10, remove_zero=false, aspect_ratio=:auto)
+    # Create save folder if needed.
+    if save_path != ""
+        try
+            mkdir(save_path)
+        catch
+            # Directory may already exist.
+        end
+    end
+
+    # Extract mode parameters and simulate the ODE.
+    p, u0, _ = extract_mode_params(inference)
+    sol = simulate_ode(inference, p, u0)
+    data = mean3(inference["data"])  # average over samples
+    timepoints = inference["timepoints"]
+
+    # First pass: gather all x and y data (after processing) for global limits.
+    global_x = Float64[]
+    global_y = Float64[]
+
+    for i in 1:length(timepoints)
+        x_i, y_i = prepare_plot_data(data, sol, i)
+        # Optionally remove zeros.
+        if remove_zero
+            nonzero = (x_i .!= 0) .& (y_i .!= 0)
+            x_i = x_i[nonzero]
+            y_i = y_i[nonzero]
+        end
+        # If using a log scale, transform data.
+        if plotscale == :log10
+            x_i = log10.(x_i)
+            y_i = log10.(y_i)
+        end
+        append!(global_x, x_i)
+        append!(global_y, y_i)
+    end
+
+    # Compute global axis limits with 5% padding.
+    x_min, x_max = minimum(global_x), maximum(global_x)
+    y_min, y_max = minimum(global_y), maximum(global_y)
+    pad_x = 0.05 * (x_max - x_min)
+    pad_y = 0.05 * (y_max - y_min)
+    global_xlims = (x_min - pad_x, x_max + pad_x)
+    global_ylims = (y_min - pad_y, y_max + pad_y)
+
+    figures = []
+
+    # Second pass: generate plots with consistent axis limits.
+    for (i, t) in enumerate(timepoints)
+        x, y = prepare_plot_data(data, sol, i)
+        # Optionally remove zeros.
+        if remove_zero
+            nonzero = (x .!= 0) .& (y .!= 0)
+            x = x[nonzero]
+            y = y[nonzero]
+        end
+
+        local_scale = plotscale
+        if plotscale == :log10
+            x = log10.(x)
+            y = log10.(y)
+            local_scale = :identity  # data are already in log-space
+        end
+
+        title_str = "$(t) MPI"
+        sp = save_path == "" ? nothing : joinpath(save_path, "predicted_vs_observed_$(i).png")
+
+        # Generate the plot using correlation_analysis with global axis limits.
+        r, plt = correlation_analysis(x, y; save_path=sp,
+                                      xlabel="Observed", ylabel="Predicted",
+                                      title=title_str, plot_fit_line=true,
+                                      plotscale=local_scale,
+                                      xlims=global_xlims, ylims=global_ylims,
+                                      aspect_ratio=aspect_ratio)
+        push!(figures, plt)
+    end
+
+    return figures
+end
+
+
+
