@@ -681,12 +681,12 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         #d ~ filldist(Normal(-0.8,1),M);
         #γ ~ filldist(truncated(Normal(0,0.1),lower=0),M);
         # ------- try non truncated
-        ρ ~ truncated(Normal(0,0.1),lower=0) 
-        α ~ MvNormal(μ,Σ);
-        β ~ MvNormal(μ,Σ);
-        #d ~ arraydist([truncated(Normal(-β[i],1), lower=-β[i], upper=0) for i in 1:M]);
-        d ~ MvNormal(μ,Σ);
-        γ ~ MvNormal(μ,Σ);
+        #ρ ~ truncated(Normal(0,0.1),lower=0) 
+        #α ~ MvNormal(μ,Σ);
+        #β ~ MvNormal(μ,Σ);
+        ##d ~ arraydist([truncated(Normal(-β[i],1), lower=-β[i], upper=0) for i in 1:M]);
+        #d ~ MvNormal(μ,Σ);
+        #γ ~ MvNormal(μ,Σ);
         # -------------------------
         σ ~ priors["σ"] 
         if bayesian_seed
