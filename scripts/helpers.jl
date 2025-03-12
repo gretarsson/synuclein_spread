@@ -1253,12 +1253,13 @@ function compute_waic(inference; S=10)
     u0 = inference["u0"]
     timepoints = inference["timepoints"]
     L = inference["L"]
-    if typeof(L) != Tuple{Matrix{Float64},Int64}
-        N = size(L)[1]
-        L = (L,N)
-    else
-        N = size(L[1])[1]
-    end
+    #if typeof(L) != Tuple{Matrix{Float64},Int64}
+    #    N = size(L)[1]
+    #    L = (L,N)
+    #else
+    #    N = size(L[1])[1]
+    #end
+    N = size(L[1])[1]
     factors = inference["factors"]
     N_pars = findall(x->x=="σ",ks)[1] - 1
     par_names = chain.name_map.parameters
@@ -1326,12 +1327,12 @@ function compute_aic_bic(inference)
     chain = inference["chain"]
     data = inference["data"]
     L = inference["L"]
-    if typeof(L) != Tuple{Matrix{Float64},Int64}
-        N = size(L)[1]
-        L = (L,N)
-    else
-        N = size(L[1])[1]
-    end
+    #if typeof(L) != Tuple{Matrix{Float64},Int64}
+    #    N = size(L)[1]
+    #    L = (L,N)
+    #else
+    #    N = size(L[1])[1]
+    #end
     par_names = chain.name_map.parameters
     N_pars = length(par_names)
 
@@ -2487,4 +2488,166 @@ function predicted_vs_observed_plots(inference; save_path="", plotscale=:log10, 
 end
 
 
+
+using DifferentialEquations
+using Distributions
+using Statistics
+using StatsPlots   # Provides boxplot; ensure you have this package
+
+#--------------------------------------------------------------------------
+# 1. Extract sample parameters from an inference object.
+#--------------------------------------------------------------------------
+"""
+    extract_sample_params(inference::Dict, sample_index::Int)
+
+Extracts the parameter vector and initial conditions from `inference`
+for the posterior sample given by `sample_index`.
+Returns a tuple `(p, u0)`.
+"""
+function extract_sample_params(inference::Dict, sample_index::Int)
+    chain = inference["chain"]
+    ks = collect(keys(inference["priors"]))
+    # Identify the number of parameters by finding the index of "σ".
+    N_pars = findfirst(x -> x == "σ", ks) - 1
+    n_pars = length(chain.info[1])
+    # Here we assume the chain is indexed as chain[sample, parameter, chain] (adjust if needed).
+    sample_pars = Array(chain[sample_index, 1:n_pars, 1])
+    p = sample_pars[1:N_pars]
+    u0 = copy(inference["u0"])
+    if inference["bayesian_seed"]
+        u0[inference["seed_idx"]] = chain["seed"][sample_index]
+    else
+        u0[inference["seed_idx"]] = inference["seed_value"]
+    end
+    return p, u0
+end
+
+#--------------------------------------------------------------------------
+# 2. Simulate the ODE for a given posterior sample.
+#--------------------------------------------------------------------------
+"""
+    simulate_ode_sample(inference::Dict, sample_index::Int)
+
+Simulates the ODE using the parameters extracted from the given posterior sample.
+Returns the solution array.
+"""
+function simulate_ode_sample(inference::Dict, sample_index::Int)
+    p, u0 = extract_sample_params(inference, sample_index)
+    sol = simulate_ode(inference, p, u0)  # reuse your existing simulate_ode()
+    return sol
+end
+
+#--------------------------------------------------------------------------
+# 3. Compute r for a given sample and timepoint.
+#--------------------------------------------------------------------------
+"""
+    compute_r_for_sample(inference::Dict, sample_index::Int, timepoint::Int)
+
+Simulates the ODE using the posterior sample given by `sample_index`, extracts the
+observed and predicted data at `timepoint`, and returns the Pearson correlation
+coefficient.
+"""
+function compute_r_for_sample(inference::Dict, sample_index::Int, timepoint::Int)
+    sol = simulate_ode_sample(inference, sample_index)
+    data = mean3(inference["data"])  # average over samples
+    x_obs, y_pred = prepare_plot_data(data, sol, timepoint)
+    r = cor(x_obs, y_pred)
+    return r
+end
+
+#--------------------------------------------------------------------------
+# 4. Compute the distribution of r-values for one inference object and one timepoint.
+#--------------------------------------------------------------------------
+"""
+    r_distribution_for_timepoint(inference::Dict, sample_indices::Vector{Int}, timepoint::Int)
+
+For the given `inference` object and timepoint (an index), computes and returns a vector
+of r-values over the specified posterior samples (given by `sample_indices`).
+"""
+function r_distribution_for_timepoint(inference::Dict, sample_indices::Vector{Int}, timepoint::Int)
+    r_values = [compute_r_for_sample(inference, s, timepoint) for s in sample_indices]
+    return r_values
+end
+
+#--------------------------------------------------------------------------
+# 5. Generate and save box plots of r-value distributions for each timepoint.
+#--------------------------------------------------------------------------
+"""
+    boxplot_r_values(inference_list::Vector{Dict}; sample_indices=1:100, save_path="", model_names=nothing)
+
+For each timepoint, computes the r-value distributions (over the given posterior sample indices)
+for each inference object in `inference_list` and produces a box plot comparing the models.
+One figure per timepoint is created and saved in `save_path` (if provided; the folder is created if needed).
+Optionally, you can supply a vector of `model_names` to label the different models.
+Returns an array of plot objects.
+"""
+function boxplot_r_values(inference_list::Vector{Dict}; sample_indices=1:100, save_path="", model_names=nothing)
+    # Create the save folder if save_path is provided.
+    if save_path != ""
+        try
+            mkdir(save_path)
+        catch
+            # Folder may already exist.
+        end
+    end
+
+    # If no model names are provided, default to "Model 1", "Model 2", etc.
+    if model_names === nothing
+        model_names = ["Model $i" for i in 1:length(inference_list)]
+    end
+
+    # Assume all inference objects share the same timepoints.
+    timepoints = inference_list[1]["timepoints"]
+    figures = []
+
+    # First pass: gather all r-values (after processing) to compute global y-axis limits.
+    #global_r_values = Float64[]
+    #for t_idx in 1:length(timepoints)
+    #    for inf in inference_list
+    #        r_vals = r_distribution_for_timepoint(inf, collect(sample_indices), t_idx)
+    #        append!(global_r_values, r_vals)
+    #    end
+    #end
+    #global_ymin, global_ymax = minimum(global_r_values), maximum(global_r_values)
+    global_ymin, global_ymax = 0,1
+    pad_y = 0.05 * (global_ymax - global_ymin)
+    global_ylims = (global_ymin - pad_y, global_ymax + pad_y)
+
+    # Second pass: generate one box plot per timepoint.
+    for (t_idx, t) in enumerate(timepoints)
+        model_r_dists = Vector{Vector{Float64}}()
+        for inf in inference_list
+            r_vals = r_distribution_for_timepoint(inf, collect(sample_indices), t_idx)
+            push!(model_r_dists, r_vals)
+        end
+
+        # Flatten the r-values and create a grouping vector based on model names.
+        all_r = vcat(model_r_dists...)
+        groups = vcat([fill(model_names[i], length(model_r_dists[i])) for i in 1:length(model_r_dists)]...)
+
+        # Create the box plot.
+        p = StatsPlots.boxplot(groups, all_r,
+                    xlabel = "",
+                    ylabel = "r-value",
+                    title = "$(t) MPI",
+                    legend = false,
+                    ylims = global_ylims,
+                    fillcolor = :gray,    # A muted fill color
+                    linecolor = :black,   # Black borders for clarity
+                    titlefontsize = 18,   # Increase title font size
+                    guidefontsize = 16,   # Increase x and y label font size
+                    tickfontsize = 14)    # Increase tick label font size
+
+        # Save the plot if save_path is provided.
+        if save_path != ""
+            filename = joinpath(save_path, "boxplot_r_timepoint_$(t_idx).png")
+            Plots.savefig(p, filename)
+            println("Box plot saved at: ", filename)
+        end
+
+        push!(figures, p)
+    end
+
+    return figures
+end
 

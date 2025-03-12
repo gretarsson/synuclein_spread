@@ -3,12 +3,10 @@ include("helpers.jl");
 
 
 # read inference results
-simulation_diffusion = "total_diffusion_N=448_threads=4_var1_normalpriors";
-simulation_aggregation = "total_aggregation_N=448_threads=4_var1_normalpriors";
-simulation_decay = "total_death_N=448_threads=4_var1_normalpriors";
-simulation_decayii = "total_death_simplifiedii_N=448_threads=4_var1_normalpriors";
-simulations = [simulation_diffusion, simulation_aggregation, simulation_decay, simulation_decayii];
-#simulations = [simulation_aggregation];
+simulations = ["total_death_simplifiedii_bilateral_N=444_threads=1_var1",
+               "total_death_simplifiedii_bilateral_antero_N=444_threads=1_var1",
+               "total_death_simplifiedii_bilateral2_retroantero_N=444_threads=1_var1"]
+model_names = ["retrograde", "anterograde", "bidirectional"]
 inferences = [];
 for simulation in simulations
     push!(inferences,deserialize("simulations/"*simulation*".jls"))
@@ -19,15 +17,15 @@ end
 println("WAIC:")
 for (i,inference) in enumerate(inferences)
     waic = compute_waic(inference; S=1000);
-    println("$(inferences[i]["ode"]): ", waic)
+    println("$(model_names[i]): ", waic)
 end
 println("AIC:")
 for (i,inference) in enumerate(inferences)
     aic,bic = compute_aic_bic(inference);
-    println("$(inferences[i]["ode"]): ", aic)
+    println("$(model_names[i]): ", aic)
 end
 println("BIC:")
 for (i,inference) in enumerate(inferences)
     aic,bic = compute_aic_bic(inference);
-    println("$(inferences[i]["ode"]): ", bic)
+    println("$(model_names[i]): ", bic)
 end
