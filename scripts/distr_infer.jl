@@ -96,7 +96,7 @@ inference = infer(ode,
                 idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
-                retro=false,
+                retro=true,
                 seed_value=100,
                 alg=Tsit5(),
                 abstol=1e-6,
@@ -109,5 +109,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_Tminus2_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_Tminus1_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
