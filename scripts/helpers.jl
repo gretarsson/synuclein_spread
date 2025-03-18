@@ -317,15 +317,17 @@ function death_simplifiedii(du,u,p,t;L=L,factors=(1.,1.))
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- β .* y .- d .* y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (1 .- y)  
 end
-function death_simplifiedii_bilateral(du,u,p,t;L=L,factors=(1.,1.))
+function death_simplifiedii_bilateral(du,u,p,t;L=L,factors=(1.,1.),M=222)
     L,N = L
-    M = Int(N/2)
     p = factors .* p
+    n = N - 2*M
     ρ = p[1]
     α = p[2]
-    β = repeat(p[3:(M+2)],2)
-    d = repeat(p[(M+3):(2*M+2)],2)
-    γ = p[2*M+3]
+    β = repeat(p[3:(M+2)],2)  # regions with bilateral twin
+    β = vcat(β, p[(M+3):(M+n+2)])  # regions without bilateral twin
+    d = repeat(p[(M+n+3):(2*M+n+2)],2)  # regions with bilateral twin
+    d = vcat(d, p[(2*M+n+3):(2*M+2*n+2)])  # regions without bilateral twin
+    γ = p[2*M+2*n+3]
 
     x = u[1:N]
     y = u[(N+1):(2*N)]
@@ -530,7 +532,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                benchmark=false,
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
-               retro=true
+               retro=true,
+               M=0::Int
                )
     # verify that choice of ODE is correct wrp to retro- and anterograde
     retro_and_antero = false
@@ -596,7 +599,19 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     #prob = SDEProblem(rhs, stochastic!, u0, tspan, p; alg=alg)
     # ------
     # ------
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    #if M>0
+    #    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)
+    #else
+    #    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    #end
+    function rhs(du, u, p, t; L=L, func=ode::Function, factors=factors, M=M)
+        if M > 0
+            return func(du, u, p, t; L=L, factors=factors, M=M)
+        else
+            return func(du, u, p, t; L=L, factors=factors)
+        end
+    end
+    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
@@ -659,10 +674,10 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     #    data1[j] = elm
     #end
     # -------
-    M = Int(length(idxs)/2)  # with bilateral
-    display("M = $(M)")
-    μ = zeros(M)
-    Σ = I(M)
+    #M = Int(length(idxs)/2)  # with bilateral
+    #display("M = $(M)")
+    #μ = zeros(M)
+    #Σ = I(M)
 
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
@@ -2657,11 +2672,26 @@ function boxplot_r_values(inference_list::Vector{Dict}; sample_indices=1:100, sa
     return figures
 end
 
-# Computes the in-degree and out-degree of nodes from a weighted adjacency matrix.
-# In-degree is the sum of incoming edge weights, and out-degree is the sum of outgoing edge weights.
+function shortest_paths(A::Matrix{T}) where T <: Any
+    n = size(A, 1)
+    M = copy(A)
 
-function compute_degrees(A::Matrix{T}) where T <: Number
-    in_degree = vec(sum(A, dims=1))  # Sum along columns
-    out_degree = vec(sum(A, dims=2)) # Sum along rows
-    return in_degree, out_degree
+    # Replace zeros (except diagonal) with Inf to indicate no direct path
+    for i in 1:n, j in 1:n
+        if i != j && M[i, j] == 0
+            M[i, j] = Inf
+        end
+    end
+
+    # Floyd-Warshall Algorithm with Inf handling
+    for k in 1:n
+        for i in 1:n
+            for j in 1:n
+                if M[i, k] < Inf && M[k, j] < Inf  # Ensure no Inf overflow
+                    M[i, j] = min(M[i, j], M[i, k] + M[k, j])
+                end
+            end
+        end
+    end
+    return M
 end
