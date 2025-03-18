@@ -29,8 +29,8 @@ n_threads = 1;
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
 data
-data = data[:,1:(end-1),:] 
-timepoints = timepoints[1:(end-1)]
+data = data[:,1:(end-3),:] 
+timepoints = timepoints[1:(end-3)]
 #_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 #idxs = findall(idxs);
 
@@ -109,5 +109,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_Tminus1_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_Tminus3_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
