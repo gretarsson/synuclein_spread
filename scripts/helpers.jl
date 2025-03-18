@@ -2657,3 +2657,11 @@ function boxplot_r_values(inference_list::Vector{Dict}; sample_indices=1:100, sa
     return figures
 end
 
+# Computes the in-degree and out-degree of nodes from a weighted adjacency matrix.
+# In-degree is the sum of incoming edge weights, and out-degree is the sum of outgoing edge weights.
+
+function compute_degrees(A::Matrix{T}) where T <: Number
+    in_degree = vec(sum(A, dims=1))  # Sum along columns
+    out_degree = vec(sum(A, dims=2)) # Sum along rows
+    return in_degree, out_degree
+end
