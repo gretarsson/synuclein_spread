@@ -1053,6 +1053,12 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_varia
         data_i = mean_data[i,:][nonmissing]
         timepoints_i = timepoints[nonmissing]
         var_data_i = var_data[i,:][nonmissing]
+
+        # skip if mean is empty
+        if isempty(data_i)
+            continue
+        end
+
         indices = findall(x -> isnan(x),var_data_i)
         var_data_i[indices] .= 0
         CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1., markersize=15)  
