@@ -604,14 +604,14 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     #else
     #    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
     #end
-    function rhs(du, u, p, t; L=L, func=ode::Function, factors=factors, M=M)
-        if M > 0
-            return func(du, u, p, t; L=L, factors=factors, M=M)
-        else
-            return func(du, u, p, t; L=L, factors=factors)
-        end
-    end
-    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)
+    #function rhs(du, u, p, t; L=L, func=ode::Function, factors=factors, M=M)
+    #    if M > 0
+    #        return func(du, u, p, t; L=L, factors=factors, M=M)
+    #    else
+    #        return func(du, u, p, t; L=L, factors=factors)
+    #    end
+    #end
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
@@ -1342,6 +1342,96 @@ function compute_waic(inference; S=10)
 
     return waic
 end
+
+
+# --- WAIC and WBIC Computation ---
+function compute_waic_wbic(inference; S=10)
+    # unpack the inference object
+    priors = inference["priors"]
+    ks = collect(keys(priors))
+    chain = inference["chain"]
+    data = inference["data"]
+    seed = inference["seed_idx"]
+    ode = odes[inference["ode"]]
+    u0 = inference["u0"]
+    timepoints = inference["timepoints"]
+    L = inference["L"]
+    # assume L is given as a tuple (matrix, _)
+    N = size(L[1])[1]
+    factors = inference["factors"]
+    N_pars = findall(x->x=="σ",ks)[1] - 1
+    par_names = chain.name_map.parameters
+    if inference["bayesian_seed"]
+        seed_ch_idx = findall(x->x==:seed,par_names)[1]  
+    end
+    sigma_idx = findall(x->x==:σ,par_names)[1]  
+
+    # reshape data
+    N_samples = size(data)[3]
+    vec_data = vec(data)
+    nonmissing = findall(vec_data .!== missing)
+    vec_data = vec_data[nonmissing]
+    vec_data = identity.(vec_data)  # converts Union{Missing,Float64} to Float64
+    n = length(vec_data)
+
+    # define ODE problem
+    tspan = (0, timepoints[end])
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+
+    # sample from posterior and store ODE solutions for each sample
+    posterior_samples = sample(chain, S; replace=false)
+    solutions = Vector{Vector{Float64}}()  # each element holds the solution vector for a sample
+    sigmas = []
+    for sample in eachrow(Array(posterior_samples))
+        # Extract parameter samples
+        p = sample[1:N_pars]  
+        if inference["bayesian_seed"]
+            u0[seed] = sample[seed_ch_idx]  
+        else    
+            u0[seed] = inference["seed_value"]
+        end
+        σ = sample[sigma_idx]  # extract σ
+        # solve the ODE
+        sol_p = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-9)
+        sol_p = Array(sol_p[inference["sol_idxs"],:])
+        # Repeat solution for each of the N_samples (if data has replicated observations)
+        solution = vec(cat([sol_p for _ in 1:N_samples]..., dims=3))
+        solution = solution[nonmissing]
+        push!(solutions, solution)
+        push!(sigmas, σ)
+    end
+    means = transpose(hcat(solutions...))  # S x n matrix
+
+    # Compute pointwise log-likelihoods for each sample and data point
+    log_lik = zeros(S, n)
+    for s in 1:S
+        for i in 1:n
+            log_lik[s, i] = logpdf(Normal(means[s,i], sigmas[s]), vec_data[i])
+        end
+    end
+
+    # --- WAIC computation ---
+    lppd = sum(log.(mean(exp.(log_lik), dims=1)))   # Log Pointwise Predictive Density
+    p_waic = sum(var(log_lik, dims=1))                # Effective number of parameters
+    waic = -2 * (lppd - p_waic)                       # WAIC formula
+
+    # --- WBIC computation ---
+    # Compute total log-likelihood per posterior sample
+    total_log_lik = vec(sum(log_lik, dims=2))  # vector of length S
+    # Temperature for WBIC: T = 1 / log(n)
+    T = 1 / log(n)
+    # Compute log-weights to stabilize the exponentiation
+    log_weights = (T - 1) * total_log_lik
+    max_log_weight = maximum(log_weights)
+    stabilized_weights = exp.(log_weights .- max_log_weight)
+    # Compute weighted expectation of the log-likelihood
+    wbic_expectation = sum(stabilized_weights .* total_log_lik) / sum(stabilized_weights)
+    wbic = -2 * wbic_expectation
+
+    return waic, wbic
+end
+
 
 function compute_aic_bic(inference)
     # unpack the inference object
