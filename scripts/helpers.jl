@@ -2322,22 +2322,17 @@ function plot_retrodiction_clustered(inference; save_path=nothing, N_samples=1, 
     return fs
 end
 
-#function correlation_analysis(x::Vector, y::Vector; save_path::Union{String, Nothing}=nothing, xlabel="X", ylabel="Y", title="Correlation analysis")
-#    @assert length(x) == length(y) "Vectors must have the same length"
-#    
-#    # Compute Pearson correlation coefficient
-#    r = cor(x, y)
-#    println("Correlation coefficient (r): ", r)
-#    
-#    # If a save path is provided, generate and save the plot
-#    if save_path !== nothing
-#        Plots.scatter(x, y, label="r = $r", xlabel=xlabel, ylabel=ylabel, title=title)
-#        Plots.savefig(save_path)
-#        println("Plot saved at: ", save_path)
-#    end
-#    
-#    return r
-#end
+
+function concordance_correlation_coefficient(x, y)
+    μ_x = mean(x)
+    μ_y = mean(y)
+    σ_x = std(x)
+    σ_y = std(y)
+    ρ = cor(x, y)
+
+    return (2 * ρ * σ_x * σ_y) / (σ_x^2 + σ_y^2 + (μ_x - μ_y)^2)
+end
+
 """
     correlation_analysis(x, y; save_path=nothing, xlabel="X", ylabel="Y", title="Correlation analysis",
                          plot_fit_line=false, alpha=0.05, plotscale=identity, xlims=nothing, ylims=nothing)
@@ -2352,11 +2347,12 @@ function correlation_analysis(x::AbstractVector, y::AbstractVector;
                               save_path::Union{String, Nothing}=nothing,
                               xlabel="X", ylabel="Y", title="Correlation analysis",
                               plot_fit_line::Bool=false, alpha::Real=0.05,
-                              plotscale=:identity, xlims=nothing, ylims=nothing, aspect_ratio=:auto)
+                              plotscale=:identity, xlims=nothing, ylims=nothing, aspect_ratio=:auto, plot_identity_line=false)
     @assert length(x) == length(y) "Vectors must have the same length"
 
     # Compute Pearson correlation coefficient
-    r = cor(x, y)
+    #r = cor(x, y)
+    r = concordance_correlation_coefficient(x,y)
     println("Correlation coefficient (r): ", r)
 
     # Define muted color palette
@@ -2410,6 +2406,15 @@ function correlation_analysis(x::AbstractVector, y::AbstractVector;
               fillcolor = muted_red)
     end
 
+    # Optionally add the identity line (y = x) with no label or legend
+    if plot_identity_line
+        # Create a line covering the x range of the data
+        mini = min(xlims[1], ylims[1])
+        maxi = max(xlims[2], ylims[2])
+        x_line = range(mini, stop=maxi, length=100)
+        Plots.plot!(plt, x_line, x_line, label="", legend=false, lw=2, linecolor=:gray)
+    end
+
     # Position annotation in lower-right corner.
     # Compute padding relative to the data range.
     x_min, x_max = extrema(x)
@@ -2418,9 +2423,6 @@ function correlation_analysis(x::AbstractVector, y::AbstractVector;
     y_pos = y_min + 0.05*(y_max - y_min)
     # Annotate with bold, slightly larger text.
     Plots.annotate!(plt, 0.0, -6., Plots.text("r = $(round(r, digits=2))", :black, :right, 16))
-
-
-
 
     # Save the plot if a save_path is provided.
     if save_path !== nothing
@@ -2488,6 +2490,38 @@ function simulate_ode(inference::Dict, p, u0)
     return sol
 end
 
+"""
+    posterior_pred_mode(inference::Dict)
+
+Computes the posterior predictive distribution using the posterior mode of the parameters.
+It first extracts the mode parameters via `extract_mode_params`, then simulates the ODE to get u(t),
+and finally constructs a vector where each element is a Normal(u[i], σ) distribution.
+"""
+function posterior_pred_mode(inference::Dict)
+    # Extract the mode parameters, updated initial conditions, and the number of parameters
+    p, u0, N_pars = extract_mode_params(inference)
+    
+    # To extract sigma, we need the full mode parameter vector from the chain.
+    chain = inference["chain"]
+    ks = collect(keys(inference["priors"]))
+    sigma_idx = findfirst(x -> x == "σ", ks)  # sigma is assumed to be stored at this index
+    
+    # Recompute the mode sample index using the log-posterior values.
+    n_pars = length(chain.info[1])
+    _, argmax = findmax(chain[:lp])
+    mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
+    
+    sigma = mode_pars[sigma_idx]
+    display("σ = $(sigma)")
+    
+    # Simulate the ODE using the mode parameters.
+    u = simulate_ode(inference, p, u0)
+    
+    # Construct a vector of Normal distributions for each u(t) value.
+    posterior_pred = [Normal(ui, sigma^2) for ui in u]
+    
+    return posterior_pred
+end
 
 """
     prepare_plot_data(data, sol, time_index)
@@ -2518,7 +2552,7 @@ If `remove_zero` is true, data points with a 0 value (in either observed or pred
 The `plotscale` keyword sets the scaling for both the x- and y-axes.
 Returns a list of plot objects.
 """
-function predicted_vs_observed_plots(inference; save_path="", plotscale=:log10, remove_zero=false, aspect_ratio=:auto)
+function predicted_vs_observed_plots(inference; save_path="", plotscale=:log10, remove_zero=false, aspect_ratio=:auto, plot_identity_line=false, plot_fit_line=true)
     # Create save folder if needed.
     if save_path != ""
         try
@@ -2562,6 +2596,7 @@ function predicted_vs_observed_plots(inference; save_path="", plotscale=:log10, 
     pad_y = 0.05 * (y_max - y_min)
     global_xlims = (x_min - pad_x, x_max + pad_x)
     global_ylims = (y_min - pad_y, y_max + pad_y)
+    global_lims = (min(global_xlims[1], global_ylims[1]), max(global_xlims[2],global_ylims[2]))
 
     figures = []
 
@@ -2588,10 +2623,10 @@ function predicted_vs_observed_plots(inference; save_path="", plotscale=:log10, 
         # Generate the plot using correlation_analysis with global axis limits.
         r, plt = correlation_analysis(x, y; save_path=sp,
                                       xlabel="Observed", ylabel="Predicted",
-                                      title=title_str, plot_fit_line=true,
+                                      title=title_str, plot_fit_line=plot_fit_line,
                                       plotscale=local_scale,
-                                      xlims=global_xlims, ylims=global_ylims,
-                                      aspect_ratio=aspect_ratio)
+                                      xlims=global_lims, ylims=global_lims,
+                                      aspect_ratio=aspect_ratio, plot_identity_line=plot_identity_line)
         push!(figures, plt)
     end
 
@@ -2646,6 +2681,32 @@ function simulate_ode_sample(inference::Dict, sample_index::Int)
     p, u0 = extract_sample_params(inference, sample_index)
     sol = simulate_ode(inference, p, u0)  # reuse your existing simulate_ode()
     return sol
+end
+
+
+"""
+    posterior_pred_sample(inference::Dict, sample_index::Int)
+
+Computes the posterior predictive distribution for the ODE solution for a given posterior sample.
+It first extracts the inferred σ from the chain, simulates the ODE to get u(t) and then returns a
+vector where each element is a Normal(u[i], σ) distribution representing the predicted value with uncertainty.
+"""
+function posterior_pred_sample(inference::Dict, sample_index::Int)
+    # Extract the chain and prior keys
+    chain = inference["chain"]
+    ks = collect(keys(inference["priors"]))
+    # Get the index for sigma ("σ")
+    sigma_idx = findfirst(x -> x == "σ", ks)
+    # Extract sigma from the chain for the given sample (assuming sigma is stored in the chain)
+    sigma = chain[sample_index, sigma_idx, 1]
+    
+    # Simulate the ODE solution for this posterior sample
+    u = simulate_ode_sample(inference, sample_index)
+    
+    # Construct a vector of Normal distributions for each u(t) value
+    posterior_pred = [Normal(ui, sigma^2) for ui in u]
+    
+    return posterior_pred
 end
 
 #--------------------------------------------------------------------------
