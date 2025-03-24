@@ -611,7 +611,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     #        return func(du, u, p, t; L=L, factors=factors)
     #    end
     #end
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)
+    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)  # uncomment for bilateral
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)  # uncomment without bilateral 
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
@@ -749,10 +750,10 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # Sample to approximate posterior
     if n_threads == 1
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true, initial_params=[0.01 for _ in 1:(2*N+4)])  # time estimated is shown
-        chain = sample(model, NUTS(10000,0.65;adtype=adtype), 1000; progress=true)  
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  
         #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
-        chain = sample(model, NUTS(10000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
         #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
     end
 
@@ -1259,6 +1260,25 @@ function create_data2(data::Array{Union{Missing, Float64}, 3})
     end
     
     return data2
+end
+
+function thresholded_bilateral_idxs(thr_idxs,bi_idxs)
+    left_idxs = []
+    right_idxs = []
+    for i in 1:length(bi_idxs)
+        if i<=M
+            if i in thr_idxs
+                push!(left_idxs,bi_idxs[i])
+                push!(right_idxs,bi_idxs[i+M])
+            end
+        else
+            if i in thr_idxs
+                push!(left_idxs,bi_idxs[i-M])
+                push!(right_idxs,bi_idxs[i])
+            end
+        end
+    end
+    return vcat(left_idxs,right_idxs)
 end
 
 
@@ -1778,6 +1798,19 @@ function only_bilateral(labels)
     end
     idxs = setdiff(1:448,solo_idxs)
     return idxs
+end
+
+function indices_with_twins(indices::Vector{Any}, M::Int)
+    s = Set(indices)
+    result = Int[]
+    for n in indices
+        # Define twin: use n+M if n is in the first group, and n-M if in the second.
+        twin = n <= M ? n + M : n - M
+        if twin in s
+            push!(result, n)
+        end
+    end
+    return sort(result)
 end
 
 

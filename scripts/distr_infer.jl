@@ -22,45 +22,45 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = death_simplifiedii_bilateral;
+ode = death_simplifiedii;
 n_threads = 1;
 
 # read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
-data
 #data = data[:,1:(end-3),:] 
 #timepoints = timepoints[1:(end-3)]
-#_, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-#idxs = findall(idxs);
+_, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+idxs = findall(thr_idxs);
+
 
 # get bilateral idxs
-W_file = "data/W_labeled.csv"
-W_labelled = readdlm(W_file,',')
-labels = W_labelled[1,2:end]
-bi_idxs = only_bilateral(labels)
-N = length(labels)
-M = Int(length(bi_idxs) / 2)
-nobi_idxs = setdiff(1:N, bi_idxs)  # Indices of regions without twins
-idxs = vcat(bi_idxs, nobi_idxs)
+#W_file = "data/W_labeled.csv"
+#W_labelled = readdlm(W_file,',')
+#labels = W_labelled[1,2:end]
+#bi_idxs = only_bilateral(labels)
+#N = length(labels)
+#M = Int(length(bi_idxs) / 2)
+#nobi_idxs = setdiff(1:N, bi_idxs)  # Indices of regions without twins
+#idxs = vcat(bi_idxs, nobi_idxs)
 
-#
-#seed_idx = findall(s -> contains(s,"iCP"),labels)
-#labels2 = labels[bi_idxs]
-#for i in 1:222
-#    display("$(labels2[i]) + $(labels2[i+222]) ")
+# FEWER VARIABLES WITH BILATERAL PARAMETERS
+#idxs = thresholded_bilateral_idxs(thr_idxs,bi_idxs)
+#M = Int(length(idxs)/2)
+#for i in 1:M
+#    i = Int(i)
+#    display(labels[new_idxs[i]])
+#    display(labels[new_idxs[i+40]])
 #end
-#idxs = [[bi_idxs[i] for i in 78:88]...,[bi_idxs[i] for i in (78+222):(88+222)]...]
-#labels2 = labels[idxs]
-#for i in 1:Int(length(labels2)/2)
-#    display("$(labels2[i]) + $(labels2[i+Int(length(labels2)/2)]) ")
-#end
+#nobi_idxs = []
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-K = M + length(nobi_idxs)  # number of unique regional parameters
+N = size(data)[1];
+N = length(idxs)
+#K = M + length(nobi_idxs)  # number of unique regional parameters
+K = N
 #M = N  # without bilateral
-#N = size(data)[1];
 display("N = $(N)")
 u0 = [0. for _ in 1:(2*N)];
 
@@ -108,10 +108,10 @@ inference = infer(ode,
                 sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
                 benchmark=false,
                 benchmark_ad=[:reversediff],
-                test_typestable=false,
-                M=M
+                #M=M,
+                test_typestable=false
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_NEW.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
