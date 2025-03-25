@@ -315,7 +315,7 @@ function death_simplifiedii(du,u,p,t;L=L,factors=(1.,1.))
     x = u[1:N]
     y = u[(N+1):(2*N)]
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- d .* y .- x)   # quick gradient computation
-    du[(N+1):(2*N)] .=  γ .* (1 .- y)  
+    du[(N+1):(2*N)] .=  γ .* (1 .- y) .* x  
 end
 function death_simplifiedii_bilateral(du,u,p,t;L=L,factors=(1.,1.),M=222)
     L,N = L

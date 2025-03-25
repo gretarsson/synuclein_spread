@@ -113,5 +113,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_olddecay.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_olddecay_withx.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
