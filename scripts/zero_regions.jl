@@ -9,7 +9,7 @@ using Serialization
 # -------------------------------
 # 1. Load Inference and Data
 # -------------------------------
-simulation = "total_death_simplifiedii_bilateral_N=448_threads=1_var1_NEW"
+simulation = "total_death_simplifiedii_N=448_threads=1_var1_olddecay"
 inference_obj = deserialize("simulations/" * simulation * ".jls")
 data = inference_obj["data"]  # dimensions: n_vars × n_time × n_samples
 n_vars, n_time, n_samples = size(data)

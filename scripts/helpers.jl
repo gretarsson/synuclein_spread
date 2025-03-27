@@ -2879,3 +2879,63 @@ function shortest_paths(A::Matrix{T}) where T <: Any
     end
     return M
 end
+
+
+# --- BEGIN HELPER FUNCTION: compute_mse_mc ---
+"""
+    compute_mse_mc(inference::Dict; M::Int=1000) -> Float64
+
+Computes the mean squared error (MSE) of the posterior mode prediction using Monte Carlo sampling.
+The steps are:
+  1. Extract the mode parameters (and thus u_mode) and the mode standard deviation σ.
+  2. For each region and timepoint with available data, draw M samples from N(0, σ).
+  3. For each observed data point y, compute the error between y and the predictive distribution 
+     (u_mode + ε) by averaging the squared error over the M draws.
+  4. Return the average error over all observed data points.
+"""
+function compute_mse_mc(inference::Dict; M::Int=1000)
+    # Extract mode parameters and updated initial conditions.
+    p, u0, _ = extract_mode_params(inference)
+    
+    # Extract sigma from the posterior mode sample.
+    chain = inference["chain"]
+    ks = collect(keys(inference["priors"]))
+    sigma_idx = findfirst(x -> x == "σ", ks)
+    n_pars = length(chain.info[1])
+    _, argmax = findmax(chain[:lp])
+    mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
+    sigma = mode_pars[sigma_idx]
+    
+    # Solve the ODE to obtain u_mode for each region and timepoint.
+    u_mode = simulate_ode(inference, p, u0)  # expected shape: [regions, timepoints]
+    
+    # Get observed data (assumed to be a 3D array: regions x timepoints x samples)
+    data = inference["data"]
+    n_regions, n_timepoints = size(data)[1:2]
+    
+    total_error = 0.0
+    total_count = 0
+    
+    for i in 1:n_regions
+        for t in 1:n_timepoints
+            # Extract observations for region i at timepoint t (skip missing values)
+            obs = collect(skipmissing(vec(data[i, t, :])))
+            if !isempty(obs)
+                # Draw M samples from N(0, sigma) to represent the noise component.
+                noise_samples = rand(Normal(0, sigma^2), M)
+                for y in obs
+                    # For this observation, the predictive samples are u_mode + noise.
+                    pred_samples = u_mode[i, t] .+ noise_samples
+                    # Compute the squared error for each draw and average over M samples.
+                    error_mc = mean((y .- pred_samples).^2)
+                    total_error += error_mc
+                    total_count += 1
+                end
+            end
+        end
+    end
+    
+    mse = total_error / total_count
+    return mse
+end
+# --- END HELPER FUNCTION ---

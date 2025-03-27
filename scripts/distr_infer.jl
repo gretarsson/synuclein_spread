@@ -30,8 +30,8 @@ timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
 #data = data[:,1:(end-3),:] 
 #timepoints = timepoints[1:(end-3)]
-_, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-idxs = findall(thr_idxs);
+#_, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+#idxs = findall(thr_idxs);
 
 
 # get bilateral idxs
@@ -57,7 +57,7 @@ idxs = findall(thr_idxs);
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
 N = size(data)[1];
-N = length(idxs)
+#N = length(idxs)
 #K = M + length(nobi_idxs)  # number of unique regional parameters
 K = N
 #M = N  # without bilateral
@@ -81,7 +81,11 @@ end
 #end
 priors["γ"] = truncated(Normal(0,0.1),lower=0);
 priors["σ"] = LogNormal(0,1);
+<<<<<<< HEAD
 priors["seed"] = truncated(Normal(0,0.01),lower=0);
+=======
+priors["seed"] = truncated(Normal(0,0.01),lower=0, upper=0.05);
+>>>>>>> 04968e1365a622fd7b26a3b65447a8e8f7ba26aa
 #
 # parameter refactorization
 #factors = [1., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]...];  # death
@@ -113,5 +117,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_olddecay_withx_smallpriors_smallseed.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
