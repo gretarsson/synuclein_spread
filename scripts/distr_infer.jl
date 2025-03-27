@@ -74,14 +74,14 @@ for i in 1:K
     priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 for i in 1:K
-    priors["d[$(i)]"] = Normal(0,1);
+    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 #for i in 1:M
 #    priors["γ[$(i)]"] = truncated(Normal(0,0.1),lower=0);
 #end
 priors["γ"] = truncated(Normal(0,0.1),lower=0);
 priors["σ"] = LogNormal(0,1);
-priors["seed"] = truncated(Normal(0,0.1),lower=0);
+priors["seed"] = truncated(Normal(0,0.01),lower=0);
 #
 # parameter refactorization
 #factors = [1., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]...];  # death
