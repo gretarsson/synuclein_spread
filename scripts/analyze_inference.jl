@@ -4,13 +4,9 @@ here we create a folder of analysis plots of interence results
 include("helpers.jl");
 
 # simulation to analyze
-simulation = "total_death_simplifiedii_bilateral_N=80_threads=1_var1";
+simulation = "total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx_smallseed";
 
 # plot 
 inference_obj = deserialize("simulations/"*simulation*".jls")
-inference_obj["data"]
-inference_obj["priors"]
-inference_obj
-
 
 plot_inference(inference_obj,"figures/"*simulation;plotscale=log10)  

@@ -10,7 +10,7 @@ using Plots
 # -------------------------------
 # 1. Load Inference and Data
 # -------------------------------
-simulation = "total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx"
+simulation = "total_death_simplifiedii_N=448_threads=4_var1_normalpriors"
 inference_obj = deserialize("simulations/" * simulation * ".jls")
 data = inference_obj["data"]  # dimensions: n_vars × n_time × n_samples
 n_vars, n_time, n_samples = size(data)
@@ -109,13 +109,13 @@ p1 = Plots.plot(1:length(beta_post_means), beta_post_means,
     xlabel = "Region Index",
     ylabel = "β Value",
     title = "β Parameter Comparison",
-    markersize = 4)
+    markersize = 4);
 
 Plots.scatter!(p1, 1:length(beta_prior_means), beta_prior_means,
     yerror = beta_prior_stds,
     label = "Prior β",
     markershape = :diamond,
-    markersize = 4)
+    markersize = 4);
 
 # Create a d comparison plot.
 p2 = Plots.plot(1:length(d_post_means), d_post_means,
@@ -125,16 +125,16 @@ p2 = Plots.plot(1:length(d_post_means), d_post_means,
     xlabel = "Region Index",
     ylabel = "d Value",
     title = "d Parameter Comparison",
-    markersize = 4)
+    markersize = 4);
 
 Plots.scatter!(p2, 1:length(d_prior_means), d_prior_means,
     yerror = d_prior_stds,
     label = "Prior d",
     markershape = :diamond,
-    markersize = 4)
+    markersize = 4);
 
 # Combine the two plots into a single layout.
-combined_plot = Plots.plot(p1, p2, layout = (1, 2), legend = :outertop)
+combined_plot = Plots.plot(p1, p2, layout = (1, 2), legend = :outertop);
 display(combined_plot)
 # Optionally, save the figure.
-#Plots.savefig(combined_plot, "parameter_comparison.png")
+Plots.savefig(combined_plot, "figures/zero_regions/"*simulation*".png")
