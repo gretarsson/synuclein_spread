@@ -317,6 +317,20 @@ function death_simplifiedii(du,u,p,t;L=L,factors=(1.,1.))
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- d .* y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (1 .- y) .* x  
 end
+function death_simplifiedii_uncor(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+    γ = p[2*N+3]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- β .* y - d .* y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (1 .- y) .* x  
+end
 function death_simplifiedii_bilateral(du,u,p,t;L=L,factors=(1.,1.),M=222)
     L,N = L
     p = factors .* p
@@ -2937,5 +2951,62 @@ function compute_mse_mc(inference::Dict; M::Int=1000)
     
     mse = total_error / total_count
     return mse
+end
+# --- END HELPER FUNCTION ---
+
+
+# --- BEGIN HELPER FUNCTION: compute_region_errors ---
+"""
+    compute_region_errors(inference::Dict; M::Int=1000) -> Array{Union{Float64, Missing},2}
+
+For each region and timepoint, this function computes the average mean squared error (MSE)
+using Monte Carlo draws from N(0,σ), where σ is the posterior mode noise level.
+The prediction for each region i and timepoint t is u_mode[i,t] (obtained by solving the ODE 
+with the posterior mode parameters). Then for each available observed value y (in inference["data"])
+at that region and timepoint, we compute:
+  
+  error = mean((y - (u_mode[i,t] + ε))^2)   with ε ~ N(0,σ) drawn M times
+  
+Finally, the errors are averaged over all observations (if more than one is available)
+to produce a matrix `errors` with dimensions (n_regions x n_timepoints).
+"""
+function compute_region_errors(inference::Dict; M::Int=1000)
+    # Extract mode parameters and updated initial conditions.
+    p, u0, _ = extract_mode_params(inference)
+    
+    # Extract sigma from the posterior mode sample.
+    chain = inference["chain"]
+    ks = collect(keys(inference["priors"]))
+    sigma_idx = findfirst(x -> x == "σ", ks)
+    n_pars = length(chain.info[1])
+    _, argmax = findmax(chain[:lp])
+    mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
+    sigma = mode_pars[sigma_idx]
+    
+    # Compute u_mode using the mode parameters.
+    u_mode = simulate_ode(inference, p, u0)  # Expected shape: (regions, timepoints)
+    n_regions, n_timepoints = size(u_mode)
+    
+    # Get observed data (assumed to be a 3D array: regions x timepoints x samples).
+    data = inference["data"]
+    
+    # Initialize an errors matrix.
+    errors = Array{Union{Float64, Missing}}(missing, n_regions, n_timepoints)
+    
+    for i in 1:n_regions
+        for t in 1:n_timepoints
+            # Get available observations (skip missing) for region i and timepoint t.
+            obs = collect(skipmissing(vec(data[i, t, :])))
+            if !isempty(obs)
+                # Draw M samples from N(0, sigma) for the noise.
+                noise_draws = rand(Normal(0, sigma), M)
+                # For each observation, compute error over the noise draws.
+                obs_errors = [mean((y - (u_mode[i,t] .+ noise_draws)).^2) for y in obs]
+                # Average error over observations.
+                errors[i,t] = mean(obs_errors)
+            end
+        end
+    end
+    return errors
 end
 # --- END HELPER FUNCTION ---

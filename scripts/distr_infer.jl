@@ -22,7 +22,7 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = death_simplifiedii;
+ode = death_simplifiedii_uncor;
 n_threads = 1;
 
 # read data
@@ -71,17 +71,17 @@ priors["α"] = truncated(Normal(0,0.1),lower=0);
 #    priors["α[$(i)]"] = truncated(Normal(0,1),lower=0);
 #end
 for i in 1:K
-    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
+    priors["β[$(i)]"] = Normal(0,1);
 end
 for i in 1:K
-    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
+    priors["d[$(i)]"] = Normal(0,1);
 end
 #for i in 1:M
 #    priors["γ[$(i)]"] = truncated(Normal(0,0.1),lower=0);
 #end
 priors["γ"] = truncated(Normal(0,0.1),lower=0);
 priors["σ"] = LogNormal(0,1);
-priors["seed"] = truncated(Normal(0,0.01),lower=0, upper=0.05);
+priors["seed"] = truncated(Normal(0,0.1),lower=0, upper=0.05);
 #
 # parameter refactorization
 #factors = [1., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]...];  # death
@@ -96,7 +96,7 @@ inference = infer(ode,
                 "data/W_labeled.csv"; 
                 factors=factors,
                 u0=u0,
-                idxs=idxs,
+                #idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 retro=true,
@@ -113,5 +113,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_olddecay_withx_smallpriors_smallseed.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_olddecay_withx_notrunc.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
