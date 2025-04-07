@@ -10,9 +10,10 @@ simulations = [
     "total_death_simplifiedii_bilateral_N=448_threads=1_var1_NEW",
     "total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx_notrunc",
     "total_death_simplifiedii_uncor_N=448_threads=1_var1_olddecay_withx_notrunc",
-    "total_death_simplifiedii_nodecay_N=448_threads=1_var1_olddecay_withx_notrunc"
+    "total_death_simplifiedii_uncor_N=448_threads=1_var1_olddecay_withx_notrunc",
+    "total_death_simplifiedii_time_N=448_threads=1_var1_olddecay_withx_notrunc"
 ]
-model_names = ["diffusion-only", "diffusion+aggregation", "diffusion+aggregation+decay", "bilateral", "no trunc", "no trunc uncor", "death"]
+model_names = ["diffusion-only", "diffusion+aggregation", "diffusion+aggregation+decay", "bilateral", "no trunc", "no trunc uncor", "death", "time"]
 inferences = []
 for simulation in simulations
     push!(inferences, deserialize("simulations/" * simulation * ".jls"))

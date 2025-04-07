@@ -22,7 +22,7 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = death_simplifiedii_time;
+ode = fastslow;
 n_threads = 1;
 
 # read data
@@ -30,8 +30,8 @@ timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
 #data = data[:,1:(end-3),:] 
 #timepoints = timepoints[1:(end-3)]
-#_, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-#idxs = findall(thr_idxs);
+_, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+idxs = findall(thr_idxs);
 
 
 # get bilateral idxs
@@ -56,8 +56,8 @@ data = deserialize("data/total_path_3D.jls");
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-N = size(data)[1];
-#N = length(idxs)
+#N = size(data)[1];
+N = length(idxs)  # when using test subset of data
 #K = M + length(nobi_idxs)  # number of unique regional parameters
 K = N
 #M = N  # without bilateral
@@ -75,12 +75,12 @@ for i in 1:K
 end
 for i in 1:K
     #priors["d[$(i)]"] = Normal(0,0.1);
-    priors["d[$(i)]"] = Normal(0,0.1);
+    priors["d[$(i)]"] = Normal(0,1);
 end
 #for i in 1:M
 #    priors["γ[$(i)]"] = truncated(Normal(0,0.1),lower=0);
 #end
-priors["γ"] = truncated(Normal(0,1),lower=0);
+priors["γ"] = truncated(Normal(0,0.1),lower=0);
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
@@ -98,7 +98,7 @@ inference = infer(ode,
                 "data/W_labeled.csv"; 
                 factors=factors,
                 u0=u0,
-                #idxs=idxs,
+                idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 retro=true,
@@ -115,5 +115,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_olddecay_withx_notrunc.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
