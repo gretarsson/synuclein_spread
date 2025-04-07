@@ -7,9 +7,12 @@ simulations = [
     "total_diffusion_N=448_threads=4_var1_normalpriors",
     "total_aggregation_N=448_threads=4_var1_normalpriors",
     "total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx",
-    "total_death_simplifiedii_bilateral_N=448_threads=1_var1_NEW"
+    "total_death_simplifiedii_bilateral_N=448_threads=1_var1_NEW",
+    "total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx_notrunc",
+    "total_death_simplifiedii_uncor_N=448_threads=1_var1_olddecay_withx_notrunc",
+    "total_death_simplifiedii_nodecay_N=448_threads=1_var1_olddecay_withx_notrunc"
 ]
-model_names = ["diffusion-only", "diffusion+aggregation", "diffusion+aggregation+decay", "bilateral"]
+model_names = ["diffusion-only", "diffusion+aggregation", "diffusion+aggregation+decay", "bilateral", "no trunc", "no trunc uncor", "death"]
 inferences = []
 for simulation in simulations
     push!(inferences, deserialize("simulations/" * simulation * ".jls"))
@@ -21,12 +24,12 @@ aic_vals  = Float64[]
 bic_vals  = Float64[]
 mse_vals  = Float64[]
 for inference in inferences
-    waic, _ = compute_waic_wbic(inference; S=2)  # WBIC is computed but not used in the table.
+    waic, _ = compute_waic_wbic(inference; S=1000)  # WBIC is computed but not used in the table.
     push!(waic_vals, waic)
     aic, bic = compute_aic_bic(inference)
     push!(aic_vals, aic)
     push!(bic_vals, bic)
-    mse = compute_mse(inference)
+    mse = compute_mse_mc(inference)
     push!(mse_vals, mse)
 end
 
@@ -51,8 +54,8 @@ df = DataFrame(
     ΔAIC    = round.(delta_aic, digits=0),
     BIC     = round.(bic_vals, digits=0),
     ΔBIC    = round.(delta_bic, digits=0),
-    MSE     = round.(mse_vals, digits=2),
-    ΔMSE    = round.(delta_mse, digits=2)
+    MSE     = round.(mse_vals, digits=4),
+    ΔMSE    = round.(delta_mse, digits=4)
 )
 
 formatters = (
@@ -63,8 +66,8 @@ formatters = (
     ft_printf("%5d"),
     ft_printf("%5d"),
     ft_printf("%5d"),
-    ft_printf("%7.2f"),
-    ft_printf("%7.2f")
+    ft_printf("%7.3f"),
+    ft_printf("%7.3f")
 )
 
 
