@@ -25,7 +25,7 @@ aic_vals  = Float64[]
 bic_vals  = Float64[]
 mse_vals  = Float64[]
 for inference in inferences
-    waic, _ = compute_waic_wbic(inference; S=1000)  # WBIC is computed but not used in the table.
+    waic, _ = compute_waic_wbic(inference; S=2)  # WBIC is computed but not used in the table.
     push!(waic_vals, waic)
     aic, bic = compute_aic_bic(inference)
     push!(aic_vals, aic)
@@ -59,7 +59,7 @@ df = DataFrame(
     ΔMSE    = round.(delta_mse, digits=4)
 )
 
-formatters = (
+ormatters = (
     ft_printf("%s"),
     ft_printf("%5d"),
     ft_printf("%5d"),
@@ -67,8 +67,8 @@ formatters = (
     ft_printf("%5d"),
     ft_printf("%5d"),
     ft_printf("%5d"),
-    ft_printf("%7.3f"),
-    ft_printf("%7.3f")
+    ft_printf("%7.2f"),
+    ft_printf("%7.2f")
 )
 
 
