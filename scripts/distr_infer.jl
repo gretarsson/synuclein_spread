@@ -26,12 +26,16 @@ ode = fastslow;
 n_threads = 1;
 
 # read data
-timepoints = vec(readdlm("data/timepoints.csv", ','));
-data = deserialize("data/total_path_3D.jls");
+#timepoints = vec(readdlm("data/timepoints.csv", ','));
+#data = deserialize("data/total_path_3D.jls");
+timepoints = deserialize("data/synthetic_timepoints_N=40.jls");
+data = deserialize("data/synthetic_data_N=40.jls");
+
 #data = data[:,1:(end-3),:] 
 #timepoints = timepoints[1:(end-3)]
 _, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 idxs = findall(thr_idxs);
+#idxs = [i for i in 1:size(data)[1]]
 
 
 # get bilateral idxs
@@ -104,6 +108,7 @@ inference = infer(ode,
                 bayesian_seed=true,
                 retro=true,
                 seed_value=100,
+                #seed_region="iFRP",
                 alg=Tsit5(),
                 abstol=1e-6,
                 reltol=1e-3,
