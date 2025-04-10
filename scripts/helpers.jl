@@ -331,6 +331,36 @@ function fastslow(du,u,p,t;L=L,factors=(1.,1.))
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .+ y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  - μ .* y .* (1 .+ y.^2) .+ γ .* x
 end
+function fastslow_reparam(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    γ = p[(N+3):(2*N+2)]
+    μ = p[2*N+3]
+    b = p[2*N+4]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .+ y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  - μ .* y .* (1 .+ y.^2) .+ (γ .+ b .* β) .* x
+end
+function fastslow_reparamii(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    γ = p[(N+3):(2*N+2)]
+    μ = p[2*N+3]
+    a = p[2*N+4]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .+ y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  - μ .* y .* (1 .+ y.^2) .+ (a .+ γ .* β) .* x
+end
 function death_simplifiedii_uncor(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
     p = factors .* p
@@ -557,6 +587,8 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
             "aggregation2" => aggregation2, "aggregation_pop2" => aggregation_pop2, "death_local2" => death_local2, "aggregation2_localα" => aggregation2_localα,
             "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2, "death" => death, "sir" => sir, "sis" => sis, 
             "fastslow" => fastslow,
+            "fastslow_reparam" => fastslow_reparam,
+            "fastslow_reparamii" => fastslow_reparamii,
             "death_simplified" => death_simplified,
             "death_simplifiedii" => death_simplifiedii,
             "death_simplifiedii_uncor" => death_simplifiedii_uncor,

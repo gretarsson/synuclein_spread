@@ -75,19 +75,20 @@ for i in 1:K
 end
 for i in 1:K
     #priors["d[$(i)]"] = Normal(0,0.1);
-    priors["d[$(i)]"] = Normal(0,1);
+    priors["d[$(i)]"] = Normal(0,0.1);
 end
 #for i in 1:M
 #    priors["γ[$(i)]"] = truncated(Normal(0,0.1),lower=0);
 #end
 priors["γ"] = truncated(Normal(0,0.1),lower=0);
+priors["b"] = Normal(0,1);
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
 #factors = [1., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]...];  # death
 #factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1];  # death
-factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1];  # death
+factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1, 1];  # death
 
 
 # INFER
@@ -115,5 +116,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_smallgamma.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
