@@ -632,7 +632,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     else
         L = (L,N)
     end
-    data = data[idxs,:,:]  # subindex data (idxs defaults to all regions unless told otherwise)
+    # UNCOMMENT THIS UNLESS DIONG SYNTHETIC DATA TODO: FIX THIS CRAP
+    #data = data[idxs,:,:]  # subindex data (idxs defaults to all regions unless told otherwise)
 
     # find number of ode parameters by looking at prior dictionary
     ks = collect(keys(priors))
