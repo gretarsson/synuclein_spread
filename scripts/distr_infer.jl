@@ -22,14 +22,14 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = fastslow;
+ode = sir;
 n_threads = 1;
 
 # read data
-#timepoints = vec(readdlm("data/timepoints.csv", ','));
-#data = deserialize("data/total_path_3D.jls");
-timepoints = deserialize("data/synthetic_timepoints_N=40.jls");
-data = deserialize("data/synthetic_data_N=40.jls");
+timepoints = vec(readdlm("data/timepoints.csv", ','));
+data = deserialize("data/total_path_3D.jls");
+#timepoints = deserialize("data/synthetic_timepoints_N=40.jls");
+#data = deserialize("data/synthetic_data_N=40.jls");
 
 #data = data[:,1:(end-3),:] 
 #timepoints = timepoints[1:(end-3)]
@@ -71,27 +71,31 @@ u0 = [0. for _ in 1:(2*N)];
 # DEFINE PRIORS
 priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
 priors["α"] = truncated(Normal(0,0.1),lower=0);
+#priors["α"] = Normal(0,1);
 #for i in 1:M
 #    priors["α[$(i)]"] = truncated(Normal(0,1),lower=0);
 #end
 for i in 1:K
-    priors["β[$(i)]"] = Normal(0,1);
+    #priors["β[$(i)]"] = Normal(0,1);
+    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 for i in 1:K
-    #priors["d[$(i)]"] = Normal(0,0.1);
-    priors["d[$(i)]"] = Normal(0,1);
+    #priors["d[$(i)]"] = Normal(0,1);
+    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 #for i in 1:M
 #    priors["γ[$(i)]"] = truncated(Normal(0,0.1),lower=0);
 #end
-priors["γ"] = truncated(Normal(0,0.1),lower=0);
+#priors["γ"] = truncated(Normal(0,0.1),lower=0);
+#priors["γ"] = Normal(0,1);
+#priors["b"] = Normal(0,1);
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
 #factors = [1., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]...];  # death
 #factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1];  # death
-factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1];  # death
+factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]...];  # death
 
 
 # INFER
@@ -120,5 +124,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_synthetic.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
