@@ -6,9 +6,9 @@ include("helpers.jl");
 #=
 Here we look at correlations in the posterior distribution between parameters
 =#
-folder_name = "fastslow_smallgamma"
+folder_name = "brennan"
 #simulation = "simulations/total_death_simplifiedii_time_N=448_threads=1_var1_olddecay_withx_notrunc.jls"
-simulation = "simulations/total_fastslow_N=40_threads=1_var1_smallgamma.jls"
+simulation = "simulations/total_brennan_N=40_threads=1_var1.jls"
 
 # create directory to save figures in
 save_path = "figures/posterior_correlation/"*folder_name

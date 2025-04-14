@@ -10,10 +10,10 @@ simulations = [
     "total_death_simplifiedii_bilateral_N=448_threads=1_var1_NEW",
     "total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx_notrunc",
     "total_death_simplifiedii_uncor_N=448_threads=1_var1_olddecay_withx_notrunc",
-    "total_death_simplifiedii_uncor_N=448_threads=1_var1_olddecay_withx_notrunc",
-    "total_death_simplifiedii_time_N=448_threads=1_var1_olddecay_withx_notrunc"
+    "total_death_simplifiedii_time_N=448_threads=1_var1_olddecay_withx_notrunc",
+    "total_heterodimer_inspired_N=448_threads=1_var1"
 ]
-model_names = ["diffusion-only", "diffusion+aggregation", "diffusion+aggregation+decay", "bilateral", "no trunc", "no trunc uncor", "death", "time"]
+model_names = ["diffusion-only", "diffusion+aggregation", "diffusion+aggregation+decay", "DAD (bilateral)", "DAD (no trunc.)", "DAD (no trunc. uncor.)", "DAD (time)", "DAD (heterodimer)"]
 inferences = []
 for simulation in simulations
     push!(inferences, deserialize("simulations/" * simulation * ".jls"))
@@ -25,7 +25,7 @@ aic_vals  = Float64[]
 bic_vals  = Float64[]
 mse_vals  = Float64[]
 for inference in inferences
-    waic, _ = compute_waic_wbic(inference; S=2)  # WBIC is computed but not used in the table.
+    waic, _ = compute_waic_wbic(inference; S=1000)  # WBIC is computed but not used in the table.
     push!(waic_vals, waic)
     aic, bic = compute_aic_bic(inference)
     push!(aic_vals, aic)

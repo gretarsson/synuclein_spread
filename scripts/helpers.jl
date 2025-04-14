@@ -317,6 +317,46 @@ function death_simplifiedii(du,u,p,t;L=L,factors=(1.,1.))
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- d .* y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (1 .- y) .* x  
 end
+function death_simplifiedii_regionaltime(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+    γ = p[2*N+3]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ β .* x .* (α .- γ .* y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d .* (1 .- y) .* x  
+end
+function heterodimer_inspired(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d .* x  
+end
+function heterodimer_inspiredii(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d .* x  
+end
 function fastslow(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
     p = factors .* p
@@ -388,6 +428,51 @@ function death_simplifiedii_uncor(du,u,p,t;L=L,factors=(1.,1.))
     y = u[(N+1):(2*N)]
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- β .* y - d .* y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (1 .- y) .* x  
+end
+function brennan(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+    γ = p[2*N+3]
+    λ = p[2*N+4]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- λ .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (d .- λ .- y) .* x  
+end
+function brennanii(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+    γ = p[2*N+3]
+    λ = p[2*N+4]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
+end
+function brennaniii(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+    γ = p[2*N+3]
+    λ = p[2*N+4]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- d .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (λ .- d .- y) .* x  
 end
 function death_simplifiedii_nodecay(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
@@ -602,8 +687,13 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
             "fastslow_reparam" => fastslow_reparam,
             "fastslow_reparamii" => fastslow_reparamii,
             "fastslow_regionaltime" => fastslow_regionaltime,
+            "heterodimer_inspired" => heterodimer_inspired,
+            "brennan" => brennan,
+            "brennanii" => brennanii,
+            "brennaniii" => brennaniii,
             "death_simplified" => death_simplified,
             "death_simplifiedii" => death_simplifiedii,
+            "death_simplifiedii_regionaltime" => death_simplifiedii_regionaltime,
             "death_simplifiedii_uncor" => death_simplifiedii_uncor,
             "death_simplifiedii_time" => death_simplifiedii_time,
             "death_simplifiedii_nodecay" => death_simplifiedii_nodecay,
