@@ -8,5 +8,6 @@ simulation = "total_brennanii_N=448_threads=1_var1";
 
 # plot 
 inference_obj = deserialize("simulations/"*simulation*".jls")
+inference_obj["data_indices"]
 
 plot_inference(inference_obj,"figures/"*simulation;plotscale=log10)  

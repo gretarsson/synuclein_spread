@@ -1,16 +1,24 @@
 using DifferentialEquations
 include("helpers.jl")  # Make sure helpers.jl defines the fastslow function
 
-nvars = 50
+# inference to extract mode parameters from
+inference = deserialize("./simulations/total_fastslow_N=40_threads=1_var1.jls")
+idxs = inference["data_indices"]
+
+nvars = length(idxs)
 ode = fastslow
 # READ MATRIX
 W_file = "./data/W_labeled.csv"
 W_labelled = readdlm(W_file,',')
 W = W_labelled[2:end,2:end]
+W = W[idxs,idxs]
 W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum
 L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=true)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
-L = L[1:nvars,1:nvars]
 L = L,nvars
+for i in 1:nvars
+    display("region $(i) = $(sum(L[1][i,:]))")
+end
+
 # ---------------------------
 # Define simulation parameters
 # ---------------------------
@@ -20,35 +28,38 @@ u0[1] = 0.1
 
 # Define the time span and the timepoints for saving the solution
 tspan = (0.0, 9)
-num_timepoints = 8
+num_timepoints = 50
 timepoints = range(tspan[1], tspan[2], length=num_timepoints)
 
 # PARAMETERS
-α = 2
-ρ = 0.6
+params = extract_mode_params(inference)
+α = 1.
+ρ = 1
 β = [1 for i in 1:nvars]
-d = [-1 for i in 1:nvars]
-γ = 0.5
+d = -β
+γ = 0.1
 p = [ρ, α, β..., d..., γ]
+p,u0,_ = params
 factors = [1. for _ in 1:length(p)]
+p[2+40+13]
 
 # Create the ODE problem using the fastslow function from helpers.jl
 rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)  # uncomment without bilateral 
 prob = ODEProblem(rhs, u0, tspan, p)
-sol = solve(prob, Tsit5(), abstol=1e-10, reltol=1e-10)
+sol = solve(prob, Tsit5(), saveat=timepoints, abstol=1e-10, reltol=1e-10)
 Plots.plot(sol;idxs=1:nvars)
 
 
 # ---------------------------
 # Set up parameters for synthetic data
 # ---------------------------
-num_samples = 5           # Number of synthetic samples
+num_samples = 1           # Number of synthetic samples
 
 # Pre-allocate a 3D array: variables x timepoints x samples
 synthetic_data = Array{Union{Missing,Float64}}(undef, nvars, num_timepoints, num_samples)
 
 # Noise standard deviation (adjust as needed)
-noise_std = 0.001
+noise_std = 0
 
 # ---------------------------
 # Simulate and add noise for each sample
