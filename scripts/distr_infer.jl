@@ -33,8 +33,8 @@ data = deserialize("data/total_path_3D.jls");
 
 #data = data[:,1:(end-3),:] 
 #timepoints = timepoints[1:(end-3)]
-_, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-idxs = findall(thr_idxs);
+#_, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+#idxs = findall(thr_idxs);
 #idxs = [i for i in 1:size(data)[1]]
 
 
@@ -60,8 +60,8 @@ idxs = findall(thr_idxs);
 
 
 # DIFFUSION, RETRO- AND ANTEROGRADE
-#N = size(data)[1];
-N = length(idxs)  # when using test subset of data
+N = size(data)[1];
+#N = length(idxs)  # when using test subset of data
 #K = M + length(nobi_idxs)  # number of unique regional parameters
 K = N
 #M = N  # without bilateral
@@ -107,7 +107,7 @@ inference = infer(ode,
                 "data/W_labeled.csv"; 
                 factors=factors,
                 u0=u0,
-                idxs=idxs,
+                #idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 retro=true,

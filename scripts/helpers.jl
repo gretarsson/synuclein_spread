@@ -9,7 +9,7 @@ using ReverseDiff
 using Enzyme
 using Zygote
 using SciMLSensitivity
-using LinearAlgebra
+using LinearAlgebra, Statistics
 using Serialization
 using CairoMakie
 using ParetoSmooth
@@ -3191,3 +3191,49 @@ function compute_region_errors(inference::Dict; M::Int=1000)
     return errors
 end
 # --- END HELPER FUNCTION ---
+
+
+function compute_covariance_metric(inference_dict)
+    # Extract posterior samples
+    chain = inference_dict["chain"]
+    #params_matrix = Array(MCMCChains.group(chain, :parameters))
+    params_matrix = Array(chain)
+
+    # Compute correlation matrix
+    R = cor(params_matrix)
+    I = Matrix{Float64}(LinearAlgebra.I, size(R)...)
+
+
+    # Frobenius norm of (R - I)
+    return norm(R - I) / size(I)[1]
+end
+
+
+"""
+    compute_beta_d_covariances(inference_dict; S=1000)
+
+Returns a vector of posterior covariances between β[j] and d[j] for each j
+where both are present in the prior keys. Uses sample(...) to get a matrix
+of posterior draws.
+"""
+function compute_regional_covariances(inference_dict; S=1000)
+    chain = inference_dict["chain"]
+    priors = inference_dict["priors"]  # Assumes priors is stored with param names
+    parameter_names = collect(keys(priors))
+
+    # Find indices of β[j] and d[j]
+    beta_idxs = findall(key -> occursin("β[", key), parameter_names)
+    deca_idxs = findall(key -> occursin("d[", key), parameter_names)
+
+    # Sample from posterior
+    posterior_samples = sample(chain, S; replace=false)
+
+    # Extract samples (S x N)
+    betas = Array(posterior_samples[:, beta_idxs, 1])
+    decas = Array(posterior_samples[:, deca_idxs, 1])
+
+    # Compute pairwise covariances
+    covariances = [cov(betas[:, j], decas[:, j]) for j in 1:min(size(betas,2), size(decas,2))]
+
+    return covariances
+end
