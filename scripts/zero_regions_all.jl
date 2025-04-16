@@ -10,7 +10,7 @@ using Plots
 # -------------------------------
 # 1. Load Inference and Data
 # -------------------------------
-simulation = "total_death_simplifiedii_time_N=448_threads=1_var1_olddecay_withx_notrunc"
+simulation = "total_brennanii_N=448_threads=1_var1"
 inference_obj = deserialize("simulations/" * simulation * ".jls")
 data = inference_obj["data"]  # dimensions: n_vars × n_time × n_samples
 n_vars, n_time, n_samples = size(data)

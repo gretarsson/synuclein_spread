@@ -91,7 +91,8 @@ end
 #priors["γ"] = Normal(0,1);
 #priors["b"] = Normal(0,1);
 #priors["λ"] = truncated(Normal(0,1),lower=0)
-priors["σ"] = LogNormal(0,1);
+#priors["σ"] = LogNormal(0,1);
+priors["σ"] = filldist(LogNormal(0,1),N);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
@@ -127,5 +128,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_CORRECT.jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
