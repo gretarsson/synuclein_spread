@@ -3237,3 +3237,24 @@ function compute_regional_covariances(inference_dict; S=1000)
 
     return covariances
 end
+function compute_regional_correlations(inference_dict; S=1000)
+    chain = inference_dict["chain"]
+    priors = inference_dict["priors"]  # Assumes priors is stored with param names
+    parameter_names = collect(keys(priors))
+
+    # Find indices of β[j] and d[j]
+    beta_idxs = findall(key -> occursin("β[", key), parameter_names)
+    deca_idxs = findall(key -> occursin("d[", key), parameter_names)
+
+    # Sample from posterior
+    posterior_samples = sample(chain, S; replace=false)
+
+    # Extract samples (S x N)
+    betas = Array(posterior_samples[:, beta_idxs, 1])
+    decas = Array(posterior_samples[:, deca_idxs, 1])
+
+    # Compute pairwise covariances
+    covariances = [cor(betas[:, j], decas[:, j]) for j in 1:min(size(betas,2), size(decas,2))]
+
+    return covariances
+end

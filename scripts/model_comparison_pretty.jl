@@ -7,11 +7,18 @@ simulations = [
     "total_diffusion_N=448_threads=4_var1_normalpriors",
     "total_aggregation_N=448_threads=4_var1_normalpriors",
     "total_heterodimer_inspired_N=448_threads=1_var1",
-    "total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx_notrunc",
-    "total_death_simplifiedii_uncor_N=448_threads=1_var1_olddecay_withx_notrunc",
-    "total_brennanii_N=448_threads=1_var1"
+    "total_brennanii_N=448_threads=1_var1",
+    #"total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx_notrunc",
+    #"total_death_simplifiedii_uncor_N=448_threads=1_var1_olddecay_withx_notrunc",
 ]
-model_names = ["diffusion-only", "diffusion+aggregation", "DAD (heterodimer)", "DAD (no trunc.)", "DAD (no trunc. uncor.)", "DAD (brennanii)"]
+model_names = [
+    "D", 
+    "DG", 
+    "DGA", 
+    "DGAM",
+    #"DGAM (v2)", 
+    #"DGAM (v2 uncor.)" 
+]
 inferences = []
 for simulation in simulations
     push!(inferences, deserialize("simulations/" * simulation * ".jls"))
@@ -23,6 +30,7 @@ aic_vals  = Float64[]
 bic_vals  = Float64[]
 mse_vals  = Float64[]
 covnorm_vals = Float64[]
+regcov = []
 
 for inference in inferences
     waic, _ = compute_waic_wbic(inference; S=1000)
@@ -32,9 +40,13 @@ for inference in inferences
     push!(bic_vals, bic)
     mse = compute_mse_mc(inference)
     push!(mse_vals, mse)
-    covnorm = mean(compute_regional_covariances(inference))
+    regional_cov = compute_regional_correlations(inference)
+    covnorm = mean(abs.(regional_cov))
     push!(covnorm_vals, covnorm)
+    push!(regcov, regional_cov)
 end
+maximum(abs.(regcov[3]))
+maximum(abs.(regcov[4]))
 
 # Compute delta metrics relative to the best (lowest) value
 min_waic = minimum(waic_vals)

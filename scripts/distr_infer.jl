@@ -22,7 +22,7 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = brennanii;
+ode = aggregation;
 n_threads = 1;
 
 # read data
@@ -66,7 +66,8 @@ N = size(data)[1];
 K = N
 #M = N  # without bilateral
 display("N = $(N)")
-u0 = [0. for _ in 1:(2*N)];
+#u0 = [0. for _ in 1:(2*N)];  # adaptation
+u0 = [0. for _ in 1:(N)];  # without adaptation
 
 # DEFINE PRIORS
 priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
@@ -76,27 +77,28 @@ priors["α"] = truncated(Normal(0,0.1),lower=0);
 #    priors["α[$(i)]"] = truncated(Normal(0,1),lower=0);
 #end
 for i in 1:K
-    #priors["β[$(i)]"] = Normal(0,1);
-    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
+    priors["β[$(i)]"] = Normal(0,1);
+    #priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
-for i in 1:K
-    #priors["d[$(i)]"] = Normal(0,1);
-    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
-end
+#for i in 1:K
+#    #priors["d[$(i)]"] = Normal(0,1);
+#    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
+#end
 #for i in 1:M
 #    priors["γ[$(i)]"] = truncated(Normal(0,0.1),lower=0);
 #end
-priors["γ"] = truncated(Normal(0,0.1),lower=0);
+#priors["γ"] = truncated(Normal(0,0.1),lower=0);
 #priors["γ"] = Normal(0,1);
 #priors["b"] = Normal(0,1);
-priors["λ"] = truncated(Normal(0,1),lower=0)
+#priors["λ"] = truncated(Normal(0,1),lower=0)
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
 #factors = [1., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]..., [1 for _ in 1:M]...];  # death
 #factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1];  # death
-factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1., 1.];  # death
+#factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1., 1.];  # death
+factors = [1., 1., [1 for _ in 1:K]...];  # death
 
 
 # INFER
@@ -125,5 +127,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_CORRECT.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
