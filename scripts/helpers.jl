@@ -178,6 +178,12 @@ function diffusion(du,u,p,t;L=L,factors=nothing)
 
     du .= -ρ*L*u 
 end
+function DIFF(du,u,p,t;L=L,factors=nothing)
+    L, _ = L
+    ρ = p[1]
+
+    du .= -ρ*L*u 
+end
 function diffusion2(du,u,p,t;L=(La, Lr),factors=nothing)
     La, Lr = L
     ρa = p[1]
@@ -208,6 +214,15 @@ function diffusion_pop2(du,u,p,t;L=(La,Lr,N), factors=nothing)
     du[(N+1):(2*N)] .= 1/γ .* x .-  1/γ .* y
 end
 function aggregation(du,u,p,t;L=L,factors=(1.,1.))
+    L, _ = L
+    kα,kβ = factors 
+    ρ = p[1]
+    α = kα * p[2]
+    β = kβ .* p[3:end]
+
+    du .= -ρ*L*u .+ α .* u .* (β .- u)  
+end
+function DIFFG(du,u,p,t;L=L,factors=(1.,1.))
     L, _ = L
     kα,kβ = factors 
     ρ = p[1]
@@ -344,6 +359,19 @@ function heterodimer_inspired(du,u,p,t;L=L,factors=(1.,1.))
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  d .* x  
 end
+function DIFFGA(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d .* x  
+end
 function heterodimer_inspiredii(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
     p = factors .* p
@@ -445,6 +473,21 @@ function brennan(du,u,p,t;L=L,factors=(1.,1.))
     du[(N+1):(2*N)] .=  γ .* (d .- λ .- y) .* x  
 end
 function brennanii(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+    γ = p[2*N+3]
+    λ = p[2*N+4]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
+end
+function DIFFGAM(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
     p = factors .* p
     ρ = p[1]
@@ -683,6 +726,10 @@ a dictionary containing the ODE functions
 odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion_pop2" => diffusion_pop2, "aggregation" => aggregation, 
             "aggregation2" => aggregation2, "aggregation_pop2" => aggregation_pop2, "death_local2" => death_local2, "aggregation2_localα" => aggregation2_localα,
             "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2, "death" => death, "sir" => sir, "sis" => sis, 
+            "DIFF" => DIFF,
+            "DIFFG" => DIFFG,
+            "DIFFGA" => DIFFGA,
+            "DIFFGAM" => DIFFGAM,
             "fastslow" => fastslow,
             "fastslow_reparam" => fastslow_reparam,
             "fastslow_reparamii" => fastslow_reparamii,
