@@ -22,7 +22,7 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # PICK ODE
-ode = DIFFG;
+ode = DIFFGAM;
 n_threads = 1;
 
 # READ DATA
@@ -36,27 +36,29 @@ seed = findfirst(==("iCP"), labels);
 # SET PRIORS
 K = N  # number of regional parameters
 display("N = $(N)")
-#u0 = [0. for _ in 1:(2*N)];  # adaptation
-u0 = [0. for _ in 1:(N)];  # without adaptation
+u0 = [0. for _ in 1:(2*N)];  # adaptation
+#u0 = [0. for _ in 1:(N)];  # without adaptation
 
 # DEFINE PRIORS
 priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
 #priors = OrderedDict{Any,Any}( "ρr" => truncated(Normal(0,0.1),lower=0), "ρa" => truncated(Normal(0,0.1),lower=0) ); 
 priors["α"] = truncated(Normal(0,0.1),lower=0);
 for i in 1:K
-    priors["β[$(i)]"] = Normal(0,1);
-    #priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
+    #priors["β[$(i)]"] = Normal(0,1);
+    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
-#for i in 1:K
-#    #priors["d[$(i)]"] = Normal(0,1);
-#    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
-#end
+for i in 1:K
+    #priors["d[$(i)]"] = Normal(0,1);
+    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
+end
+priors["γ"] = truncated(Normal(0,1),lower=0)
+priors["λ"] = Normal(0,1)
 #priors["σ"] = LogNormal(0,1);
 priors["σ"] = filldist(LogNormal(0,1),N);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
-factors = [1., 1., [1 for _ in 1:K]...];  # death
+factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1., 1.];  # death
 
 
 # INFER
