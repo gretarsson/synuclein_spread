@@ -178,12 +178,6 @@ function diffusion(du,u,p,t;L=L,factors=nothing)
 
     du .= -ρ*L*u 
 end
-function DIFF(du,u,p,t;L=L,factors=nothing)
-    L, _ = L
-    ρ = p[1]
-
-    du .= -ρ*L*u 
-end
 function diffusion2(du,u,p,t;L=(La, Lr),factors=nothing)
     La, Lr = L
     ρa = p[1]
@@ -214,15 +208,6 @@ function diffusion_pop2(du,u,p,t;L=(La,Lr,N), factors=nothing)
     du[(N+1):(2*N)] .= 1/γ .* x .-  1/γ .* y
 end
 function aggregation(du,u,p,t;L=L,factors=(1.,1.))
-    L, _ = L
-    kα,kβ = factors 
-    ρ = p[1]
-    α = kα * p[2]
-    β = kβ .* p[3:end]
-
-    du .= -ρ*L*u .+ α .* u .* (β .- u)  
-end
-function DIFFG(du,u,p,t;L=L,factors=(1.,1.))
     L, _ = L
     kα,kβ = factors 
     ρ = p[1]
@@ -359,19 +344,6 @@ function heterodimer_inspired(du,u,p,t;L=L,factors=(1.,1.))
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  d .* x  
 end
-function DIFFGA(du,u,p,t;L=L,factors=(1.,1.))
-    L,N = L
-    p = factors .* p
-    ρ = p[1]
-    α = p[2]
-    β = p[3:(N+2)]
-    d = p[(N+3):(2*N+2)]
-
-    x = u[1:N]
-    y = u[(N+1):(2*N)]
-    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
-    du[(N+1):(2*N)] .=  d .* x  
-end
 function heterodimer_inspiredii(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
     p = factors .* p
@@ -473,21 +445,6 @@ function brennan(du,u,p,t;L=L,factors=(1.,1.))
     du[(N+1):(2*N)] .=  γ .* (d .- λ .- y) .* x  
 end
 function brennanii(du,u,p,t;L=L,factors=(1.,1.))
-    L,N = L
-    p = factors .* p
-    ρ = p[1]
-    α = p[2]
-    β = p[3:(N+2)]
-    d = p[(N+3):(2*N+2)]
-    γ = p[2*N+3]
-    λ = p[2*N+4]
-
-    x = u[1:N]
-    y = u[(N+1):(2*N)]
-    du[1:N] .= -ρ*L*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
-    du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
-end
-function DIFFGAM(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
     p = factors .* p
     ρ = p[1]
@@ -718,6 +675,96 @@ function death_simplifiedii_clustered(du, u, p, t; L=L, partition_sizes=[1, 1], 
         start_idx = end_idx + 1
     end
 end
+function DIFF(du,u,p,t;L=L,factors=nothing)
+    L, _ = L
+    ρ = p[1]
+
+    du .= -ρ*L*u 
+end
+function DIFFG(du,u,p,t;L=L,factors=(1.,1.))
+    L, _ = L
+    kα,kβ = factors 
+    ρ = p[1]
+    α = kα * p[2]
+    β = kβ .* p[3:end]
+
+    du .= -ρ*L*u .+ α .* u .* (β .- u)  
+end
+function DIFFGA(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d .* x  
+end
+function DIFFGAM(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3:(N+2)]
+    d = p[(N+3):(2*N+2)]
+    γ = p[2*N+3]
+    λ = p[2*N+4]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρ*L*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
+end
+function DIFF_BI(du,u,p,t;L=L,factors=nothing)
+    Lr,La,_ = L
+    ρr = p[1]
+    ρa = p[2]
+
+    du .= -ρr*Lr*u .- ρa*La*u 
+end
+function DIFFG_BI(du,u,p,t;L=L,factors=(1.,1.))
+    Lr, La, _ = L
+    kα,kβ = factors 
+    ρr = p[1]
+    ρa = p[2]
+    α = kα * p[3]
+    β = kβ .* p[4:end]
+
+    du .= -ρr*Lr*u .- ρa*La*u .+ α .* u .* (β .- u)  
+end
+function DIFFGA_BI(du,u,p,t;L=L,factors=(1.,1.))
+    Lr,La,N = L
+    p = factors .* p
+    ρr = p[1]
+    ρa = p[2]
+    α = p[3]
+    β = p[4:(N+3)]
+    d = p[(N+4):(2*N+3)]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρr*Lr*x .- ρa*La*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d .* x  
+end
+function DIFFGAM_BI(du,u,p,t;L=L,factors=(1.,1.))
+    Lr,La,N = L
+    p = factors .* p
+    ρr = p[1]
+    ρa = p[2]
+    α = p[3]
+    β = p[4:(N+3)]
+    d = p[(N+4):(2*N+3)]
+    γ = p[2*N+4]
+    λ = p[2*N+5]
+
+    x = u[1:N]
+    y = u[(N+1):(2*N)]
+    du[1:N] .= -ρr*Lr*x .- ρa*La*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
+end
 
 
 #=
@@ -730,6 +777,10 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
             "DIFFG" => DIFFG,
             "DIFFGA" => DIFFGA,
             "DIFFGAM" => DIFFGAM,
+            "DIFF_BI" => DIFF_BI,
+            "DIFFG_BI" => DIFFG_BI,
+            "DIFFGA_BI" => DIFFGA_BI,
+            "DIFFGAM_BI" => DIFFGAM_BI,
             "fastslow" => fastslow,
             "fastslow_reparam" => fastslow_reparam,
             "fastslow_reparamii" => fastslow_reparamii,
@@ -773,7 +824,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                benchmark=false,
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
-               retro=true,
                labels=[],
                M=0::Int
                )
