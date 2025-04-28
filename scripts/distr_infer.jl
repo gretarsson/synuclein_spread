@@ -22,7 +22,7 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # pick ode
-ode = aggregation;
+ode = DIFFG;
 n_threads = 1;
 
 # read data
@@ -30,6 +30,8 @@ timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
 #timepoints = deserialize("data/synthetic_timepoints_N=40.jls");
 #data = deserialize("data/synthetic_data_N=40.jls");
+L,N,labels = read_W(W_file);
+seed = findfirst(==("iCP"), labels);
 
 #data = data[:,1:(end-3),:] 
 #timepoints = timepoints[1:(end-3)]
@@ -91,8 +93,8 @@ end
 #priors["γ"] = Normal(0,1);
 #priors["b"] = Normal(0,1);
 #priors["λ"] = truncated(Normal(0,1),lower=0)
-#priors["σ"] = LogNormal(0,1);
-priors["σ"] = filldist(LogNormal(0,1),N);
+priors["σ"] = LogNormal(0,1);
+#priors["σ"] = filldist(LogNormal(0,1),N);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
@@ -107,7 +109,7 @@ inference = infer(ode,
                 priors,
                 data,
                 timepoints, 
-                "data/W_labeled.csv"; 
+                (L,N); 
                 factors=factors,
                 u0=u0,
                 #idxs=idxs,
@@ -115,7 +117,7 @@ inference = infer(ode,
                 bayesian_seed=true,
                 retro=true,
                 seed_value=100,
-                #seed_region="iFRP",
+                seed=seed,
                 alg=Tsit5(),
                 abstol=1e-6,
                 reltol=1e-3,
@@ -123,6 +125,7 @@ inference = infer(ode,
                 sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
                 benchmark=false,
                 benchmark_ad=[:reversediff],
+                labels=labels,
                 #M=M,
                 test_typestable=false
                 )
@@ -130,3 +133,4 @@ inference = infer(ode,
 # SAVE 
 serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
+

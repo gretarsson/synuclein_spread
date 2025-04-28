@@ -756,7 +756,7 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
 # Run whole simulations in one place
 # the Priors dict must contain the ODE parameters in order first, and then σ. Other priors can then follow after, with seed always last.
 # ----------------------------------------------------------------------------------------------------------------------------------------
-function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, W_file; 
+function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, L; 
                u0=[]::Vector{Float64},
                idxs=Vector{Int}()::Vector{Int},
                n_threads=1,
@@ -765,7 +765,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                adtype=AutoForwardDiff(), 
                factors=[1.]::Vector{Float64},
                bayesian_seed=false,
-               seed_region="iCP"::String,
+               seed="iCP"::String,
                seed_value=1.::Float64,
                sol_idxs=Vector{Int}()::Vector{Int},
                abstol=1e-10, 
@@ -774,48 +774,15 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
                retro=true,
+               labels=[],
                M=0::Int
                )
     # verify that choice of ODE is correct wrp to retro- and anterograde
-    retro_and_antero = false
-    if occursin("2",string(ode))
-        retro_and_antero = true 
-        display("Model includes both retrograde and anterograde transport.")
-    else 
-        display("Model includes only retrograde transport.")
-    end
     if bayesian_seed
         display("Model is inferring seeding initial conditions")
     else
         display("Model has constant initial conditions")
     end
-
-    # read structural data 
-    W_labelled = readdlm(W_file,',')
-    if isempty(idxs)
-        idxs = [i for i in 1:(size(W_labelled)[1] - 1)]
-    end
-    W = W_labelled[2:end,2:end]
-    W = W[idxs,idxs]
-    W = W ./ maximum( W[ W .> 0 ] )  # normalize connecivity by its maximum
-    L = Matrix(transpose(laplacian_out(W; self_loops=false, retro=retro)))  # transpose of Laplacian (so we can write LT * x, instead of x^T * L)
-    labels = W_labelled[1,2:end][idxs]
-    seed = findall(x->x==seed_region,labels)[1]::Int  # find index of seed region
-    display("Seed at region $(seed)")
-    N = size(L)[1]
-    if retro_and_antero  # include both Laplacians, if told to
-        Lr = copy(L)
-        La = Matrix(transpose(laplacian_out(W; self_loops=false, retro=!retro)))  
-        if occursin("death",string(ode)) || occursin("pop",string(ode))
-            L = (La,Lr,N)
-        else
-            L = (La,Lr)
-        end
-    else
-        L = (L,N)
-    end
-    # UNCOMMENT THIS UNLESS DIONG SYNTHETIC DATA TODO: FIX THIS CRAP
-    data = data[idxs,:,:]  # subindex data (idxs defaults to all regions unless told otherwise)
 
     # find number of ode parameters by looking at prior dictionary
     ks = collect(keys(priors))
@@ -824,35 +791,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # Define prob
     p = zeros(Float64, N_pars)
     tspan = (timepoints[1],timepoints[end])
-    if string(ode) == "sis" || string(ode) == "sir"
-        for i in 1:N
-            W[i,i] = 0
-        end
-        #W = (Matrix(transpose(W)),N)  # transposing gives bad results
-        L = (Matrix(W),N)  # not transposing gives excellent results
-    end
-    # ------
-    # SDE
-    # ------
-    #function stochastic!(du,u,p,t)
-    #        du[1:N] .= 0.0001
-    #        du[(N+1):(2*N)] .= 0.0001
-    #end
-    #prob = SDEProblem(rhs, stochastic!, u0, tspan, p; alg=alg)
-    # ------
-    # ------
-    #if M>0
-    #    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)
-    #else
-    #    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-    #end
-    #function rhs(du, u, p, t; L=L, func=ode::Function, factors=factors, M=M)
-    #    if M > 0
-    #        return func(du, u, p, t; L=L, factors=factors, M=M)
-    #    else
-    #        return func(du, u, p, t; L=L, factors=factors)
-    #    end
-    #end
+
+    # define RHS
     #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)  # uncomment for bilateral
     rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)  # uncomment without bilateral 
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
@@ -898,30 +838,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         final_data = row_data
     end
 
-    # EXP
-    # -------
-    # Organize data according to Markov chain type inference
-    #data2 = create_data2(data)
-    #N_samples = Int.(ones(size(data2)))
-    #for i in 1:size(data2)[1]
-    #    for j in 1:size(data2)[2]
-    #        N_samples[i,j] = Int(size(data2[i,j])[1])
-    #    end
-    #end
-    #data1 = [Float64[] for _ in 1:size(data2)[2]]
-    #for j in 1:size(data2)[2]
-    #    elm = []
-    #    for i in 1:size(data2)[1]
-    #        append!(elm,data2[i,j])
-    #    end
-    #    data1[j] = elm
-    #end
-    # -------
-    #M = Int(length(idxs)/2)  # with bilateral
-    #display("M = $(M)")
-    #μ = zeros(M)
-    #Σ = I(M)
-
     @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
                                     nonmissing=nonmissing::Vector{Int64},
@@ -930,22 +846,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         u00 = u0  # IC needs to be defined within model to work
         # priors
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
-        # Have to set priors directly for beta-dependent d parameters
-        # -------------------------
-        #ρ ~ truncated(Normal(0,0.1),lower=0) 
-        #α ~ filldist(truncated(Normal(0,1),lower=0),M);
-        #β ~ filldist(truncated(Normal(0,1),lower=0),M);
-        ##d ~ arraydist([truncated(Normal(-β[i],1), lower=-β[i], upper=0) for i in 1:M]);
-        #d ~ filldist(Normal(-0.8,1),M);
-        #γ ~ filldist(truncated(Normal(0,0.1),lower=0),M);
-        # ------- try non truncated
-        #ρ ~ truncated(Normal(0,0.1),lower=0) 
-        #α ~ MvNormal(μ,Σ);
-        #β ~ MvNormal(μ,Σ);
-        ##d ~ arraydist([truncated(Normal(-β[i],1), lower=-β[i], upper=0) for i in 1:M]);
-        #d ~ MvNormal(μ,Σ);
-        #γ ~ MvNormal(μ,Σ);
-        # -------------------------
         σ ~ priors["σ"] 
         if bayesian_seed
             u00[seedd] ~ priors["seed"]  
@@ -968,7 +868,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
     # define Turing model
     model = bayesian_model(final_data, prob)  # OG
-    #model = bayesian_model(data1, prob)  # EXP Markov chain
 
     # test if typestable if told to, red marking in read-out means something is unstable
     #if test_typestable
@@ -991,12 +890,9 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
     # Sample to approximate posterior
     if n_threads == 1
-        #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true, initial_params=[0.01 for _ in 1:(2*N+4)])  # time estimated is shown
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  
-        #chain = sample(model, HMC(0.05,10), 1000; progress=true)
     else
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
-        #chain = sample(model, HMC(0.05,10), MCMCThreads(), 1000, n_threads; progress=true)
     end
 
     # compute elpd (expected log predictive density)
@@ -3304,4 +3200,37 @@ function compute_regional_correlations(inference_dict; S=1000)
     covariances = [cor(betas[:, j], decas[:, j]) for j in 1:min(size(betas,2), size(decas,2))]
 
     return covariances
+end
+
+
+function read_W(filename::AbstractString;
+                idxs::Vector{Int}=Int[], 
+                direction::Symbol = :retro,
+                self_loops::Bool = false)
+
+    # read structural data 
+    W_lab = readdlm(filename, ',')
+    # default to all regions if none passed
+    if isempty(idxs)
+        idxs = 1:(size(W_lab,1)-1)
+    end
+
+    # extract & sub-index adjacency
+    W = W_lab[2:end, 2:end]
+    W = W[idxs, idxs]
+    # normalize by max positive
+    W ./= maximum(W[W .> 0])
+
+    # pick direction
+    @assert direction in (:retro, :antero) "direction must be :retro or :antero"
+    retro_flag = (direction == :retro)
+
+    # build Laplacian (and transpose if that’s your convention)
+    L = laplacian_out(W; self_loops=self_loops, retro=retro_flag)
+    L = transpose(L)
+
+    labels = W_lab[1, 2:end][idxs]
+    N = size(L,1)
+
+    return L, N, labels
 end
