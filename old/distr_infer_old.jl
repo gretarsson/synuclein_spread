@@ -21,11 +21,11 @@ end
 #=
 Infer parameters of ODE using Bayesian framework
 =#
-# PICK ODE
+# pick ode
 ode = DIFFG_BI;
 n_threads = 1;
 
-# READ DATA
+# read data
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
 Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro);
@@ -33,8 +33,40 @@ La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
 Ltuple = (Lr,La,N)  # order is (L,N) or (Lr, La, N)
 seed = findfirst(==("iCP"), labels);
 
-# SET PRIORS
-K = N  # number of regional parameters
+#data = data[:,1:(end-3),:] 
+#timepoints = timepoints[1:(end-3)]
+#_, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+#idxs = findall(thr_idxs);
+#idxs = [i for i in 1:size(data)[1]]
+
+
+# get bilateral idxs
+#W_file = "data/W_labeled.csv"
+#W_labelled = readdlm(W_file,',')
+#labels = W_labelled[1,2:end]
+#bi_idxs = only_bilateral(labels)
+#N = length(labels)
+#M = Int(length(bi_idxs) / 2)
+#nobi_idxs = setdiff(1:N, bi_idxs)  # Indices of regions without twins
+#idxs = vcat(bi_idxs, nobi_idxs)
+
+# FEWER VARIABLES WITH BILATERAL PARAMETERS
+#idxs = thresholded_bilateral_idxs(thr_idxs,bi_idxs)
+#M = Int(length(idxs)/2)
+#for i in 1:M
+#    i = Int(i)
+#    display(labels[new_idxs[i]])
+#    display(labels[new_idxs[i+40]])
+#end
+#nobi_idxs = []
+
+
+# DIFFUSION, RETRO- AND ANTEROGRADE
+N = size(data)[1];
+#N = length(idxs)  # when using test subset of data
+#K = M + length(nobi_idxs)  # number of unique regional parameters
+K = N
+#M = N  # without bilateral
 display("N = $(N)")
 #u0 = [0. for _ in 1:(2*N)];  # adaptation
 u0 = [0. for _ in 1:(N)];  # without adaptation
