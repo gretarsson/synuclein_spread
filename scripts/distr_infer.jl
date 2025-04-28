@@ -22,15 +22,15 @@ end
 Infer parameters of ODE using Bayesian framework
 =#
 # PICK ODE
-ode = DIFFG_BI;
+ode = DIFFG;
 n_threads = 1;
 
 # READ DATA
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
-Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro);
-La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
-Ltuple = (Lr,La,N)  # order is (L,N) or (Lr, La, N)
+Lr,N,labels = read_W("data/W_labeled_filtered.csv", direction=:retro);
+La,_,_ = read_W("data/W_labeled_filtered.csv", direction=:antero);
+Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N)
 seed = findfirst(==("iCP"), labels);
 
 # SET PRIORS
@@ -40,8 +40,8 @@ display("N = $(N)")
 u0 = [0. for _ in 1:(N)];  # without adaptation
 
 # DEFINE PRIORS
-#priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
-priors = OrderedDict{Any,Any}( "ρr" => truncated(Normal(0,0.1),lower=0), "ρa" => truncated(Normal(0,0.1),lower=0) ); 
+priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
+#priors = OrderedDict{Any,Any}( "ρr" => truncated(Normal(0,0.1),lower=0), "ρa" => truncated(Normal(0,0.1),lower=0) ); 
 priors["α"] = truncated(Normal(0,0.1),lower=0);
 for i in 1:K
     priors["β[$(i)]"] = Normal(0,1);
@@ -51,11 +51,12 @@ end
 #    #priors["d[$(i)]"] = Normal(0,1);
 #    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
 #end
-priors["σ"] = LogNormal(0,1);
+#priors["σ"] = LogNormal(0,1);
+priors["σ"] = filldist(LogNormal(0,1),N);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
-factors = [1., 1., 1., [1 for _ in 1:K]...];  # death
+factors = [1., 1., [1 for _ in 1:K]...];  # death
 
 
 # INFER
@@ -85,4 +86,3 @@ inference = infer(ode,
 # SAVE 
 serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
-

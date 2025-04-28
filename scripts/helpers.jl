@@ -910,9 +910,23 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         predicted = predicted[sol_idxs,:]
 
         # package predictions to match observation (when vectorizing data)
-        predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
-        predicted = predicted[nonmissing]
-        data ~ MvNormal(predicted,σ^2*I) 
+        if global_variance
+            predicted = vec(cat([predicted for _ in 1:N_samples]...,dims=3))
+            predicted = predicted[nonmissing]
+            data ~ MvNormal(predicted,σ^2*I) 
+        else
+            # local‐σ case
+            for i in 1:N
+              # 1) the T‐length time series for region i
+              y = Array(predicted)                             # length T
+              # 2) replicate that for each sample
+              y_rep = vcat([y for _ in 1:N_samples]...)     # length T * N_samples
+              # 3) pick out only the observed entries
+              y_obs = y_rep[row_nonmiss[i]]                 # indices into the vectorized data
+              # 4) region‐wise likelihood
+              data[i] ~ MvNormal(y_obs, σ[i]^2 * I)
+            end
+        end
         return nothing
     end
 
