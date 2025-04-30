@@ -834,6 +834,9 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
         display("Model has constant initial conditions")
     end
 
+    # get number of nodes in graph
+    N = L[end]
+
     # find number of ode parameters by looking at prior dictionary
     ks = collect(keys(priors))
     N_pars = findall(x->x=="σ",ks)[1] - 1
@@ -992,7 +995,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                      "priors" => priors, 
                      "data" => data,
                      "timepoints" => timepoints,
-                     "data_indices" => idxs, 
                      "seed_idx" => seed,
                      "bayesian_seed" => bayesian_seed,
                      "seed_value" => seed_value,
