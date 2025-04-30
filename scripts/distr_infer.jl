@@ -1,19 +1,15 @@
-using Turing
+#using Turing
 using Distributed
 addprocs(0)
-
 # instantiate and precompile environment in all processes
 @everywhere begin
     using Pkg; Pkg.activate(".")
     Pkg.instantiate(); Pkg.precompile()
 end
-
 @everywhere begin 
-using Turing, ParallelDataTransfer
-end
-
-@everywhere begin
-include("helpers.jl")
+    using Turing, ParallelDataTransfer
+    include("helpers.jl")
+    include("model_priors.jl")
 end
 
 
@@ -26,45 +22,23 @@ ode = DIFFGAM;
 n_threads = 1;
 
 # READ DATA
-Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro);
-La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
-Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N)
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
+
+# LOAD CONNECTOME AND MAKE LAPLACIAN
 Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro);
 La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
-Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N)
-seed = findfirst(==("iCP"), labels);
-seed
+Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N). The latter is used for bidirectional spread
 
-# SET PRIORS
-K = N  # number of regional parameters
-display("N = $(N)")
-u0 = [0. for _ in 1:(2*N)];  # adaptation
-#u0 = [0. for _ in 1:(N)];  # without adaptation
+# SET SEED AND INITIAL CONDITIONS
+seed = findfirst(==("iCP"), labels);  
+u0 = [0. for _ in 1:(2*N)];  
 
-# DEFINE PRIORS
-priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
-#priors = OrderedDict{Any,Any}( "ρr" => truncated(Normal(0,0.1),lower=0), "ρa" => truncated(Normal(0,0.1),lower=0) ); 
-priors["α"] = truncated(Normal(0,0.1),lower=0);
-for i in 1:K
-    #priors["β[$(i)]"] = Normal(0,1);
-    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
-end
-for i in 1:K
-    #priors["d[$(i)]"] = Normal(0,1);
-    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
-end
-priors["γ"] = truncated(Normal(0,0.1),lower=0)
-priors["λ"] = truncated(Normal(0,1),lower=0)
-#priors["σ"] = LogNormal(0,1);
+# SET PRIORS (variance and seed have to be last, in that order)
+priors = get_priors(ode,N)
 priors["σ"] = filldist(LogNormal(0,0.1),N);
-
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
-#
-# parameter refactorization
-factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1., 1.];  # death
-
+σ
 
 # INFER
 inference = infer(ode, 
@@ -72,9 +46,7 @@ inference = infer(ode,
                 data,
                 timepoints, 
                 Ltuple; 
-                factors=factors,
                 u0=u0,
-                #idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 seed=seed,
