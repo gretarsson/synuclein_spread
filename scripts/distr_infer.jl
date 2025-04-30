@@ -22,11 +22,12 @@ ode = DIFFGAM;
 n_threads = 1;
 
 # READ DATA
+_, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 timepoints = vec(readdlm("data/timepoints.csv", ','));
-data = deserialize("data/total_path_3D.jls");
+data = deserialize("data/total_path_3D.jls")[thr_idxs,:,:];
 
 # LOAD CONNECTOME AND MAKE LAPLACIAN
-Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro);
+Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro, idxs=thr_idxs );
 La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
 Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N). The latter is used for bidirectional spread
 
@@ -36,9 +37,10 @@ u0 = [0. for _ in 1:(2*N)];
 
 # SET PRIORS (variance and seed have to be last, in that order)
 priors = get_priors(ode,N)
-priors["σ"] = filldist(LogNormal(0,0.1),N);
+priors["σ"] = LogNormal(0,0.1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
-σ
+
+region_groups = build_region_groups(labels)
 
 # INFER
 inference = infer(ode, 

@@ -809,7 +809,6 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
 # ----------------------------------------------------------------------------------------------------------------------------------------
 function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, L; 
                u0=[]::Vector{Float64},
-               idxs=Vector{Int}()::Vector{Int},
                n_threads=1,
                alg=Tsit5(), 
                sensealg=ForwardDiffSensitivity(), 
@@ -853,7 +852,13 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
     # define RHS
     #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)  # uncomment for bilateral
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)  # uncomment without bilateral 
+    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)   
+    # TEST -----
+    #rhs = function (du, u, p, t)
+    #    # p is length N; call the original ODE
+    #    ode(du, u, p, t; L=Ltuple, factors=factors)
+    #end
+    # TEST ------
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
@@ -3276,7 +3281,7 @@ end
 
 
 function read_W(filename::AbstractString;
-                idxs::Vector{Int}=Int[], 
+                idxs::BitVector=BitVector(), 
                 direction::Symbol = :retro,
                 self_loops::Bool = false)
 
@@ -3305,4 +3310,23 @@ function read_W(filename::AbstractString;
     N = size(L,1)
 
     return L, N, labels
+end
+
+"""
+    build_region_groups(labels::Vector{String}) -> Vector{Int}
+
+Given a list of region‐labels where ipsilateral regions start with “i”
+and contralateral with “c” (e.g. “iCA1”, “cCA1”, “iDG”, …),
+return a Vector of group‐IDs so that partners share the same ID, and
+singleton regions get their own ID.
+"""
+function build_region_groups(labels::Vector{Any})
+    # strip off the leading “i” or “c” to get the base name
+    bases = map(l -> l[2:end], labels)
+    # find each unique base in order
+    uniq = unique(bases)
+    # map base→group index
+    gid = Dict(b => i for (i,b) in enumerate(uniq))
+    # for each region, lookup its group
+    return [ gid[b] for b in bases ]
 end
