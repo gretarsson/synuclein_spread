@@ -58,12 +58,12 @@ end
 priors["γ"] = truncated(Normal(0,0.1),lower=0)
 priors["λ"] = truncated(Normal(0,1),lower=0)
 #priors["σ"] = LogNormal(0,1);
-priors["σ"] = filldist(truncated(Normal(0,0.1),lower=0),N);
+priors["σ"] = filldist(LogNormal(0,0.1),N);
 
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
-factors = [1., 1., [1 for _ in 1:K]...,[1 for _ in 1:K]..., 1., 1.];  # death
+factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1., 1.];  # death
 
 
 # INFER
