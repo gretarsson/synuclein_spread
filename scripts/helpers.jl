@@ -814,7 +814,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                alg=Tsit5(), 
                sensealg=ForwardDiffSensitivity(), 
                adtype=AutoForwardDiff(), 
-               factors=[1.]::Vector{Float64},
+               factors=nothing::Union{Nothing,Vector{Float64}},
                bayesian_seed=false,
                seed="iCP"::String,
                seed_value=1.::Float64,
@@ -837,6 +837,12 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # find number of ode parameters by looking at prior dictionary
     ks = collect(keys(priors))
     N_pars = findall(x->x=="σ",ks)[1] - 1
+
+    # if parameter scaling factors not given, set them to one
+    if factors === nothing
+       factors = ones(Float64,N_pars) 
+    end
+    @assert length(factors) == N_pars  # make sure factors is the correct length
 
     # Define prob
     p = zeros(Float64, N_pars)
