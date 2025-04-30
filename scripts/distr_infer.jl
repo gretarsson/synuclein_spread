@@ -31,7 +31,11 @@ La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
 Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N)
 timepoints = vec(readdlm("data/timepoints.csv", ','));
 data = deserialize("data/total_path_3D.jls");
+Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro);
+La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
+Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N)
 seed = findfirst(==("iCP"), labels);
+seed
 
 # SET PRIORS
 K = N  # number of regional parameters
@@ -47,12 +51,15 @@ for i in 1:K
     priors["β[$(i)]"] = Normal(0,1);
     #priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
-#for i in 1:K
-#    #priors["d[$(i)]"] = Normal(0,1);
-#    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
-#end
+for i in 1:K
+    #priors["d[$(i)]"] = Normal(0,1);
+    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
+end
+priors["γ"] = truncated(Normal(0,0.1),lower=0)
+priors["λ"] = truncated(Normal(0,1),lower=0)
 #priors["σ"] = LogNormal(0,1);
-priors["σ"] = filldist(LogNormal(0,1),N);
+priors["σ"] = filldist(truncated(Normal(0,0.1),lower=0),N);
+
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
