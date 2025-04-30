@@ -8,7 +8,7 @@ simulations = [
     "total_aggregation_N=448_threads=4_var1_normalpriors",
     "total_heterodimer_inspired_N=448_threads=1_var1",
     "total_brennanii_N=448_threads=1_var1",
-    #"total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx_notrunc",
+    "total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx_notrunc",
     #"total_death_simplifiedii_uncor_N=448_threads=1_var1_olddecay_withx_notrunc",
 ]
 model_names = [
@@ -16,7 +16,7 @@ model_names = [
     "DIFFG", 
     "DIFFGA", 
     "DIFFGAM",
-    #"DGAM (v2)", 
+    "DIFFGAM (OLD)", 
     #"DGAM (v2 uncor.)" 
 ]
 inferences = []

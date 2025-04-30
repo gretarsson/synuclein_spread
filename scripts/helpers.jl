@@ -918,11 +918,11 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
             # local‐σ case
             for i in 1:N
               # 1) the T‐length time series for region i
-              y = Array(predicted)                             # length T
+              y = predicted[i,:]                             # length T
               # 2) replicate that for each sample
-              y_rep = vcat([y for _ in 1:N_samples]...)     # length T * N_samples
+              y_rep = cat([y for _ in 1:N_samples]...,dims=2)     # length T * N_samples
               # 3) pick out only the observed entries
-              y_obs = y_rep[row_nonmiss[i]]                 # indices into the vectorized data
+              y_obs = vec(y_rep)[row_nonmiss[i]]                 # indices into the vectorized data
               # 4) region‐wise likelihood
               data[i] ~ MvNormal(y_obs, σ[i]^2 * I)
             end
