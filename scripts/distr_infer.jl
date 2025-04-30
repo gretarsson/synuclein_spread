@@ -40,16 +40,16 @@ seed
 # SET PRIORS
 K = N  # number of regional parameters
 display("N = $(N)")
-#u0 = [0. for _ in 1:(2*N)];  # adaptation
-u0 = [0. for _ in 1:(N)];  # without adaptation
+u0 = [0. for _ in 1:(2*N)];  # adaptation
+#u0 = [0. for _ in 1:(N)];  # without adaptation
 
 # DEFINE PRIORS
 priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
 #priors = OrderedDict{Any,Any}( "ρr" => truncated(Normal(0,0.1),lower=0), "ρa" => truncated(Normal(0,0.1),lower=0) ); 
 priors["α"] = truncated(Normal(0,0.1),lower=0);
 for i in 1:K
-    priors["β[$(i)]"] = Normal(0,1);
-    #priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
+    #priors["β[$(i)]"] = Normal(0,1);
+    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
 end
 for i in 1:K
     #priors["d[$(i)]"] = Normal(0,1);
@@ -63,7 +63,7 @@ priors["σ"] = filldist(truncated(Normal(0,0.1),lower=0),N);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 #
 # parameter refactorization
-factors = [1., 1., [1 for _ in 1:K]...];  # death
+factors = [1., 1., [1 for _ in 1:K]...,[1 for _ in 1:K]..., 1., 1.];  # death
 
 
 # INFER
