@@ -808,33 +808,38 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
 # the Priors dict must contain the ODE parameters in order first, and then σ. Other priors can then follow after, with seed always last.
 # ----------------------------------------------------------------------------------------------------------------------------------------
 function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, L; 
-               u0=[]::Vector{Float64},
+               u0::Vector{Float64}=[],
                n_threads=1,
                alg=Tsit5(), 
                sensealg=ForwardDiffSensitivity(), 
                adtype=AutoForwardDiff(), 
-               factors=nothing::Union{Nothing,Vector{Float64}},
-               bayesian_seed=false,
-               seed="iCP"::String,
-               seed_value=1.::Float64,
-               sol_idxs=Vector{Int}()::Vector{Int},
-               abstol=1e-10, 
-               reltol=1e-10,
-               benchmark=false,
+               factors::Union{Nothing,Vector{Float64}}=nothing,
+               bayesian_seed::Bool=false,
+               seed::Int=1,
+               seed_value::Float64=1.,
+               sol_idxs::Vector{Int}=Vector{Int}(),
+               abstol::Float64=1e-10, 
+               reltol::Float64=1e-10,
+               benchmark::Bool=false,
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
-               labels=[],
-               M=0::Int
+               labels::Vector{String}=[],
+               M::Int=0
                )
-    # verify that choice of ODE is correct wrp to retro- and anterograde
+    # get number of nodes in graph
+    N = L[end]
+
+    # print whether seed is being inferred or not
     if bayesian_seed
         display("Model is inferring seeding initial conditions")
     else
         display("Model has constant initial conditions")
     end
 
-    # get number of nodes in graph
-    N = L[end]
+    # verify that the seed index is well defined
+    if seed < 1 || seed > N
+        error("Invalid seed index: $seed. Must satisfy 1 ≤ seed ≤ $N (number of regions).")
+    end
 
     # find number of ode parameters by looking at prior dictionary
     ks = collect(keys(priors))
@@ -852,12 +857,12 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
     # define RHS
     #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)  # uncomment for bilateral
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)   
+    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)   
     # TEST -----
-    #rhs = function (du, u, p, t)
-    #    # p is length N; call the original ODE
-    #    ode(du, u, p, t; L=Ltuple, factors=factors)
-    #end
+    rhs = function (du, u, p, t)
+        # p is length N; call the original ODE
+        ode(du, u, p, t; L=Ltuple, factors=factors)
+    end
     # TEST ------
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
@@ -3307,6 +3312,7 @@ function read_W(filename::AbstractString;
     L = transpose(L)
 
     labels = W_lab[1, 2:end][idxs]
+    labels = string.(labels)  # make sure labels is type Vector{String}
     N = size(L,1)
 
     return L, N, labels
