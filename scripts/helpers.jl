@@ -861,7 +861,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     # TEST -----
     rhs = function (du, u, p, t)
         # p is length N; call the original ODE
-        ode(du, u, p, t; L=Ltuple, factors=factors)
+        ode(du, u, p, t; L=L, factors=factors)
     end
     # TEST ------
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
