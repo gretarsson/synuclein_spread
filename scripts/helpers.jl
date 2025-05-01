@@ -3326,7 +3326,7 @@ and contralateral with “c” (e.g. “iCA1”, “cCA1”, “iDG”, …),
 return a Vector of group‐IDs so that partners share the same ID, and
 singleton regions get their own ID.
 """
-function build_region_groups(labels::Vector{Any})
+function build_region_groups(labels::Vector{String})
     # strip off the leading “i” or “c” to get the base name
     bases = map(l -> l[2:end], labels)
     # find each unique base in order
