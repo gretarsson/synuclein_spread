@@ -22,6 +22,7 @@ using DataFrames, StatsBase, GLM
 using Plots
 using LaTeXStrings
 include("odes.jl")
+using .ODEs: odes
 #=
 Helper functions for the project
 =#

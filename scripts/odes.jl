@@ -9,38 +9,6 @@ using Statistics
 
 #### Plain (per‑region) ODEs ####
 
-# Dictionary containing the ODEs
-
-odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" => diffusion3, "diffusion_pop2" => diffusion_pop2, "aggregation" => aggregation, 
-            "aggregation2" => aggregation2, "aggregation_pop2" => aggregation_pop2, "death_local2" => death_local2, "aggregation2_localα" => aggregation2_localα,
-            "death_superlocal2" => death_superlocal2, "death2" => death2, "death_all_local2" => death_all_local2, "death" => death, "sir" => sir, "sis" => sis, 
-            "DIFF" => DIFF,
-            "DIFFG" => DIFFG,
-            "DIFFGA" => DIFFGA,
-            "DIFFGAM" => DIFFGAM,
-            "DIFF_BI" => DIFF_BI,
-            "DIFFG_BI" => DIFFG_BI,
-            "DIFFGA_BI" => DIFFGA_BI,
-            "DIFFGAM_BI" => DIFFGAM_BI,
-            "fastslow" => fastslow,
-            "fastslow_reparam" => fastslow_reparam,
-            "fastslow_reparamii" => fastslow_reparamii,
-            "fastslow_regionaltime" => fastslow_regionaltime,
-            "heterodimer_inspired" => heterodimer_inspired,
-            "brennan" => brennan,
-            "brennanii" => brennanii,
-            "brennaniii" => brennaniii,
-            "death_simplified" => death_simplified,
-            "death_simplifiedii" => death_simplifiedii,
-            "death_simplifiedii_regionaltime" => death_simplifiedii_regionaltime,
-            "death_simplifiedii_uncor" => death_simplifiedii_uncor,
-            "death_simplifiedii_time" => death_simplifiedii_time,
-            "death_simplifiedii_nodecay" => death_simplifiedii_nodecay,
-            "death_simplifiedii_clustered" => death_simplifiedii_clustered,
-            "death_simplifiedii_bilateral" => death_simplifiedii_bilateral,
-            "death_simplifiedii_bilateral2" => death_simplifiedii_bilateral2,
-            "death_simplifiediii" => death_simplifiediii)
-
 function DIFF(du,u,p,t;L=L,factors=nothing)
     L, _ = L
     ρ = p[1]
@@ -186,6 +154,20 @@ function DIFFGAM_bilateral(du, u, p, t; L, factors = (1.,1.), region_group::Vect
 
     return nothing
 end
+
+# Dictionary containing the ODEs
+odes = Dict("DIFF" => DIFF,
+            "DIFFG" => DIFFG,
+            "DIFFGA" => DIFFGA,
+            "DIFFGAM" => DIFFGAM,
+            "DIFF_bidirectional" => DIFF_bidirectional,
+            "DIFFG_bidirectional" => DIFFG_bidirectional,
+            "DIFFGA_bidirectional" => DIFFGA_bidirectional,
+            "DIFFGAM_bidirectional" => DIFFGAM_bidirectional,
+            #"DIFFG_bilateral" => DIFFG_bilateral,
+            #"DIFFGA_bilateral" => DIFFGA_bilateral,
+            "DIFFGAM_bilateral" => DIFFGAM_bilateral,
+            )
 
 
 end # module ODEs
