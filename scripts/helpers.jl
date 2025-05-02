@@ -213,7 +213,7 @@ a dictionary containing the ODE functions
 # Run whole simulations in one place
 # the Priors dict must contain the ODE parameters in order first, and then σ. Other priors can then follow after, with seed always last.
 # ----------------------------------------------------------------------------------------------------------------------------------------
-function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, L; 
+function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, L; 
                u0::Vector{Float64}=[],
                n_threads=1,
                alg=Tsit5(), 
@@ -230,7 +230,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
                labels::Vector{String}=[],
-               M::Int=0
+               ode_name::String="",
                )
     # get number of nodes in graph
     N = L[end]
@@ -258,8 +258,8 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     @assert length(factors) == N_pars  # make sure factors is the correct length
 
     # Define prob
-    p = zeros(Float64, N_pars)
-    tspan = (timepoints[1],timepoints[end])
+    #p = zeros(Float64, N_pars)
+    #tspan = (timepoints[1],timepoints[end])
 
     # define RHS
     #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)  # uncomment for bilateral
@@ -268,7 +268,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
     #    # p is length N; call the original ODE
     #    ode(du, u, p, t; L=L, factors=factors)
     #end
-    prob = ODEProblem(ode, u0, tspan, p; alg=alg)
+    #prob = ODEProblem(ode, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
     priors_vec = collect(values(priors))
@@ -413,7 +413,7 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                      "bayesian_seed" => bayesian_seed,
                      "seed_value" => seed_value,
                      "transform_observable" => false,
-                     "ode" => string(ode),  # store var name of ode (functions cannot be saved)
+                     "ode" => ode_name,  # store var name of ode (functions cannot be saved)
                      "factors" => factors,
                      "sol_idxs" => sol_idxs,
                      "u0" => u0,
