@@ -10,7 +10,11 @@ end
     using Turing, ParallelDataTransfer
     include("helpers.jl")
     include("model_priors.jl")
+    include("odes.jl")
 end
+
+# import ODEs
+using .ODEs: DIFFGAM
 
 
 # -----------------------------------
@@ -30,14 +34,11 @@ data = deserialize("data/total_path_3D.jls")[thr_idxs,:,:];
 # LOAD CONNECTOME AND MAKE LAPLACIAN
 Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro, idxs=thr_idxs );
 La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
-#Lr = random_laplacian(N)
-#Lr = Lr ./ maximum(Lr[Lr .!= 0])
 Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N). The latter is used for bidirectional spread
 display("N = $(N)")
 
 # SET SEED AND INITIAL CONDITIONS
 seed = findfirst(==("iCP"), labels);  
-#seed = 1;
 u0 = [0. for _ in 1:(2*N)];  
 
 # SET PRIORS (variance and seed have to be last, in that order)
@@ -45,10 +46,16 @@ priors = get_priors(ode,N)
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 
-region_groups = build_region_groups(labels)
+# WRAP ODE 
+factors = ones(length(get_priors(ode,N)))
+rhs = function (du, u, p, t)
+    # p is length N; call the original ODE
+    ode(du, u, p, t; L=Ltuple, factors=factors)
+end
+
 
 # INFER
-inference = infer(ode, 
+inference = infer(rhs, 
                 priors,
                 data,
                 timepoints, 
