@@ -477,8 +477,16 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     # initialize
     tspan = (0., timepoints[end])
     u0 = inference["u0"]
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-    prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+
+    prob = make_ode_problem(ode;
+        labels     = labels,
+        Ltuple     = Ltuple,
+        factors    = factors,
+        u0         = u0,
+        timepoints = timepoints,
+    )
 
     # find posterior mode
     n_pars = length(chain.info[1])
@@ -649,8 +657,17 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_varia
     # define ODE problem 
     u0 = inference["u0"]
     tspan = (0, timepoints[end])
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-    prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+    
+    prob = make_ode_problem(ode;
+        labels     = labels,
+        Ltuple     = Ltuple,
+        factors    = factors,
+        u0         = u0,
+        timepoints = timepoints,
+    )
+
+    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
 
     fs = Any[NaN for _ in 1:N]
     axs = Any[NaN for _ in 1:N]
@@ -2741,4 +2758,31 @@ function build_region_groups(labels::Vector{String})
     gid = Dict(b => i for (i,b) in enumerate(uniq))
     # for each region, lookup its group
     return [ gid[b] for b in bases ]
+end
+
+"""
+    make_ode_problem(ode_fn; labels, Ltuple, factors, u0, timepoints, alg=Tsit5())
+
+Builds an ODEProblem for either plain or `_bilateral` ODEs:
+
+- Detects “_bilateral” in the function’s name and injects `region_group`.
+- Packs `Ltuple` and `factors` into the keyword args.
+- Sets up the rhs closure and tspan.
+"""
+function make_ode_problem(ode_fn; labels, Ltuple, factors, u0, timepoints)
+    # Base kwargs
+    kwargs = (; L = Ltuple, factors = factors)
+
+    # Inject region_group only for bilateral models
+    if occursin("_bilateral", string(ode_fn))
+        kwargs = merge(kwargs, (; region_group = build_region_groups(labels)))
+    end
+
+    # Build the RHS closure
+    rhs = (du,u,p,t) -> ode_fn(du, u, p, t; kwargs...)
+
+    # Time span
+    tspan = (timepoints[1], timepoints[end])
+
+    return ODEProblem(rhs, u0, tspan)
 end

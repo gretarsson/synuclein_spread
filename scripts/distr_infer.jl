@@ -47,26 +47,21 @@ seed = findfirst(==("iCP"), labels);
 region_group = build_region_groups(labels)  # prepare bilateral parameters
 K = bilateral ? maximum(region_group) : N
 priors = get_priors(ode,K)
-N_pars = length(priors)
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 
 # DEFINE ODE PROBLEM
-p = zeros(Float64, length(get_priors(ode,K)))
 factors = ones(length(get_priors(ode,K)))
-tspan = (timepoints[1],timepoints[end])
 u0 = [0. for _ in 1:(2*N)];  
-# Decide which kwargs to capture
-common_kwargs = (; L = Ltuple, factors = factors)
-if endswith(string(ode), "_bilateral")
-  ode_kwargs = merge(common_kwargs, (; region_group = region_group))
-else
-  ode_kwargs = common_kwargs
-end
+prob = make_ode_problem(ode;
+    labels     = labels,
+    Ltuple     = Ltuple,
+    factors    = factors,
+    u0         = u0,
+    timepoints = timepoints,
+)
 
-# Build a tiny RHS closure that splats in exactly the right keywords
-rhs = (du,u,p,t) -> ode(du, u, p, t; ode_kwargs...)
-prob = ODEProblem(rhs, u0, tspan, p)
+
 
 
 # INFER
