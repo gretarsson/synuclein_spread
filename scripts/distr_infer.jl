@@ -22,7 +22,7 @@ using .ODEs: DIFFGAM, DIFFGAM_bilateral, DIFFGA, DIFFG, DIFF, DIFFGAM_bidirectio
 Infer parameters of ODE using Bayesian framework
 =#
 # PICK ODE
-ode = DIFFGAM;
+ode = DIFFGAM_bilateral;
 n_threads = 1;
 
 # flag if bilateral
@@ -52,8 +52,8 @@ priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 
 # DEFINE ODE PROBLEM
-p = zeros(Float64, length(get_priors(ode,N)))
-factors = ones(length(get_priors(ode,N)))
+p = zeros(Float64, length(get_priors(ode,K)))
+factors = ones(length(get_priors(ode,K)))
 tspan = (timepoints[1],timepoints[end])
 u0 = [0. for _ in 1:(2*N)];  
 # Decide which kwargs to capture
