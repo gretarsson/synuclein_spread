@@ -32,8 +32,10 @@ function DIFFGA(du,u,p,t;L=L,factors=(1.,1.))
     β = p[3:(N+2)]
     d = p[(N+3):(2*N+2)]
 
-    x = u[1:N]
-    y = u[(N+1):(2*N)]
+    # split the state vector
+    x = @view u[1    :  N]
+    y = @view u[N+1  : 2*N]
+
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  d .* x  
 end
@@ -47,8 +49,10 @@ function DIFFGAM(du,u,p,t;L=L,factors=(1.,1.))
     γ = p[2*N+3]
     λ = p[2*N+4]
 
-    x = u[1:N]
-    y = u[(N+1):(2*N)]
+    # split the state vector
+    x = @view u[1    :  N]
+    y = @view u[N+1  : 2*N]
+
     du[1:N] .= -ρ*L*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
 end
@@ -78,8 +82,9 @@ function DIFFGA_bidirectional(du,u,p,t;L=L,factors=(1.,1.))
     β = p[4:(N+3)]
     d = p[(N+4):(2*N+3)]
 
-    x = u[1:N]
-    y = u[(N+1):(2*N)]
+    # split the state vector
+    x = @view u[1    :  N]
+    y = @view u[N+1  : 2*N]
     du[1:N] .= -ρr*Lr*x .- ρa*La*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  d .* x  
 end
@@ -94,8 +99,10 @@ function DIFFGAM_bidirectional(du,u,p,t;L=L,factors=(1.,1.))
     γ = p[2*N+4]
     λ = p[2*N+5]
 
-    x = u[1:N]
-    y = u[(N+1):(2*N)]
+    # split the state vector
+    x = @view u[1    :  N]
+    y = @view u[N+1  : 2*N]
+
     du[1:N] .= -ρr*Lr*x .- ρa*La*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
 end
@@ -109,8 +116,10 @@ function DIFFGAM_bidirectional(du,u,p,t;L=L,factors=(1.,1.))
     γ = p[2*N+3]
     λ = p[2*N+4]
 
-    x = u[1:N]
-    y = u[(N+1):(2*N)]
+    # split the state vector
+    x = @view u[1    :  N]
+    y = @view u[N+1  : 2*N]
+
     du[1:N] .= -ρ*L*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
 end
