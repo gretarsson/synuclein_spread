@@ -25,6 +25,7 @@ Infer parameters of ODE using Bayesian framework
 ode = DIFFGAM;
 n_threads = 1;
 
+
 # READ DATA
 _, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 timepoints = vec(readdlm("data/timepoints.csv", ','));
@@ -39,23 +40,28 @@ display("N = $(N)")
 
 # SET SEED AND INITIAL CONDITIONS
 seed = findfirst(==("iCP"), labels);  
-u0 = [0. for _ in 1:(2*N)];  
 
 # SET PRIORS (variance and seed have to be last, in that order)
 priors = get_priors(ode,N)
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 
-# WRAP ODE 
+# define ODE problem
+rhs = (du, u, p, t) -> ode(
+    du, u, p, t;
+    L       = Ltuple,
+    factors = factors,
+    #region_group = region_group
+)
+p = zeros(Float64, length(get_priors(ode,N)))
 factors = ones(length(get_priors(ode,N)))
-rhs = function (du, u, p, t)
-    # p is length N; call the original ODE
-    ode(du, u, p, t; L=Ltuple, factors=factors)
-end
+tspan = (timepoints[1],timepoints[end])
+u0 = [0. for _ in 1:(2*N)];  
+prob = ODEProblem(rhs, u0, tspan, p)
 
 
 # INFER
-inference = infer(rhs, 
+inference = infer(prob, 
                 priors,
                 data,
                 timepoints, 
@@ -72,7 +78,7 @@ inference = infer(rhs,
                 benchmark=false,
                 benchmark_ad=[:reversediff],
                 labels=labels,
-                #M=M,
+                ode_name=string(ode),
                 test_typestable=false
                 )
 
