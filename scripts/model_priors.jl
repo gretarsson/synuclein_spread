@@ -58,7 +58,7 @@ function get_priors(ode::Function, K::Int)
     # Bidirectional variants
     # ———————————————————————————————
 
-    elseif ode === DIFFGAM_BI
+    elseif ode === DIFFGAM_bidirectional
         return OrderedDict{String,Any}(
           # bidirectional ρ parameters
           "rhoRetro"  => truncated(Normal(0,0.1), lower=0),
@@ -76,7 +76,7 @@ function get_priors(ode::Function, K::Int)
           "lambdaCrit" => truncated(Normal(0,1),   lower=0),
         )
 
-    elseif ode === DIFFGA_BI
+    elseif ode === DIFFGA_bidirectional
         return OrderedDict{String,Any}(
           # bidirectional ρ parameters
           "rhoRetro"  => truncated(Normal(0,0.1), lower=0),
@@ -90,7 +90,7 @@ function get_priors(ode::Function, K::Int)
           [ "gamma[$i]" => truncated(Normal(0,0.1), lower=0) for i in 1:K ]...,
         )
 
-    elseif ode === DIFFG_BI
+    elseif ode === DIFFG_bidirectional
         return OrderedDict{String,Any}(
           # bidirectional ρ parameters
           "rhoRetro"  => truncated(Normal(0,0.1), lower=0),
@@ -101,12 +101,32 @@ function get_priors(ode::Function, K::Int)
           [ "beta[$i]"  => Normal(0,1) for i in 1:K ]...,
         )
 
-    elseif ode === DIFF_BI
+    elseif ode === DIFF_bidirectional
         return OrderedDict{String,Any}(
           # bidirectional ρ parameters
           "rhoRetro"  => truncated(Normal(0,0.1), lower=0),
           "rhoAntero" => truncated(Normal(0,0.1), lower=0),
         )
+
+
+    # BILATERAL
+    elseif ode === DIFFGAM_bilateral
+        return OrderedDict{String,Any}(
+          # fixed‑size
+          "rho"      => truncated(Normal(0,0.1), lower=0),
+          "alpha"    => truncated(Normal(0,0.1), lower=0),
+
+          # regional λ₀’s
+          [ "lambda0[$i]"   => truncated(Normal(0,1), lower=0) for i in 1:K ]...,
+
+          # regional λ∞’s
+          [ "lambdaInf[$i]" => truncated(Normal(0,1), lower=0) for i in 1:K ]...,
+
+          # more fixed‑size
+          "theta"      => truncated(Normal(0,0.1), lower=0),
+          "lambdaCrit" => truncated(Normal(0,1),   lower=0),
+        )
+
 
     else
         error("No priors defined for ODE: $ode")

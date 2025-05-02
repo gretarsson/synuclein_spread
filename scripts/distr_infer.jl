@@ -14,7 +14,7 @@ end
 end
 
 # import ODEs
-using .ODEs: DIFFGAM
+using .ODEs: DIFFGAM, DIFFGAM_bilateral, DIFFGA, DIFFG, DIFF, DIFFGAM_bidirectional, DIFFGA_bidirectional, DIFFG_bidirectional, DIFF_bidirectional
 
 
 # -----------------------------------
@@ -25,6 +25,8 @@ Infer parameters of ODE using Bayesian framework
 ode = DIFFGAM;
 n_threads = 1;
 
+# flag if bilateral
+bilateral = endswith(string(ode), "_bilateral")
 
 # READ DATA
 _, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
@@ -42,21 +44,28 @@ display("N = $(N)")
 seed = findfirst(==("iCP"), labels);  
 
 # SET PRIORS (variance and seed have to be last, in that order)
-priors = get_priors(ode,N)
+region_group = build_region_groups(labels)  # prepare bilateral parameters
+K = bilateral ? maximum(region_group) : N
+priors = get_priors(ode,K)
+N_pars = length(priors)
 priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
 
-# define ODE problem
-rhs = (du, u, p, t) -> ode(
-    du, u, p, t;
-    L       = Ltuple,
-    factors = factors,
-    #region_group = region_group
-)
+# DEFINE ODE PROBLEM
 p = zeros(Float64, length(get_priors(ode,N)))
 factors = ones(length(get_priors(ode,N)))
 tspan = (timepoints[1],timepoints[end])
 u0 = [0. for _ in 1:(2*N)];  
+# Decide which kwargs to capture
+common_kwargs = (; L = Ltuple, factors = factors)
+if endswith(string(ode), "_bilateral")
+  ode_kwargs = merge(common_kwargs, (; region_group = region_group))
+else
+  ode_kwargs = common_kwargs
+end
+
+# Build a tiny RHS closure that splats in exactly the right keywords
+rhs = (du,u,p,t) -> ode(du, u, p, t; ode_kwargs...)
 prob = ODEProblem(rhs, u0, tspan, p)
 
 
