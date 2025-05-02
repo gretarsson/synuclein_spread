@@ -808,35 +808,48 @@ odes = Dict("diffusion" => diffusion, "diffusion2" => diffusion2, "diffusion3" =
 # the Priors dict must contain the ODE parameters in order first, and then σ. Other priors can then follow after, with seed always last.
 # ----------------------------------------------------------------------------------------------------------------------------------------
 function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, L; 
-               u0=[]::Vector{Float64},
-               idxs=Vector{Int}()::Vector{Int},
+               u0::Vector{Float64}=[],
                n_threads=1,
                alg=Tsit5(), 
                sensealg=ForwardDiffSensitivity(), 
                adtype=AutoForwardDiff(), 
-               factors=[1.]::Vector{Float64},
-               bayesian_seed=false,
-               seed="iCP"::String,
-               seed_value=1.::Float64,
-               sol_idxs=Vector{Int}()::Vector{Int},
-               abstol=1e-10, 
-               reltol=1e-10,
-               benchmark=false,
+               factors::Union{Nothing,Vector{Float64}}=nothing,
+               bayesian_seed::Bool=false,
+               seed::Int=1,
+               seed_value::Float64=1.,
+               sol_idxs::Vector{Int}=Vector{Int}(),
+               abstol::Float64=1e-10, 
+               reltol::Float64=1e-10,
+               benchmark::Bool=false,
                benchmark_ad=[:forwarddiff, :reversediff, :reversediff_compiled],
                test_typestable=false,
-               labels=[],
-               M=0::Int
+               labels::Vector{String}=[],
+               M::Int=0
                )
-    # verify that choice of ODE is correct wrp to retro- and anterograde
+    # get number of nodes in graph
+    N = L[end]
+
+    # print whether seed is being inferred or not
     if bayesian_seed
         display("Model is inferring seeding initial conditions")
     else
         display("Model has constant initial conditions")
     end
 
+    # verify that the seed index is well defined
+    if seed < 1 || seed > N
+        error("Invalid seed index: $seed. Must satisfy 1 ≤ seed ≤ $N (number of regions).")
+    end
+
     # find number of ode parameters by looking at prior dictionary
     ks = collect(keys(priors))
     N_pars = findall(x->x=="σ",ks)[1] - 1
+
+    # if parameter scaling factors not given, set them to one
+    if factors === nothing
+       factors = ones(Float64,N_pars) 
+    end
+    @assert length(factors) == N_pars  # make sure factors is the correct length
 
     # Define prob
     p = zeros(Float64, N_pars)
@@ -844,7 +857,13 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
 
     # define RHS
     #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors,M=M)  # uncomment for bilateral
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)  # uncomment without bilateral 
+    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)   
+    # TEST -----
+    rhs = function (du, u, p, t)
+        # p is length N; call the original ODE
+        ode(du, u, p, t; L=L, factors=factors)
+    end
+    # TEST ------
     prob = ODEProblem(rhs, u0, tspan, p; alg=alg)
     
     # prior vector from ordered dic
@@ -986,7 +1005,6 @@ function infer(ode, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, 
                      "priors" => priors, 
                      "data" => data,
                      "timepoints" => timepoints,
-                     "data_indices" => idxs, 
                      "seed_idx" => seed,
                      "bayesian_seed" => bayesian_seed,
                      "seed_value" => seed_value,
@@ -3268,7 +3286,7 @@ end
 
 
 function read_W(filename::AbstractString;
-                idxs::Vector{Int}=Int[], 
+                idxs::BitVector=BitVector(), 
                 direction::Symbol = :retro,
                 self_loops::Bool = false)
 
@@ -3294,7 +3312,27 @@ function read_W(filename::AbstractString;
     L = transpose(L)
 
     labels = W_lab[1, 2:end][idxs]
+    labels = string.(labels)  # make sure labels is type Vector{String}
     N = size(L,1)
 
     return L, N, labels
+end
+
+"""
+    build_region_groups(labels::Vector{String}) -> Vector{Int}
+
+Given a list of region‐labels where ipsilateral regions start with “i”
+and contralateral with “c” (e.g. “iCA1”, “cCA1”, “iDG”, …),
+return a Vector of group‐IDs so that partners share the same ID, and
+singleton regions get their own ID.
+"""
+function build_region_groups(labels::Vector{String})
+    # strip off the leading “i” or “c” to get the base name
+    bases = map(l -> l[2:end], labels)
+    # find each unique base in order
+    uniq = unique(bases)
+    # map base→group index
+    gid = Dict(b => i for (i,b) in enumerate(uniq))
+    # for each region, lookup its group
+    return [ gid[b] for b in bases ]
 end

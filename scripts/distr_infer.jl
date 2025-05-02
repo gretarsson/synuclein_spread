@@ -1,19 +1,15 @@
-using Turing
+#using Turing
 using Distributed
 addprocs(0)
-
 # instantiate and precompile environment in all processes
 @everywhere begin
     using Pkg; Pkg.activate(".")
     Pkg.instantiate(); Pkg.precompile()
 end
-
 @everywhere begin 
-using Turing, ParallelDataTransfer
-end
-
-@everywhere begin
-include("helpers.jl")
+    using Turing, ParallelDataTransfer
+    include("helpers.jl")
+    include("model_priors.jl")
 end
 
 
@@ -26,45 +22,30 @@ ode = DIFFGAM;
 n_threads = 1;
 
 # READ DATA
-Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro);
-La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
-Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N)
+_, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
 timepoints = vec(readdlm("data/timepoints.csv", ','));
-data = deserialize("data/total_path_3D.jls");
-Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro);
+data = deserialize("data/total_path_3D.jls")[thr_idxs,:,:];
+
+
+# LOAD CONNECTOME AND MAKE LAPLACIAN
+Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro, idxs=thr_idxs );
 La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
-Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N)
-seed = findfirst(==("iCP"), labels);
-seed
-
-# SET PRIORS
-K = N  # number of regional parameters
+#Lr = random_laplacian(N)
+#Lr = Lr ./ maximum(Lr[Lr .!= 0])
+Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N). The latter is used for bidirectional spread
 display("N = $(N)")
-u0 = [0. for _ in 1:(2*N)];  # adaptation
-#u0 = [0. for _ in 1:(N)];  # without adaptation
 
-# DEFINE PRIORS
-priors = OrderedDict{Any,Any}( "ρ" => truncated(Normal(0,0.1),lower=0) ); 
-#priors = OrderedDict{Any,Any}( "ρr" => truncated(Normal(0,0.1),lower=0), "ρa" => truncated(Normal(0,0.1),lower=0) ); 
-priors["α"] = truncated(Normal(0,0.1),lower=0);
-for i in 1:K
-    #priors["β[$(i)]"] = Normal(0,1);
-    priors["β[$(i)]"] = truncated(Normal(0,1),lower=0);
-end
-for i in 1:K
-    #priors["d[$(i)]"] = Normal(0,1);
-    priors["d[$(i)]"] = truncated(Normal(0,1),lower=0);
-end
-priors["γ"] = truncated(Normal(0,0.1),lower=0)
-priors["λ"] = truncated(Normal(0,1),lower=0)
-#priors["σ"] = LogNormal(0,1);
-priors["σ"] = filldist(LogNormal(0,0.1),N);
+# SET SEED AND INITIAL CONDITIONS
+seed = findfirst(==("iCP"), labels);  
+#seed = 1;
+u0 = [0. for _ in 1:(2*N)];  
 
+# SET PRIORS (variance and seed have to be last, in that order)
+priors = get_priors(ode,N)
+priors["σ"] = LogNormal(0,1);
 priors["seed"] = truncated(Normal(0,0.1),lower=0);
-#
-# parameter refactorization
-factors = [1., 1., [1 for _ in 1:K]..., [1 for _ in 1:K]..., 1., 1.];  # death
 
+region_groups = build_region_groups(labels)
 
 # INFER
 inference = infer(ode, 
@@ -72,9 +53,7 @@ inference = infer(ode,
                 data,
                 timepoints, 
                 Ltuple; 
-                factors=factors,
                 u0=u0,
-                #idxs=idxs,
                 n_threads=n_threads,
                 bayesian_seed=true,
                 seed=seed,
@@ -91,5 +70,5 @@ inference = infer(ode,
                 )
 
 # SAVE 
-serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"])).jls", inference)
+serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_NEWRHS.jls", inference)
 Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
