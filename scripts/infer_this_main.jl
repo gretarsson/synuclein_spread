@@ -7,6 +7,7 @@ function build_parser()
     s = ArgParseSettings()
 
     @add_arg_table s begin
+        # POSITIONAL ARGUMENTS
         "ode"
             arg_type = String
             help = "string naming the ode"
@@ -16,6 +17,7 @@ function build_parser()
         "data_file"
             arg_type = String
             help = "3D pathology data file"
+        # OPTIONAL ARGUMENTS
         "--time_file"
             arg_type = String
             default = nothing
@@ -28,13 +30,17 @@ function build_parser()
             arg_type = String
             default  = "iCP"
             help     = "The label of the seeded region"
-        "--test"
-            action = :store_true
-            help = "if set, use test subset (this is hardcoded don't use)"
         "--infer_seed"
             arg_type = Bool
             default  = true
             help     = "If true, infer the value of the seeded region at time zero"
+        "--out_file"
+            arg_type = String
+            default = nothing
+            help = "where to save the inference object"
+        "--test"
+            action = :store_true
+            help = "if set, use test subset (this is hardcoded don't use)"
     end
 
     return s
@@ -89,9 +95,9 @@ function main(parsed)
     Lr,N,labels = read_W(w_file, direction=:retro, idxs=idxs);
     La,_,_ = read_W(w_file, direction=:antero, idxs=idxs);
     if bidirectional
-        Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N). The latter is used for bidirectional spread
+        Ltuple = (Lr,La,N)  # order is (L,N) or (Lr, La, N). The latter is used for bidirectional spread
     else
-        Ltuple = (Lr,La,N)
+        Ltuple = (Lr,N)
     end
 
     # SET SEED AND INITIAL CONDITIONS
@@ -138,7 +144,11 @@ function main(parsed)
                     )
 
     # SAVE 
-    serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_NEWRHS.jls", inference)
+    if isnothing(out_file)
+        serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_NEW.jls", inference)
+    else
+        serialize(out_file, inference)
+    end
     Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
 end
 
