@@ -3,10 +3,8 @@ uuid = "05ce577d-75c9-4f45-b5e7-b2a56d014591"
 authors = ["gretarsson <cga323@gmail.com>"]
 version = "0.1.0"
 
-[compat]
-julia = "1.10.4"
-
 [deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 ArviZ = "131c737c-5715-5e2e-ad31-c244f01c1dc7"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -47,3 +45,6 @@ StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 TuringBenchmarking = "0db1332d-5c25-4deb-809f-459bc696f94f"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
+[compat]
+julia = "1.10.4"

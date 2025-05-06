@@ -1,6 +1,48 @@
+using ArgParse
+
+# use ArgParse to define CLI arguments
+function build_parser()
+    s = ArgParseSettings()
+
+    @add_arg_table s begin
+        "ode"
+            arg_type = String
+            help = "string naming the ode"
+        "w_file"
+            arg_type = String
+            help = "CSV file of structural connectivity"
+        "data_file"
+            arg_type = String
+            help = "3D pathology data file"
+        "--time_file"
+            arg_type = String
+            default = nothing
+            help   = "file of timepoints csv file"
+        "--n_chains"
+            arg_type = Int
+            default = 1
+            help = "how many MCMC chains to run with distributed computing"
+        "--output", "-o"
+            arg_type = String
+            default  = "results.txt"
+            help     = "Output filename"
+    end
+
+    return s
+end
+# parse arguments
+parsed = parse_args(build_parser())
+
+# read ARGS
+ode = parsed["ode"]
+w_file = parsed["w_file"]
+data_file = parsed["data_file"]
+time_file = parsed["time_file"]
+n_chains = parsed["n_chains"]
+
 #using Turing
 using Distributed
-addprocs(0)
+addprocs(n_chains-1)
 # instantiate and precompile environment in all processes
 @everywhere begin
     using Pkg; Pkg.activate(".")
@@ -12,30 +54,34 @@ end
     include("model_priors.jl")
 end
 
-# import ODEs
-using .ODEs: odes
+# PRINT ARGS
+println("→ ODE:        $ode")
+println("→ Pathology data:   $data_file")
+println("→ Structural data:      $w_file")
+println("→ Timepoints:   $time_file")
+intln("→ #Chains:    $n_chains")
+#println("→ Output:     $out_file")
 
 
 # -----------------------------------
 #=
 Infer parameters of ODE using Bayesian framework
 =#
-# PICK ODE
-ode = "DIFFGAM_bilateral";
-n_threads = 1;
-
 # flag if bilateral
 bilateral = endswith(ode, "_bilateral")
 
 # READ DATA
 _, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-timepoints = vec(readdlm("data/timepoints.csv", ','));
-data = deserialize("data/total_path_3D.jls")[thr_idxs,:,:];
-
+data = deserialize(data_file)[thr_idxs,:,:];
+if isnothing(time_file)
+    timepoints = Float64.(1:size(data)[2])
+else
+    timepoints = vec(readdlm(time_file, ','));
+end
 
 # LOAD CONNECTOME AND MAKE LAPLACIAN
-Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro, idxs=thr_idxs );
-La,_,_ = read_W("data/W_labeled.csv", direction=:antero);
+Lr,N,labels = read_W(w_file, direction=:retro, idxs=thr_idxs );
+La,_,_ = read_W(w_file, direction=:antero);
 Ltuple = (Lr,N)  # order is (L,N) or (Lr, La, N). The latter is used for bidirectional spread
 display("N = $(N)")
 
@@ -70,7 +116,7 @@ inference = infer(prob,
                 timepoints, 
                 Ltuple; 
                 u0=u0,
-                n_threads=n_threads,
+                n_chains=n_chains,
                 bayesian_seed=true,
                 seed=seed,
                 alg=Tsit5(),
