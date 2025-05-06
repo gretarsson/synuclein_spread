@@ -39,10 +39,17 @@ w_file = parsed["w_file"]
 data_file = parsed["data_file"]
 time_file = parsed["time_file"]
 n_chains = parsed["n_chains"]
+# TEST WITH REPL
+#ode = "DIFFGAM"
+#w_file = "data/W_labeled.csv"
+#data_file = "data/total_path_3D.jls"
+#time_file = "data/timepoints.csv"
+#n_chains = 2
+#
 
 #using Turing
 using Distributed
-addprocs(n_chains-1)
+addprocs(n_chains)
 # instantiate and precompile environment in all processes
 @everywhere begin
     using Pkg; Pkg.activate(".")
@@ -59,7 +66,7 @@ println("→ ODE:        $ode")
 println("→ Pathology data:   $data_file")
 println("→ Structural data:      $w_file")
 println("→ Timepoints:   $time_file")
-intln("→ #Chains:    $n_chains")
+println("→ Chains:    $n_chains")
 #println("→ Output:     $out_file")
 
 
@@ -105,9 +112,6 @@ prob = make_ode_problem(odes[ode];
     u0         = u0,
     timepoints = timepoints,
 )
-
-
-
 
 # INFER
 inference = infer(prob, 

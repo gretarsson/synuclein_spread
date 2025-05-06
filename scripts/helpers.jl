@@ -238,11 +238,11 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     N = L[end]
 
     # print whether seed is being inferred or not
-    if bayesian_seed
-        display("Model is inferring seeding initial conditions")
-    else
-        display("Model has constant initial conditions")
-    end
+    #if bayesian_seed
+    #    display("Model is inferring seeding initial conditions")
+    #else
+    #    display("Model has constant initial conditions")
+    #end
 
     # verify that the seed index is well defined
     if seed < 1 || seed > N
