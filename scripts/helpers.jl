@@ -217,7 +217,7 @@ a dictionary containing the ODE functions
 # ----------------------------------------------------------------------------------------------------------------------------------------
 function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, L; 
                u0::Vector{Float64}=[],
-               n_threads=1,
+               n_chains=1,
                alg=Tsit5(), 
                sensealg=ForwardDiffSensitivity(), 
                adtype=AutoForwardDiff(), 
@@ -238,11 +238,11 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     N = L[end]
 
     # print whether seed is being inferred or not
-    if bayesian_seed
-        display("Model is inferring seeding initial conditions")
-    else
-        display("Model has constant initial conditions")
-    end
+    #if bayesian_seed
+    #    display("Model is inferring seeding initial conditions")
+    #else
+    #    display("Model has constant initial conditions")
+    #end
 
     # verify that the seed index is well defined
     if seed < 1 || seed > N
@@ -378,10 +378,10 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     end
 
     # Sample to approximate posterior
-    if n_threads == 1
+    if n_chains == 1
         chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  
     else
-        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_threads; progress=true)
+        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)
     end
 
     # compute elpd (expected log predictive density)
