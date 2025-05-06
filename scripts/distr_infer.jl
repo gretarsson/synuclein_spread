@@ -10,23 +10,21 @@ end
     using Turing, ParallelDataTransfer
     include("helpers.jl")
     include("model_priors.jl")
-    include("odes.jl")
 end
 
 # import ODEs
-using .ODEs: DIFFGAM, DIFFGAM_bilateral, DIFFGA, DIFFG, DIFF, DIFFGAM_bidirectional, DIFFGA_bidirectional, DIFFG_bidirectional, DIFF_bidirectional
-
+using .ODEs: odes
 
 # -----------------------------------
 #=
 Infer parameters of ODE using Bayesian framework
 =#
 # PICK ODE
-ode = DIFFGAM_bilateral;
+ode = "DIFFGAM_bilateral";
 n_threads = 1;
 
 # flag if bilateral
-bilateral = endswith(string(ode), "_bilateral")
+bilateral = endswith(ode, "_bilateral")
 
 # READ DATA
 _, thr_idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
@@ -53,7 +51,7 @@ priors["seed"] = truncated(Normal(0,0.1),lower=0);
 # DEFINE ODE PROBLEM
 factors = ones(length(get_priors(ode,K)))
 u0 = [0. for _ in 1:(2*N)];  
-prob = make_ode_problem(ode;
+prob = make_ode_problem(odes[ode];
     labels     = labels,
     Ltuple     = Ltuple,
     factors    = factors,

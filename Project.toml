@@ -3,6 +3,9 @@ uuid = "05ce577d-75c9-4f45-b5e7-b2a56d014591"
 authors = ["gretarsson <cga323@gmail.com>"]
 version = "0.1.0"
 
+[compat]
+julia = "1.10.4"
+
 [deps]
 ArviZ = "131c737c-5715-5e2e-ad31-c244f01c1dc7"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
