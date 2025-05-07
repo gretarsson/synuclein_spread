@@ -1,3 +1,4 @@
+#!/usr/bin/env julia --project=.
 using ArgParse
 using Distributed
 
@@ -175,6 +176,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
     @everywhere include("helpers.jl")
     @everywhere include("model_priors.jl")
 
-    main(parsed)
-    Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
+    try
+        main(parsed)
+    finally
+        rmprocs(workers())  # kill workers, closing Julia REPL does not do this
+    end
+    
 end
