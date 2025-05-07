@@ -55,6 +55,7 @@ function main(parsed)
     n_chains = parsed["n_chains"]
     seed_label = parsed["seed_label"]
     infer_seed = parsed["infer_seed"]
+    out_file = parsed["out_file"]
     test = parsed["test"]
 
     # PRINT ARGS
@@ -65,8 +66,10 @@ function main(parsed)
     println("→ Chains:    $n_chains")
     println("→ Seed label:    $seed_label")
     println("→ Infer seed:    $infer_seed")
-    #println("→ Output:     $out_file")
-
+    println("→ Output:     $out_file")
+    if test
+        println("→ Test:     $test")
+    end
 
     # -----------------------------------
     #=
@@ -149,7 +152,6 @@ function main(parsed)
     else
         serialize(out_file, inference)
     end
-    Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
 end
 
 
@@ -174,4 +176,5 @@ if abspath(PROGRAM_FILE) == @__FILE__
     @everywhere include("model_priors.jl")
 
     main(parsed)
+    Distributed.interrupt()  # kill workers from previous run (killing REPL does not do this)
 end

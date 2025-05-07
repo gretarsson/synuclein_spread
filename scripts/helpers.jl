@@ -463,9 +463,10 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     data = inference["data"]
     timepoints = inference["timepoints"]
     seed = inference["seed_idx"]
-    L = inference["L"]
+    Ltuple = inference["L"]
     priors = inference["priors"]
     sol_idxs = inference["sol_idxs"]
+    labels = inference["labels"]
 
     ks = collect(keys(priors))
     N_pars = findall(x->x=="σ",ks)[1] - 1
@@ -637,7 +638,8 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_varia
     timepoints = inference["timepoints"]
     seed = inference["seed_idx"]
     sol_idxs = inference["sol_idxs"]
-    L = inference["L"]
+    Ltuple = inference["L"]
+    labels = inference["labels"]
     ks = collect(keys(inference["priors"]))
     N_pars = findall(x->x=="σ",ks)[1] - 1
     factors = [1. for _ in 1:N_pars]
@@ -682,8 +684,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_varia
         # samples
         p = sample[1:N_pars]  # first index is σ and last index is seed
         if inference["bayesian_seed"]
-            u0[seed] = sample[seed_ch_idx]  # TODO: find seed index automatically
-            #u0[seed] = sample[end]  # TODO: find seed index automatically
+            u0[seed] = sample[seed_ch_idx]  
         else    
             u0[seed] = inference["seed_value"]
         end
@@ -709,9 +710,9 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_varia
     for i in 1:N
         # =-=----
         nonmissing = findall(mean_data[i,:] .!== missing)
-        data_i = mean_data[i,:][nonmissing]
-        timepoints_i = timepoints[nonmissing]
-        var_data_i = var_data[i,:][nonmissing]
+        data_i = Float64.(mean_data[i,:][nonmissing])
+        timepoints_i = Float64.(timepoints[nonmissing])
+        var_data_i = Float64.(var_data[i,:][nonmissing])
 
         # skip if mean is empty
         if isempty(data_i)
@@ -740,8 +741,8 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_varia
         for k in axes(data,3)
             # =-=----
             nonmissing = findall(data[i,:,k] .!== missing)
-            data_i = data[i,:,k][nonmissing]
-            timepoints_i = timepoints[nonmissing] .+ jiggle[k]
+            data_i = Float64.(data[i,:,k][nonmissing])
+            timepoints_i = Float64.(timepoints[nonmissing] .+ jiggle[k])
             CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 71/255, 171/255), alpha=0.4, markersize=15)  
         end
         CairoMakie.save(save_path * "/retrodiction_region_$(i).png", fs[i])
