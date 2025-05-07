@@ -1,6 +1,8 @@
 #!/usr/bin/env julia --project=.
 using ArgParse
 using Distributed
+include("Data_processing.jl")
+using .Data_processing: process_pathology
 
 
 # use ArgParse to define CLI arguments
@@ -61,8 +63,8 @@ function main(parsed)
 
     # PRINT ARGS
     println("→ ODE:        $ode")
-    println("→ Pathology data:   $data_file")
     println("→ Structural data:      $w_file")
+    println("→ Pathology data:   $data_file")
     println("→ Timepoints:   $time_file")
     println("→ Chains:    $n_chains")
     println("→ Seed label:    $seed_label")
@@ -81,14 +83,15 @@ function main(parsed)
     bidirectional = endswith(ode, "_bidirectional")
 
     # READ DATA
-    data = deserialize(data_file);
+    #data = deserialize(data_file);
+    data = process_pathology(data_file; W_csv=w_file)
     Ntotal = size(data)[1]
     if test 
         _, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
     else
         idxs = trues(Ntotal)
-    end
-    data = deserialize(data_file)[idxs,:,:];
+    end 
+    data = process_pathology(data_file; W_csv=w_file)[idxs,:,:];
     if isnothing(time_file)
         timepoints = Float64.(1:size(data)[2])
     else
