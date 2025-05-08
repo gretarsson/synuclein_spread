@@ -2,6 +2,7 @@
 using ArgParse
 using Distributed
 include("Data_processing.jl")
+include("ODE_dimensions.jl")
 using .Data_processing: process_pathology
 
 
@@ -119,7 +120,7 @@ function main(parsed)
 
     # DEFINE ODE PROBLEM
     factors = ones(length(get_priors(ode,K)))
-    u0 = [0. for _ in 1:(2*N)];  
+    u0 = zeros(ODE_dimensions[ode](N))
     prob = make_ode_problem(odes[ode];
         labels     = labels,
         Ltuple     = Ltuple,
