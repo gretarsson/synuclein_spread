@@ -379,9 +379,11 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
 
     # Sample to approximate posterior
     if n_chains == 1
-        chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  
+        #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  
+        chain = sample(model, NUTS(1000,0.9;adtype=adtype), 3000; progress=true)  
     else
-        chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)
+        #chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)
+        chain = sample(model, NUTS(1000,0.9;adtype=adtype), MCMCDistributed(), 3000, n_chains; progress=true)
     end
 
     # compute elpd (expected log predictive density)
