@@ -6,9 +6,9 @@ const ode_dimensions = Dict(
     "DIFF_bidirectional"    => N -> N,
     "DIFF_bilateral"        => N -> N,
 
-    "DIFFG"                 => N -> 2N,
-    "DIFFG_bidirectional"   => N -> 2N,
-    "DIFFG_bilateral"       => N -> 2N,
+    "DIFFG"                 => N -> N,
+    "DIFFG_bidirectional"   => N -> N,
+    "DIFFG_bilateral"       => N -> N,
 
     "DIFFGA"                => N -> 2N,
     "DIFFGA_bidirectional"  => N -> 2N,

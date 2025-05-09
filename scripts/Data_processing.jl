@@ -59,7 +59,7 @@ function process_pathology(path_csv::String; W_csv::Union{Nothing,String}=nothin
         end
     end
 
-    return data
+    return data, mpis
 end
 
 end # module
