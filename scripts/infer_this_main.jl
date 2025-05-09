@@ -22,10 +22,6 @@ function build_parser()
             arg_type = String
             help = "3D pathology data file"
         # OPTIONAL ARGUMENTS
-        "--time_file"
-            arg_type = String
-            default = nothing
-            help   = "file of timepoints csv file"
         "--n_chains"
             arg_type = Int
             default = 1
@@ -55,7 +51,6 @@ function main(parsed)
     ode = parsed["ode"]
     w_file = parsed["w_file"]
     data_file = parsed["data_file"]
-    time_file = parsed["time_file"]
     n_chains = parsed["n_chains"]
     seed_label = parsed["seed_label"]
     infer_seed = parsed["infer_seed"]
@@ -66,7 +61,6 @@ function main(parsed)
     println("→ ODE:        $ode")
     println("→ Structural data:      $w_file")
     println("→ Pathology data:   $data_file")
-    println("→ Timepoints:   $time_file")
     println("→ Chains:    $n_chains")
     println("→ Seed label:    $seed_label")
     println("→ Infer seed:    $infer_seed")
@@ -83,25 +77,22 @@ function main(parsed)
     bilateral = endswith(ode, "_bilateral")
     bidirectional = endswith(ode, "_bidirectional")
 
-    # READ DATA
-    #data = deserialize(data_file);
-    data = process_pathology(data_file; W_csv=w_file)
-    Ntotal = size(data)[1]
+    # READ PATHOLOGY AND STRUCTURAL DATA
     if test 
+        # HARD-CODED TEST, N=40 
         _, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
+        data, timepoints = process_pathology(data_file; W_csv=w_file)[idxs,:,:];
+        Lr,N,labels = read_W(w_file, direction=:retro, idxs=idxs);
+        La,_,_ = read_W(w_file, direction=:antero, idxs=idxs);
     else
-        idxs = trues(Ntotal)
+        # PATHOLOGY DATA
+        data, timepoints = process_pathology(data_file; W_csv=w_file);
+        # STRUCTURAL DATA
+        Lr,N,labels = read_W(w_file, direction=:retro);
+        La,_,_ = read_W(w_file, direction=:antero);
     end 
-    data = process_pathology(data_file; W_csv=w_file)[idxs,:,:];
-    if isnothing(time_file)
-        timepoints = Float64.(1:size(data)[2])
-    else
-        timepoints = vec(readdlm(time_file, ','));
-    end
 
-    # LOAD CONNECTOME AND MAKE LAPLACIAN
-    Lr,N,labels = read_W(w_file, direction=:retro, idxs=idxs);
-    La,_,_ = read_W(w_file, direction=:antero, idxs=idxs);
+    # ADD EXTRA LAPLACIAN IF BIDIRECTIONAL TRANSPORT
     if bidirectional
         Ltuple = (Lr,La,N)  # order is (L,N) or (Lr, La, N). The latter is used for bidirectional spread
     else
@@ -120,7 +111,7 @@ function main(parsed)
 
     # DEFINE ODE PROBLEM
     factors = ones(length(get_priors(ode,K)))
-    u0 = zeros(ODE_dimensions[ode](N))
+    u0 = zeros(ode_dimensions[ode](N))
     prob = make_ode_problem(odes[ode];
         labels     = labels,
         Ltuple     = Ltuple,
@@ -153,7 +144,7 @@ function main(parsed)
 
     # SAVE 
     if isnothing(out_file)
-        serialize("simulations/total_$(ode)_N=$(N)_threads=$(n_threads)_var$(length(priors["σ"]))_NEW.jls", inference)
+        serialize("simulations/$(ode)_N=$(N)_threads=$(n_threads).jls", inference)
     else
         serialize(out_file, inference)
     end
