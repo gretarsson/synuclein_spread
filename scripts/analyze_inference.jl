@@ -9,6 +9,5 @@ simulation = "main_DIFFGA";
 
 # plot 
 inference_obj = deserialize("simulations/"*simulation*".jls")
-inference_obj["chain"]
 
 plot_inference(inference_obj,"figures/"*simulation;plotscale=log10)  
