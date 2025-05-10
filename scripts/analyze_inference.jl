@@ -5,9 +5,10 @@ include("helpers.jl");
 
 # simulation to analyze
 #simulation = "total_DIFFGAM_bilateral_N=40_threads=1_var1_NEWRHS";
-simulation = "main_DIFFG";
+simulation = "main_DIFFGA";
 
 # plot 
 inference_obj = deserialize("simulations/"*simulation*".jls")
+inference_obj["chain"]
 
 plot_inference(inference_obj,"figures/"*simulation;plotscale=log10)  
