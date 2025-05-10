@@ -34,6 +34,10 @@ function build_parser()
             arg_type = Bool
             default  = true
             help     = "If true, infer the value of the seeded region at time zero"
+        "--target_acceptance"
+            arg_type = Float64
+            default = 0.65
+            help = "The target acceptance ratio for the NUTS sampler"
         "--out_file"
             arg_type = String
             default = nothing
@@ -54,6 +58,7 @@ function main(parsed)
     n_chains = parsed["n_chains"]
     seed_label = parsed["seed_label"]
     infer_seed = parsed["infer_seed"]
+    target_acceptance = parsed["target_acceptance"]
     out_file = parsed["out_file"]
     test = parsed["test"]
 
@@ -135,6 +140,7 @@ function main(parsed)
                     reltol=1e-3,
                     adtype=AutoReverseDiff(),  # without compile much faster for aggregation and death
                     sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
+                    target_acceptance=target_acceptance,
                     benchmark=false,
                     benchmark_ad=[:reversediff],
                     labels=labels,
