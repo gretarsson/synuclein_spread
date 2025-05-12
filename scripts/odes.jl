@@ -44,17 +44,16 @@ function DIFFGAM(du,u,p,t;L=L,factors=(1.,1.))
     p = factors .* p
     ρ = p[1]
     α = p[2]
-    β = p[3:(N+2)]
-    d = p[(N+3):(2*N+2)]
-    γ = p[2*N+3]
-    λ = p[2*N+4]
+    y0 = p[3:(N+2)]
+    ydelta = p[(N+3):(2*N+2)]
+    θ = p[2*N+3]
 
     # split the state vector
     x = @view u[1    :  N]
     y = @view u[N+1  : 2*N]
 
-    du[1:N] .= -ρ*L*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
-    du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
+    du[1:N] .= -ρ*L*x .+ α .* x .* (y0 .+ y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  θ .* (ydelta .- y) .* x  
 end
 function DIFF_bidirectional(du,u,p,t;L=L,factors=nothing)
     Lr,La,_ = L
