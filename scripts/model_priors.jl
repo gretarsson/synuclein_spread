@@ -15,10 +15,10 @@ function get_priors(ode::String, K::Int)
           "alpha"    => truncated(Normal(0,0.1), lower=0),
 
           # regional λ₀’s
-          [ "y0"   => truncated(Normal(0,1), lower=0) for i in 1:K ]...,
+          [ "y0[$i]"   => Normal(0,1) for i in 1:K ]...,
 
           # regional λ∞’s
-          [ "ydelta" => truncated(Normal(0,1), lower=0) for i in 1:K ]...,
+          [ "ydelta[$i]" => Normal(0,1) for i in 1:K ]...,
 
           # more fixed‑size
           "theta"      => truncated(Normal(0,0.1), lower=0),
