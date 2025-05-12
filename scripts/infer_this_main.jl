@@ -69,6 +69,7 @@ function main(parsed)
     println("→ Chains:    $n_chains")
     println("→ Seed label:    $seed_label")
     println("→ Infer seed:    $infer_seed")
+    println("→ Target acceptance:    $target_acceptance")
     println("→ Output:     $out_file")
     if test
         println("→ Test:     $test")
