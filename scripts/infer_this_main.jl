@@ -1,4 +1,59 @@
 #!/usr/bin/env julia --project=.
+#!/usr/bin/env julia --project=.
+# =============================================================================
+# Run Bayesian inference of prion-like spreading models on networks
+#
+# MAIN IDEA
+# ---------
+# This script is the command-line entry point for simulating and inferring
+# parameters of ODE-based models of pathology spread on brain networks.
+#
+# WHAT YOU NEED TO RUN IT
+# -----------------------
+# 1. A choice of ODE model     → defined in "odes.jl"
+# 2. Priors for that ODE       → defined in "model_priors.jl" (matched automatically)
+# 3. A structural connectome   → adjacency matrix CSV with region labels
+# 4. Pathology measurements    → pathology CSV with sample IDs, timepoints, regions
+#
+# NOTE: You do not specify priors on the command line.
+#       The script looks up the priors associated with the chosen ODE
+#       in "model_priors.jl".
+#
+# EXAMPLE USAGE
+# -------------
+#   julia --project=. scripts/infer_this_main.jl DIFF data/W_labeled.csv data/total_path.csv
+#
+# Here:
+#   - "DIFF" is the ODE model (must match a model defined in "odes.jl")
+#   - Priors for "DIFF" are taken from "model_priors.jl"
+#   - "data/W_labeled.csv" is the weighted adjacency matrix (with row & column headers)
+#   - "data/total_path.csv" is the pathology data file
+#
+# FILE FORMATS (details)
+# ----------------------
+# * W-file (structural connectivity):
+#   - CSV with row and column headers naming the same set of regions
+#   - Column 1 = row labels (region names)
+#   - Columns 2:end = weights of adjacency matrix
+#   - Column headers 2:end define canonical region order
+#
+# * Pathology data:
+#   - Column 1 = sample/experiment ID (e.g., mouse ID)
+#   - Column 2 = time points, with header "mpi" (months post-inoculation)
+#   - Columns 3:end = pathology values per region (headers must match W-file)
+#   - Missing values allowed (e.g., "NA")
+#
+# NOTES
+# -----
+# - The script orchestrates everything: loading data, building the ODE problem,
+#   setting priors, running inference, and saving results.
+# - The ODEs and priors themselves are not defined here, but in "odes.jl" and
+#   "model_priors.jl" respectively.
+# - Model name suffixes:
+#       * "_bilateral"     → group parameters across left/right homologous regions
+#       * "_bidirectional" → use both retrograde and anterograde Laplacians
+# =============================================================================
+
 using ArgParse
 using Distributed
 include("Data_processing.jl")
@@ -20,7 +75,7 @@ function build_parser()
             help = "CSV file of structural connectivity"
         "data_file"
             arg_type = String
-            help = "3D pathology data file"
+            help = "CSV pathology data file"
         # OPTIONAL ARGUMENTS
         "--n_chains"
             arg_type = Int
@@ -151,13 +206,22 @@ function main(parsed)
 
     # SAVE 
     if isnothing(out_file)
-        serialize("simulations/$(ode)_N=$(N)_threads=$(n_threads).jls", inference)
+        serialize("simulations/$(ode)_N=$(N)_threads=$(n_chains).jls", inference)
     else
         serialize(out_file, inference)
     end
 end
 
 
+
+# ---------------------------------------------------------------------------
+# Entry point:
+#   - Parse args
+#   - Spawn workers (one per chain)
+#   - Activate & prepare the project environment on each worker
+#   - Load modeling code on each worker
+#   - Run main(), then clean up workers
+# ---------------------------------------------------------------------------
 if abspath(PROGRAM_FILE) == @__FILE__
     # parse arguments
     parsed = parse_args(build_parser())
