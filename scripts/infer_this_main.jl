@@ -1,5 +1,4 @@
 #!/usr/bin/env julia --project=.
-#!/usr/bin/env julia --project=.
 # =============================================================================
 # Run Bayesian inference of prion-like spreading models on networks
 #
