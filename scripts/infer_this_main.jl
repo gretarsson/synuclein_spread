@@ -80,6 +80,10 @@ function build_parser()
             arg_type = Int
             default = 1
             help = "how many MCMC chains to run with distributed computing"
+        "--retrograde"
+            arg_type = Bool
+            default = true
+            help = "If true then retrograde transport is used, if false anterograde transport is used"
         "--seed_label"
             arg_type = String
             default  = "iCP"
@@ -110,6 +114,7 @@ function main(parsed)
     w_file = parsed["w_file"]
     data_file = parsed["data_file"]
     n_chains = parsed["n_chains"]
+    retrograde = parsed["retrograde"]
     seed_label = parsed["seed_label"]
     infer_seed = parsed["infer_seed"]
     target_acceptance = parsed["target_acceptance"]
@@ -121,6 +126,7 @@ function main(parsed)
     println("→ Structural data:      $w_file")
     println("→ Pathology data:   $data_file")
     println("→ Chains:    $n_chains")
+    println("→ Retrograde:    $retrograde")
     println("→ Seed label:    $seed_label")
     println("→ Infer seed:    $infer_seed")
     println("→ Target acceptance:    $target_acceptance")
@@ -156,7 +162,11 @@ function main(parsed)
     if bidirectional
         Ltuple = (Lr,La,N)  # order is (L,N) or (Lr, La, N). The latter is used for bidirectional spread
     else
-        Ltuple = (Lr,N)
+        if retrograde
+            Ltuple = (Lr,N)
+        else
+            Ltuple = (La,N)
+        end
     end
 
     # SET SEED AND INITIAL CONDITIONS
