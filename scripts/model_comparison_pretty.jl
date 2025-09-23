@@ -4,24 +4,43 @@ using PrettyTables, DataFrames
 
 # Read inference results
 simulations = [
-    "total_diffusion_N=448_threads=4_var1_normalpriors",
-    "total_aggregation_N=448_threads=4_var1_normalpriors",
-    "total_heterodimer_inspired_N=448_threads=1_var1",
-    "total_brennanii_N=448_threads=1_var1",
-    "total_death_simplifiedii_N=448_threads=1_var1_olddecay_withx_notrunc",
-    #"total_death_simplifiedii_uncor_N=448_threads=1_var1_olddecay_withx_notrunc",
+    "simulations/DIFF_ANTERO",
+    "simulations/DIFF_RETRO",
+    "simulations/DIFF_BIDIR",
+    #
+    "simulations/DIFFG_ANTERO",
+    "simulations/DIFFG_RETRO",
+    "simulations/DIFFG_BIDIR",
+    #
+    "simulations/DIFFGA_ANTERO",
+    "simulations/DIFFGA_RETRO",
+    "simulations/DIFFGA_BIDIR",
+    #
+    "simulations/DIFFGAM_ANTERO",
+    "simulations/DIFFGAM_RETRO",
+    "simulations/DIFFGAM_BIDIR",
 ]
 model_names = [
-    "DIFF", 
-    "DIFFG", 
-    "DIFFGA", 
-    "DIFFGAM",
-    "DIFFGAM (OLD)", 
-    #"DGAM (v2 uncor.)" 
+    "DIFF anterograde", 
+    "DIFF retrograde", 
+    "DIFF bidirectional", 
+    #
+    "DIFFG anterograde", 
+    "DIFFG retrograde", 
+    "DIFFG bidirectional", 
+    #
+    "DIFFGA anterograde", 
+    "DIFFGA retrograde", 
+    "DIFFGA bidirectional", 
+    #
+    "DIFFGAM anterograde", 
+    "DIFFGAM retrograde", 
+    "DIFFGAM bidirectional", 
+    #
 ]
 inferences = []
 for simulation in simulations
-    push!(inferences, deserialize("simulations/" * simulation * ".jls"))
+    push!(inferences, deserialize(simulation * ".jl"))
 end
 
 # Compute WAIC, AIC, BIC, MSE, and Frobenius covariance norm for models
@@ -51,7 +70,17 @@ min_waic = minimum(waic_vals)
 min_aic  = minimum(aic_vals)
 min_bic  = minimum(bic_vals)
 min_mse  = minimum(mse_vals)
-min_cov  = minimum(filter(!isnan, abs.(covnorm_vals)))
+#min_cov  = minimum(filter(!isnan, abs.(covnorm_vals)))
+
+# Handle the case where all covnorm_vals are NaN
+valid_cov = filter(!isnan, covnorm_vals)  # values are already ≥0; no need for abs here
+if isempty(valid_cov)
+    min_cov   = NaN
+    delta_cov = fill(NaN, length(covnorm_vals))
+else
+    min_cov   = minimum(valid_cov)
+    delta_cov = [c - min_cov for c in covnorm_vals]  # NaN stays NaN here automatically
+end
 
 delta_waic = [w - min_waic for w in waic_vals]
 delta_aic  = [a - min_aic for a in aic_vals]
