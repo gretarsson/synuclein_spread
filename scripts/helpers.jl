@@ -2689,27 +2689,74 @@ function compute_regional_covariances(inference_dict; S=1000)
 
     return covariances
 end
+#function compute_regional_correlations(inference_dict; S=1000)
+#    chain = inference_dict["chain"]
+#    priors = inference_dict["priors"]  # Assumes priors is stored with param names
+#    parameter_names = collect(keys(priors))
+#
+#    # Find indices of β[j] and d[j]
+#    beta_idxs = findall(key -> occursin("beta[", key), parameter_names)
+#    deca_idxs = findall(key -> occursin("gamma[", key), parameter_names)
+#
+#    # Sample from posterior
+#    posterior_samples = sample(chain, S; replace=false)
+#
+#    # Extract samples (S x N)
+#    betas = Array(posterior_samples[:, beta_idxs, 1])
+#    decas = Array(posterior_samples[:, deca_idxs, 1])
+#
+#    # Compute pairwise covariances
+#    covariances = [cor(betas[:, j], decas[:, j]) for j in 1:min(size(betas,2), size(decas,2))]
+#
+#    return covariances
+#end
 function compute_regional_correlations(inference_dict; S=1000)
-    chain = inference_dict["chain"]
-    priors = inference_dict["priors"]  # Assumes priors is stored with param names
-    parameter_names = collect(keys(priors))
+    chain   = inference_dict["chain"]
+    priors  = inference_dict["priors"]
+    pnames  = collect(keys(priors))
 
-    # Find indices of β[j] and d[j]
-    beta_idxs = findall(key -> occursin("β[", key), parameter_names)
-    deca_idxs = findall(key -> occursin("d[", key), parameter_names)
+    # Detect vector parameters: names like "beta[3]"
+    pat = r"^([^\[]+)\[(\d+)\]$"
+    groups = Dict{String, Vector{Tuple{Int,Int}}}()  # base => [(idx, col), ...]
+    for (col, name) in enumerate(pnames)
+        if (m = match(pat, name)) !== nothing
+            base = String(m.captures[1])
+            idx  = parse(Int, m.captures[2])
+            push!(get!(groups, base, Vector{Tuple{Int,Int}}()), (idx, col))
+        end
+    end
+    @show keys(groups)
 
-    # Sample from posterior
-    posterior_samples = sample(chain, S; replace=false)
+    bases = collect(keys(groups))
+    # No vector params or only one family → nothing to correlate
+    if length(bases) < 2
+        return Float64[]
+    end
 
-    # Extract samples (S x N)
-    betas = Array(posterior_samples[:, beta_idxs, 1])
-    decas = Array(posterior_samples[:, deca_idxs, 1])
+    # Posterior samples
+    S = min(S, length(chain))  # just in case
+    psamps = sample(chain, S; replace=false)
 
-    # Compute pairwise covariances
-    covariances = [cor(betas[:, j], decas[:, j]) for j in 1:min(size(betas,2), size(decas,2))]
+    # Get S×N matrix for a family, ordered by element index
+    function samples_for(base)
+        pairs = sort(groups[base]; by = first)
+        cols  = map(last, pairs)
+        Array(psamps[:, cols, 1])
+    end
 
-    return covariances
+    # Concatenate correlations across all unordered pairs of families
+    corrs = Float64[]
+    for i in 1:length(bases)-1, j in i+1:length(bases)
+        A = samples_for(bases[i])
+        B = samples_for(bases[j])
+        n = min(size(A,2), size(B,2))
+        @inbounds for k in 1:n
+            push!(corrs, cor(A[:,k], B[:,k]))
+        end
+    end
+    return corrs
 end
+
 
 
 function read_W(filename::AbstractString;

@@ -62,17 +62,16 @@ function get_priors(ode::String, K::Int)
           # bidirectional ρ parameters
           "rhoRetro"  => truncated(Normal(0,0.1), lower=0),
           "rhoAntero" => truncated(Normal(0,0.1), lower=0),
-          "alpha"     => truncated(Normal(0,0.1), lower=0),
+          "alpha"    => truncated(Normal(0,0.1), lower=0),
 
           # regional λ₀’s
-          [ "lambda0[$i]"   => truncated(Normal(0,1), lower=0) for i in 1:K ]...,
+          [ "y0[$i]"   => Normal(0,1) for i in 1:K ]...,
 
           # regional λ∞’s
-          [ "lambdaInf[$i]" => truncated(Normal(0,1), lower=0) for i in 1:K ]...,
+          [ "ydelta[$i]" => Normal(0,1) for i in 1:K ]...,
 
           # more fixed‑size
           "theta"      => truncated(Normal(0,0.1), lower=0),
-          "lambdaCrit" => truncated(Normal(0,1),   lower=0),
         )
 
     elseif ode === "DIFFGA_bidirectional"

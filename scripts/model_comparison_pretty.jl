@@ -52,7 +52,7 @@ covnorm_vals = Float64[]
 regcov = []
 
 for inference in inferences
-    waic, _ = compute_waic_wbic(inference; S=1000)
+    waic, _ = compute_waic_wbic(inference; S=10)
     push!(waic_vals, waic)
     aic, bic = compute_aic_bic(inference)
     push!(aic_vals, aic)
