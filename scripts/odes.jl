@@ -93,34 +93,16 @@ function DIFFGAM_bidirectional(du,u,p,t;L=L,factors=(1.,1.))
     ρr = p[1]
     ρa = p[2]
     α = p[3]
-    β = p[4:(N+3)]
-    d = p[(N+4):(2*N+3)]
-    γ = p[2*N+4]
-    λ = p[2*N+5]
+    y0 = p[4:(N+3)]
+    ydelta = p[(N+4):(2*N+3)]
+    θ = p[2*N+4]
 
     # split the state vector
     x = @view u[1    :  N]
     y = @view u[N+1  : 2*N]
 
-    du[1:N] .= -ρr*Lr*x .- ρa*La*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
-    du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
-end
-function DIFFGAM_bidirectional(du,u,p,t;L=L,factors=(1.,1.))
-    L,N = L
-    p = factors .* p
-    ρ = p[1]
-    α = p[2]
-    β = p[3:(N+2)]
-    d = p[(N+3):(2*N+2)]
-    γ = p[2*N+3]
-    λ = p[2*N+4]
-
-    # split the state vector
-    x = @view u[1    :  N]
-    y = @view u[N+1  : 2*N]
-
-    du[1:N] .= -ρ*L*x .+ α .* x .* (λ .- β .- y .- x)   # quick gradient computation
-    du[(N+1):(2*N)] .=  γ .* (d .- β .- y) .* x  
+    du[1:N] .= -ρr*Lr*x .- ρa*La*x .+ α .* x .* (y0 .+ y .- x)
+    du[(N+1):(2*N)] .=  θ .* (ydelta .- y) .* x
 end
 # BILATERAL
 function DIFFGAM_bilateral(du, u, p, t; L, factors = (1.,1.), region_group::Vector{Int})
