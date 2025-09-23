@@ -60,7 +60,8 @@ for inference in inferences
     mse = compute_mse_mc(inference)
     push!(mse_vals, mse)
     regional_cov = compute_regional_correlations(inference)
-    covnorm = mean(abs.(regional_cov))
+    #covnorm = mean(abs.(regional_cov))  # avg |r|
+    covnorm = mean((regional_cov).^2)  # avg R^2
     push!(covnorm_vals, covnorm)
     push!(regcov, regional_cov)
 end

@@ -2725,7 +2725,6 @@ function compute_regional_correlations(inference_dict; S=1000)
             push!(get!(groups, base, Vector{Tuple{Int,Int}}()), (idx, col))
         end
     end
-    @show keys(groups)
 
     bases = collect(keys(groups))
     # No vector params or only one family → nothing to correlate
