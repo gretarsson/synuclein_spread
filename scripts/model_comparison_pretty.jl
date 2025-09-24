@@ -4,38 +4,40 @@ using PrettyTables, DataFrames
 
 # Read inference results
 simulations = [
+    "simulations/DIFF_EUCL",
     "simulations/DIFF_ANTERO",
     "simulations/DIFF_RETRO",
     "simulations/DIFF_BIDIR",
     #
-    "simulations/DIFFG_ANTERO",
-    "simulations/DIFFG_RETRO",
-    "simulations/DIFFG_BIDIR",
-    #
-    "simulations/DIFFGA_ANTERO",
-    "simulations/DIFFGA_RETRO",
-    "simulations/DIFFGA_BIDIR",
-    #
-    "simulations/DIFFGAM_ANTERO",
-    "simulations/DIFFGAM_RETRO",
-    "simulations/DIFFGAM_BIDIR",
+    #"simulations/DIFFG_ANTERO",
+    #"simulations/DIFFG_RETRO",
+    #"simulations/DIFFG_BIDIR",
+    ##
+    #"simulations/DIFFGA_ANTERO",
+    #"simulations/DIFFGA_RETRO",
+    #"simulations/DIFFGA_BIDIR",
+    ##
+    #"simulations/DIFFGAM_ANTERO",
+    #"simulations/DIFFGAM_RETRO",
+    #"simulations/DIFFGAM_BIDIR",
 ]
 model_names = [
+    "DIFF euclidean", 
     "DIFF anterograde", 
     "DIFF retrograde", 
     "DIFF bidirectional", 
     #
-    "DIFFG anterograde", 
-    "DIFFG retrograde", 
-    "DIFFG bidirectional", 
-    #
-    "DIFFGA anterograde", 
-    "DIFFGA retrograde", 
-    "DIFFGA bidirectional", 
-    #
-    "DIFFGAM anterograde", 
-    "DIFFGAM retrograde", 
-    "DIFFGAM bidirectional", 
+    #"DIFFG anterograde", 
+    #"DIFFG retrograde", 
+    #"DIFFG bidirectional", 
+    ##
+    #"DIFFGA anterograde", 
+    #"DIFFGA retrograde", 
+    #"DIFFGA bidirectional", 
+    ##
+    #"DIFFGAM anterograde", 
+    #"DIFFGAM retrograde", 
+    #"DIFFGAM bidirectional", 
     #
 ]
 inferences = []
