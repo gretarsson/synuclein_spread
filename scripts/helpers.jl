@@ -453,385 +453,385 @@ end
 plot predicted vs observed plot for inference, parameters chosen from posterior mode
 =#
 using Makie
-function predicted_observed(inference; save_path="", plotscale=log10)
-    # try creating folder to save in
-    try
-        mkdir(save_path) 
-    catch
-    end
-
-    # unpack from simulation
-    fs = []  # storing figures
-    chain = inference["chain"]
-    data = inference["data"]
-    timepoints = inference["timepoints"]
-    seed = inference["seed_idx"]
-    Ltuple = inference["L"]
-    priors = inference["priors"]
-    sol_idxs = inference["sol_idxs"]
-    labels = inference["labels"]
-
-    ks = collect(keys(priors))
-    N_pars = findall(x->x=="σ",ks)[1] - 1
-    factors = [1. for _ in 1:N_pars]
-    ode = odes[inference["ode"]]
-    N = size(data)[1]
-
-    # simulate ODE from posterior mode
-    # initialize
-    tspan = (0., timepoints[end])
-    u0 = inference["u0"]
-    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
-
-    prob = make_ode_problem(ode;
-        labels     = labels,
-        Ltuple     = Ltuple,
-        factors    = factors,
-        u0         = u0,
-        timepoints = timepoints,
-    )
-
-    # find posterior mode
-    n_pars = length(chain.info[1])
-    _, argmax = findmax(chain[:lp])
-    mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
-    p = mode_pars[1:N_pars]
-    if inference["bayesian_seed"]
-        u0[seed] = chain["seed"][argmax]  
-    else
-        u0[seed] = inference["seed_value"]  
-    end
-
-
-    # solve ODE
-    sol = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
-    sol = Array(sol[sol_idxs,:])
-
-    # plot
-    xticks = ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e-0], [L"$10^{-6}$", L"$10^{-5}$", L"$10^{-4}$", L"$10^{-3}$", L"$10^{-2}$", L"$10^{-1}$", L"$10^0$"])
-    yticks = xticks
-    f = CairoMakie.Figure()
-    ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=yticks)
-
-    # as we are plotting log-log, we account for zeros in the data
-    regions = 1:N
-    if length(size(data)) > 2
-        data = mean3(data)  # find mean of data 
-        # remove regions with less than 3 measuremnts 
-        region_idxs = measured_regions(data,3)
-        data = data[region_idxs,:,:]
-        regions = copy(region_idxs)
-    end
-
-    # set x and y ticks
-
-    x = vec(copy(data))
-    y = vec(copy(sol[regions,:]))
-    nonmissing = findall(x .!== missing)
-    x = x[nonmissing]
-    y = y[nonmissing]
-    minxy = min(minimum(x),minimum(y))
-    if plotscale==log10 && ((sum(x .== 0) + sum(y .== 0)) > 0)  # if zeros present, add the smallest number in plot
-        #minx = minimum(x[x.>0])  # change back to this if plots are weird also see below if statemetn
-        #miny = minimum(y[y.>0])
-        #minxy = min(minx, miny)
-        minxy = minimum(x[x.>0])  # change minimum to minimum of data to avoid super low value i.e e-44 from sims
-        x = x .+ minxy
-        y = y .+ minxy
-    end
-
-    CairoMakie.scatter!(ax,x,y, alpha=0.5)
-    maxxy = max(maximum(x), maximum(y))
-    CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
-    if !isempty(save_path)
-        CairoMakie.save(save_path * "/predicted_observed_mode.png", f)
-    end
-    push!(fs,f)
-
-    # plot at different time points
-    for i in eachindex(timepoints)
-        f = CairoMakie.Figure()
-        ax = CairoMakie.Axis(f[1,1], title="t = $(timepoints[i])", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=yticks)
-
-        # as we are plotting log-log, we account for zeros in the data
-        x = vec(copy(data[:,i]))
-        y = vec(copy(sol[regions,i]))
-        nonmissing = findall(x .!== missing)
-        x = x[nonmissing]
-        y = y[nonmissing]
-        #if plotscale==log10 && ((sum(x .<= 0) + sum(y .<= 0)) > 0)  # if doesn't work change back to this
-        if plotscale==log10 && ((sum(x .<= 1e-8) + sum(y .<= 1e-8)) > 0)  # if zeros (or very small) present, add the smallest number in plot
-            x = x .+ minxy
-            y = y .+ minxy
-        end
-
-        CairoMakie.scatter!(ax,x,y, alpha=0.5)
-        CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
-        if !isempty(save_path)
-            CairoMakie.save(save_path * "/predicted_observed_mode_$(i).png", f)
-        end
-        push!(fs,f)
-    end
-
-    return fs
-end
-
-#=
-plot chains of each parameter from inference
-=#
-function plot_chains(inference; save_path="")
-    # try creating folder to save in
-    try
-        mkdir(save_path) 
-    catch
-    end
-    chain = inference["chain"]
-    vars = collect(keys(inference["priors"]))
-    master_fig = StatsPlots.plot(chain) 
-    chain_figs = []
-    for (i,var) in enumerate(vars)
-        chain_i = StatsPlots.plot(master_fig[i,1], title=var)
-        if !isempty(save_path)
-            savefig(chain_i, save_path*"/chain_$(var).png")
-        end
-        push!(chain_figs,chain_i)
-    end
-    return chain_figs
-end
-
-#=
-plot posteriors of each parameter from inference
-=#
-function plot_posteriors(inference; save_path="")
-    # try creating folder to save in
-    try
-        mkdir(save_path) 
-    catch
-    end
-    chain = inference["chain"]
-    vars = collect(keys(inference["priors"]))
-    master_fig = StatsPlots.plot(chain) 
-    #posterior_figs = []
-    for (i,var) in enumerate(vars)
-        posterior_i = StatsPlots.plot(master_fig[i,2], title=var)
-        if !isempty(save_path)
-            savefig(posterior_i, save_path*"/posterior_$(var).png")
-        end
-        StatsPlots.closeall()
-        #push!(posterior_figs,posterior_i)
-    end
-    #return posterior_figs
-    return nothing
-end
-
-#=
-plot retrodictino from inference result
-=#
-function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_variance=false)
-    # try creating folder to save in
-    try
-        mkdir(save_path) 
-    catch
-    end
-    # unload from simulation
-    data = inference["data"]
-    chain = inference["chain"]
-    priors = inference["priors"]
-    timepoints = inference["timepoints"]
-    seed = inference["seed_idx"]
-    sol_idxs = inference["sol_idxs"]
-    Ltuple = inference["L"]
-    labels = inference["labels"]
-    ks = collect(keys(inference["priors"]))
-    N_pars = findall(x->x=="σ",ks)[1] - 1
-    factors = [1. for _ in 1:N_pars]
-    ode = odes[inference["ode"]]
-    N = size(data)[1]
-    M = length(timepoints)
-    par_names = chain.name_map.parameters
-    if inference["bayesian_seed"]
-        seed_ch_idx = findall(x->x==:seed,par_names)[1]  # TODO find index of chain programmatically
-    end
-    # if data is 3D, find mean
-    if length(size(data)) > 2
-        var_data = var3(data)
-        mean_data = mean3(data)
-    end
-
-    # define ODE problem 
-    u0 = inference["u0"]
-    tspan = (0, timepoints[end])
-    
-    prob = make_ode_problem(ode;
-        labels     = labels,
-        Ltuple     = Ltuple,
-        factors    = factors,
-        u0         = u0,
-        timepoints = timepoints,
-    )
-
-    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
-
-    fs = Any[NaN for _ in 1:N]
-    axs = Any[NaN for _ in 1:N]
-    for i in 1:N
-        f = CairoMakie.Figure(fontsize=20)
-        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
-        fs[i] = f
-        axs[i] = ax
-    end
-    posterior_samples = sample(chain, N_samples; replace=false)
-    for sample in eachrow(Array(posterior_samples))
-        # samples
-        p = sample[1:N_pars]  # first index is σ and last index is seed
-        if inference["bayesian_seed"]
-            u0[seed] = sample[seed_ch_idx]  
-        else    
-            u0[seed] = inference["seed_value"]
-        end
-        σ = sample[end-1]
-        
-        # solve
-        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
-        t = sol_p.t
-        sol_p = Array(sol_p[sol_idxs,:])
-        for i in 1:N
-            lower_bound = sol_p[i,:] .- σ
-            upper_bound = sol_p[i,:] .+ σ
-            if show_variance
-                CairoMakie.band!(axs[i], t, lower_bound, upper_bound; color=(:grey,0.1))
-                CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.9, color=:black)
-            end
-            CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.5, color=:grey)
-        end
-    end
-
-    # Plot simulation and noisy observations.
-    # plot mean and variance
-    for i in 1:N
-        # =-=----
-        nonmissing = findall(mean_data[i,:] .!== missing)
-        data_i = Float64.(mean_data[i,:][nonmissing])
-        timepoints_i = Float64.(timepoints[nonmissing])
-        var_data_i = Float64.(var_data[i,:][nonmissing])
-
-        # skip if mean is empty
-        if isempty(data_i)
-            continue
-        end
-
-        indices = findall(x -> isnan(x),var_data_i)
-        var_data_i[indices] .= 0
-        CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1., markersize=15)  
-        # have lower std capped at 0.01 (to be visible in the plots)
-        var_data_i_lower = copy(var_data_i)
-        for (n,var) in enumerate(var_data_i)
-            if sqrt(var) > data_i[n]
-                var_data_i_lower[n] = max(data_i[n]^2-1e-5, 0)
-                #var_data_i_lower[n] = data_i[n]^2
-            end
-        end
-
-        #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
-        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i_lower), sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2, linewidth=3)
-        #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, [0. for _ in 1:length(timepoints_i)], sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
-    end
-    # plot all data points across all samples
-    for i in 1:N
-        jiggle = rand(Normal(0,0.01),size(data)[3])
-        for k in axes(data,3)
-            # =-=----
-            nonmissing = findall(data[i,:,k] .!== missing)
-            data_i = Float64.(data[i,:,k][nonmissing])
-            timepoints_i = Float64.(timepoints[nonmissing] .+ jiggle[k])
-            CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 71/255, 171/255), alpha=0.4, markersize=15)  
-        end
-        CairoMakie.save(save_path * "/retrodiction_region_$(i).png", fs[i])
-    end
-
-    # we're done
-    return fs
-end
-
-#=
-plot priors from inference result
-=#
-function plot_priors(inference; save_path="")
-    # try creating folder to save in
-    try
-        mkdir(save_path) 
-    catch
-    end
-    # rescale the parameters according to the factor
-    priors = inference["priors"]
-
-    i = 1
-    for (var, dist) in priors
-        prior_i = StatsPlots.plot(dist, title=var, ylabel="Density", xlabel="Sample value", legend=false)
-        if !isempty(save_path)
-            savefig(prior_i, save_path*"/prior_$(var).png")
-        end
-        i += 1
-        StatsPlots.closeall()
-    end
-    return nothing 
-end
-
-#=
-plot priors and posteriors together from inference result
-=#
-function plot_prior_and_posterior(inference; save_path="")
-    # try creating folder to save in
-    try
-        mkdir(save_path) 
-    catch
-    end
-    # rescale the priors
-    chain = inference["chain"]
-    priors = inference["priors"]
-    vars = collect(keys(priors))
-    master_fig = StatsPlots.plot(chain) 
-    for (i,var) in enumerate(vars)
-        plot_i = StatsPlots.plot(master_fig[i,2], title=var)
-        StatsPlots.plot!(plot_i, priors[var])
-        if !isempty(save_path)
-            savefig(plot_i, save_path*"/prior_and_posterior_$(var).png")
-        end
-        StatsPlots.closeall()
-    end
-    return nothing
-end
-
-#=
-master plotting function (plot everything relevant to inference)
-=#
-function plot_inference(inference, save_path; plotscale=log10, N_samples=300, show_variance=false)
-    # load inference simulation 
-    #display(inference["chain"])
-
-    # create folder
-    try
-        mkdir(save_path);
-    catch
-    end
-    if !inference["bayesian_seed"]
-        try
-            delete!(inference["priors"], "seed")
-        catch
-        end
-    end
-    
-    # plot
-    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
-    plot_retrodiction(inference; save_path=save_path*"/retrodiction", N_samples=N_samples, show_variance=show_variance);
-    plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
-    plot_posteriors(inference, save_path=save_path*"/posteriors");
-    #plot_chains(inference, save_path=save_path*"/chains");
-    #plot_priors(inference; save_path=save_path*"/priors");
-    return nothing
-end
+#function predicted_observed(inference; save_path="", plotscale=log10)
+#    # try creating folder to save in
+#    try
+#        mkdir(save_path) 
+#    catch
+#    end
+#
+#    # unpack from simulation
+#    fs = []  # storing figures
+#    chain = inference["chain"]
+#    data = inference["data"]
+#    timepoints = inference["timepoints"]
+#    seed = inference["seed_idx"]
+#    Ltuple = inference["L"]
+#    priors = inference["priors"]
+#    sol_idxs = inference["sol_idxs"]
+#    labels = inference["labels"]
+#
+#    ks = collect(keys(priors))
+#    N_pars = findall(x->x=="σ",ks)[1] - 1
+#    factors = [1. for _ in 1:N_pars]
+#    ode = odes[inference["ode"]]
+#    N = size(data)[1]
+#
+#    # simulate ODE from posterior mode
+#    # initialize
+#    tspan = (0., timepoints[end])
+#    u0 = inference["u0"]
+#    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+#    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+#
+#    prob = make_ode_problem(ode;
+#        labels     = labels,
+#        Ltuple     = Ltuple,
+#        factors    = factors,
+#        u0         = u0,
+#        timepoints = timepoints,
+#    )
+#
+#    # find posterior mode
+#    n_pars = length(chain.info[1])
+#    _, argmax = findmax(chain[:lp])
+#    mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
+#    p = mode_pars[1:N_pars]
+#    if inference["bayesian_seed"]
+#        u0[seed] = chain["seed"][argmax]  
+#    else
+#        u0[seed] = inference["seed_value"]  
+#    end
+#
+#
+#    # solve ODE
+#    sol = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
+#    sol = Array(sol[sol_idxs,:])
+#
+#    # plot
+#    xticks = ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e-0], [L"$10^{-6}$", L"$10^{-5}$", L"$10^{-4}$", L"$10^{-3}$", L"$10^{-2}$", L"$10^{-1}$", L"$10^0$"])
+#    yticks = xticks
+#    f = CairoMakie.Figure()
+#    ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=yticks)
+#
+#    # as we are plotting log-log, we account for zeros in the data
+#    regions = 1:N
+#    if length(size(data)) > 2
+#        data = mean3(data)  # find mean of data 
+#        # remove regions with less than 3 measuremnts 
+#        region_idxs = measured_regions(data,3)
+#        data = data[region_idxs,:,:]
+#        regions = copy(region_idxs)
+#    end
+#
+#    # set x and y ticks
+#
+#    x = vec(copy(data))
+#    y = vec(copy(sol[regions,:]))
+#    nonmissing = findall(x .!== missing)
+#    x = x[nonmissing]
+#    y = y[nonmissing]
+#    minxy = min(minimum(x),minimum(y))
+#    if plotscale==log10 && ((sum(x .== 0) + sum(y .== 0)) > 0)  # if zeros present, add the smallest number in plot
+#        #minx = minimum(x[x.>0])  # change back to this if plots are weird also see below if statemetn
+#        #miny = minimum(y[y.>0])
+#        #minxy = min(minx, miny)
+#        minxy = minimum(x[x.>0])  # change minimum to minimum of data to avoid super low value i.e e-44 from sims
+#        x = x .+ minxy
+#        y = y .+ minxy
+#    end
+#
+#    CairoMakie.scatter!(ax,x,y, alpha=0.5)
+#    maxxy = max(maximum(x), maximum(y))
+#    CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
+#    if !isempty(save_path)
+#        CairoMakie.save(save_path * "/predicted_observed_mode.png", f)
+#    end
+#    push!(fs,f)
+#
+#    # plot at different time points
+#    for i in eachindex(timepoints)
+#        f = CairoMakie.Figure()
+#        ax = CairoMakie.Axis(f[1,1], title="t = $(timepoints[i])", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=yticks)
+#
+#        # as we are plotting log-log, we account for zeros in the data
+#        x = vec(copy(data[:,i]))
+#        y = vec(copy(sol[regions,i]))
+#        nonmissing = findall(x .!== missing)
+#        x = x[nonmissing]
+#        y = y[nonmissing]
+#        #if plotscale==log10 && ((sum(x .<= 0) + sum(y .<= 0)) > 0)  # if doesn't work change back to this
+#        if plotscale==log10 && ((sum(x .<= 1e-8) + sum(y .<= 1e-8)) > 0)  # if zeros (or very small) present, add the smallest number in plot
+#            x = x .+ minxy
+#            y = y .+ minxy
+#        end
+#
+#        CairoMakie.scatter!(ax,x,y, alpha=0.5)
+#        CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
+#        if !isempty(save_path)
+#            CairoMakie.save(save_path * "/predicted_observed_mode_$(i).png", f)
+#        end
+#        push!(fs,f)
+#    end
+#
+#    return fs
+#end
+#
+##=
+#plot chains of each parameter from inference
+# =#
+#function plot_chains(inference; save_path="")
+#    # try creating folder to save in
+#    try
+#        mkdir(save_path) 
+#    catch
+#    end
+#    chain = inference["chain"]
+#    vars = collect(keys(inference["priors"]))
+#    master_fig = StatsPlots.plot(chain) 
+#    chain_figs = []
+#    for (i,var) in enumerate(vars)
+#        chain_i = StatsPlots.plot(master_fig[i,1], title=var)
+#        if !isempty(save_path)
+#            savefig(chain_i, save_path*"/chain_$(var).png")
+#        end
+#        push!(chain_figs,chain_i)
+#    end
+#    return chain_figs
+#end
+#
+##=
+#plot posteriors of each parameter from inference
+# =#
+#function plot_posteriors(inference; save_path="")
+#    # try creating folder to save in
+#    try
+#        mkdir(save_path) 
+#    catch
+#    end
+#    chain = inference["chain"]
+#    vars = collect(keys(inference["priors"]))
+#    master_fig = StatsPlots.plot(chain) 
+#    #posterior_figs = []
+#    for (i,var) in enumerate(vars)
+#        posterior_i = StatsPlots.plot(master_fig[i,2], title=var)
+#        if !isempty(save_path)
+#            savefig(posterior_i, save_path*"/posterior_$(var).png")
+#        end
+#        StatsPlots.closeall()
+#        #push!(posterior_figs,posterior_i)
+#    end
+#    #return posterior_figs
+#    return nothing
+#end
+#
+##=
+#plot retrodictino from inference result
+# =#
+#function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_variance=false)
+#    # try creating folder to save in
+#    try
+#        mkdir(save_path) 
+#    catch
+#    end
+#    # unload from simulation
+#    data = inference["data"]
+#    chain = inference["chain"]
+#    priors = inference["priors"]
+#    timepoints = inference["timepoints"]
+#    seed = inference["seed_idx"]
+#    sol_idxs = inference["sol_idxs"]
+#    Ltuple = inference["L"]
+#    labels = inference["labels"]
+#    ks = collect(keys(inference["priors"]))
+#    N_pars = findall(x->x=="σ",ks)[1] - 1
+#    factors = [1. for _ in 1:N_pars]
+#    ode = odes[inference["ode"]]
+#    N = size(data)[1]
+#    M = length(timepoints)
+#    par_names = chain.name_map.parameters
+#    if inference["bayesian_seed"]
+#        seed_ch_idx = findall(x->x==:seed,par_names)[1]  # TODO find index of chain programmatically
+#    end
+#    # if data is 3D, find mean
+#    if length(size(data)) > 2
+#        var_data = var3(data)
+#        mean_data = mean3(data)
+#    end
+#
+#    # define ODE problem 
+#    u0 = inference["u0"]
+#    tspan = (0, timepoints[end])
+#    
+#    prob = make_ode_problem(ode;
+#        labels     = labels,
+#        Ltuple     = Ltuple,
+#        factors    = factors,
+#        u0         = u0,
+#        timepoints = timepoints,
+#    )
+#
+#    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+#    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+#
+#    fs = Any[NaN for _ in 1:N]
+#    axs = Any[NaN for _ in 1:N]
+#    for i in 1:N
+#        f = CairoMakie.Figure(fontsize=20)
+#        ax = CairoMakie.Axis(f[1,1], title="Region $(i)", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
+#        fs[i] = f
+#        axs[i] = ax
+#    end
+#    posterior_samples = sample(chain, N_samples; replace=false)
+#    for sample in eachrow(Array(posterior_samples))
+#        # samples
+#        p = sample[1:N_pars]  # first index is σ and last index is seed
+#        if inference["bayesian_seed"]
+#            u0[seed] = sample[seed_ch_idx]  
+#        else    
+#            u0[seed] = inference["seed_value"]
+#        end
+#        σ = sample[end-1]
+#        
+#        # solve
+#        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
+#        t = sol_p.t
+#        sol_p = Array(sol_p[sol_idxs,:])
+#        for i in 1:N
+#            lower_bound = sol_p[i,:] .- σ
+#            upper_bound = sol_p[i,:] .+ σ
+#            if show_variance
+#                CairoMakie.band!(axs[i], t, lower_bound, upper_bound; color=(:grey,0.1))
+#                CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.9, color=:black)
+#            end
+#            CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.5, color=:grey)
+#        end
+#    end
+#
+#    # Plot simulation and noisy observations.
+#    # plot mean and variance
+#    for i in 1:N
+#        # =-=----
+#        nonmissing = findall(mean_data[i,:] .!== missing)
+#        data_i = Float64.(mean_data[i,:][nonmissing])
+#        timepoints_i = Float64.(timepoints[nonmissing])
+#        var_data_i = Float64.(var_data[i,:][nonmissing])
+#
+#        # skip if mean is empty
+#        if isempty(data_i)
+#            continue
+#        end
+#
+#        indices = findall(x -> isnan(x),var_data_i)
+#        var_data_i[indices] .= 0
+#        CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1., markersize=15)  
+#        # have lower std capped at 0.01 (to be visible in the plots)
+#        var_data_i_lower = copy(var_data_i)
+#        for (n,var) in enumerate(var_data_i)
+#            if sqrt(var) > data_i[n]
+#                var_data_i_lower[n] = max(data_i[n]^2-1e-5, 0)
+#                #var_data_i_lower[n] = data_i[n]^2
+#            end
+#        end
+#
+#        #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
+#        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i_lower), sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2, linewidth=3)
+#        #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, [0. for _ in 1:length(timepoints_i)], sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
+#    end
+#    # plot all data points across all samples
+#    for i in 1:N
+#        jiggle = rand(Normal(0,0.01),size(data)[3])
+#        for k in axes(data,3)
+#            # =-=----
+#            nonmissing = findall(data[i,:,k] .!== missing)
+#            data_i = Float64.(data[i,:,k][nonmissing])
+#            timepoints_i = Float64.(timepoints[nonmissing] .+ jiggle[k])
+#            CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 71/255, 171/255), alpha=0.4, markersize=15)  
+#        end
+#        CairoMakie.save(save_path * "/retrodiction_region_$(i).png", fs[i])
+#    end
+#
+#    # we're done
+#    return fs
+#end
+#
+##=
+#plot priors from inference result
+# =#
+#function plot_priors(inference; save_path="")
+#    # try creating folder to save in
+#    try
+#        mkdir(save_path) 
+#    catch
+#    end
+#    # rescale the parameters according to the factor
+#    priors = inference["priors"]
+#
+#    i = 1
+#    for (var, dist) in priors
+#        prior_i = StatsPlots.plot(dist, title=var, ylabel="Density", xlabel="Sample value", legend=false)
+#        if !isempty(save_path)
+#            savefig(prior_i, save_path*"/prior_$(var).png")
+#        end
+#        i += 1
+#        StatsPlots.closeall()
+#    end
+#    return nothing 
+#end
+#
+##=
+#plot priors and posteriors together from inference result
+# =#
+#function plot_prior_and_posterior(inference; save_path="")
+#    # try creating folder to save in
+#    try
+#        mkdir(save_path) 
+#    catch
+#    end
+#    # rescale the priors
+#    chain = inference["chain"]
+#    priors = inference["priors"]
+#    vars = collect(keys(priors))
+#    master_fig = StatsPlots.plot(chain) 
+#    for (i,var) in enumerate(vars)
+#        plot_i = StatsPlots.plot(master_fig[i,2], title=var)
+#        StatsPlots.plot!(plot_i, priors[var])
+#        if !isempty(save_path)
+#            savefig(plot_i, save_path*"/prior_and_posterior_$(var).png")
+#        end
+#        StatsPlots.closeall()
+#    end
+#    return nothing
+#end
+#
+##=
+#master plotting function (plot everything relevant to inference)
+# =#
+#function plot_inference(inference, save_path; plotscale=log10, N_samples=300, show_variance=false)
+#    # load inference simulation 
+#    #display(inference["chain"])
+#
+#    # create folder
+#    try
+#        mkdir(save_path);
+#    catch
+#    end
+#    if !inference["bayesian_seed"]
+#        try
+#            delete!(inference["priors"], "seed")
+#        catch
+#        end
+#    end
+#    
+#    # plot
+#    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
+#    plot_retrodiction(inference; save_path=save_path*"/retrodiction", N_samples=N_samples, show_variance=show_variance);
+#    plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
+#    plot_posteriors(inference, save_path=save_path*"/posteriors");
+#    #plot_chains(inference, save_path=save_path*"/chains");
+#    #plot_priors(inference; save_path=save_path*"/priors");
+#    return nothing
+#end
 
 #=
 inform beta and d priors
