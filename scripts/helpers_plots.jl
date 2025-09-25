@@ -65,10 +65,6 @@ end
 setup_plot_theme!()
 # Alternative fonts you may like: "CMU Serif", "TeX Gyre Termes", "TeX Gyre Pagella", "Helvetica", "Arial"
 
-
-
-
-
 function predicted_observed(inference; save_path="", plotscale=log10)
     # try creating folder to save in
     try
@@ -125,8 +121,16 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     sol = Array(sol[sol_idxs,:])
 
     # plot
-    xticks = ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e-0], [L"$10^{-6}$", L"$10^{-5}$", L"$10^{-4}$", L"$10^{-3}$", L"$10^{-2}$", L"$10^{-1}$", L"$10^0$"])
+    #xticks = ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e-0], [L"$10^{-6}$", L"$10^{-5}$", L"$10^{-4}$", L"$10^{-3}$", L"$10^{-2}$", L"$10^{-1}$", L"$10^0$"])
+    #yticks = xticks
+
+    # ticks: predefined for log10, automatic otherwise
+    use_log = (plotscale === log10)
+    predefined_ticks = ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e0],
+                        [L"$10^{-6}$", L"$10^{-5}$", L"$10^{-4}$", L"$10^{-3}$", L"$10^{-2}$", L"$10^{-1}$", L"$10^0$"])
+    xticks = use_log ? predefined_ticks : Makie.automatic
     yticks = xticks
+
     f = CairoMakie.Figure()
     ax = CairoMakie.Axis(f[1,1], title="", ylabel="Predicted", xlabel="Observed", xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=yticks)
 
@@ -141,9 +145,8 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     end
 
     # set x and y ticks
-
-    x = vec(copy(data))
-    y = vec(copy(sol[regions,:]))
+    x = vec(copy(data[:,2:end]))  # skip first time point (model is trivially y(0)=0)
+    y = vec(copy(sol[regions,2:end]))
     nonmissing = findall(x .!== missing)
     x = x[nonmissing]
     y = y[nonmissing]
@@ -161,7 +164,7 @@ function predicted_observed(inference; save_path="", plotscale=log10)
     maxxy = max(maximum(x), maximum(y))
     CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
     if !isempty(save_path)
-        CairoMakie.save(save_path * "/predicted_observed_mode.png", f)
+        CairoMakie.save(save_path * "/predicted_observed_mode.pdf", f)
     end
     push!(fs,f)
 
@@ -185,13 +188,15 @@ function predicted_observed(inference; save_path="", plotscale=log10)
         CairoMakie.scatter!(ax,x,y, alpha=0.5)
         CairoMakie.lines!([minxy,maxxy],[minxy,maxxy], color=:grey, alpha=0.5)
         if !isempty(save_path)
-            CairoMakie.save(save_path * "/predicted_observed_mode_$(i).png", f)
+            CairoMakie.save(save_path * "/predicted_observed_mode_$(i).pdf", f)
         end
         push!(fs,f)
     end
 
     return fs
 end
+
+
 
 #=
 plot chains of each parameter from inference
@@ -241,139 +246,8 @@ function plot_posteriors(inference; save_path="")
     return nothing
 end
 
-#=
-plot retrodictino from inference result
- =#
-function plot_retrodiction(inference; save_path=nothing, N_samples=1, show_variance=false)
-    # try creating folder to save in
-    try
-        mkdir(save_path) 
-    catch
-    end
-    # unload from simulation
-    data = inference["data"]
-    chain = inference["chain"]
-    priors = inference["priors"]
-    timepoints = inference["timepoints"]
-    seed = inference["seed_idx"]
-    sol_idxs = inference["sol_idxs"]
-    Ltuple = inference["L"]
-    labels = inference["labels"]
-    ks = collect(keys(inference["priors"]))
-    N_pars = findall(x->x=="σ",ks)[1] - 1
-    factors = [1. for _ in 1:N_pars]
-    ode = odes[inference["ode"]]
-    N = size(data)[1]
-    M = length(timepoints)
-    par_names = chain.name_map.parameters
-    if inference["bayesian_seed"]
-        seed_ch_idx = findall(x->x==:seed,par_names)[1]  # TODO find index of chain programmatically
-    end
-    # if data is 3D, find mean
-    if length(size(data)) > 2
-        var_data = var3(data)
-        mean_data = mean3(data)
-    end
-
-    # define ODE problem 
-    u0 = inference["u0"]
-    tspan = (0, timepoints[end])
-    
-    prob = make_ode_problem(ode;
-        labels     = labels,
-        Ltuple     = Ltuple,
-        factors    = factors,
-        u0         = u0,
-        timepoints = timepoints,
-    )
-
-    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
-
-    fs = Any[NaN for _ in 1:N]
-    axs = Any[NaN for _ in 1:N]
-    for i in 1:N
-        f = CairoMakie.Figure(fontsize=20)
-        ax = CairoMakie.Axis(f[1,1], title="Region $(i): $(labels[i])", ylabel="Percentage area with pathology", xlabel="time (months)", xticks=0:9, limits=(0,9.1,nothing,nothing))
-        fs[i] = f
-        axs[i] = ax
-    end
-    posterior_samples = sample(chain, N_samples; replace=false)
-    for sample in eachrow(Array(posterior_samples))
-        # samples
-        p = sample[1:N_pars]  # first index is σ and last index is seed
-        if inference["bayesian_seed"]
-            u0[seed] = sample[seed_ch_idx]  
-        else    
-            u0[seed] = inference["seed_value"]
-        end
-        σ = sample[end-1]
-        
-        # solve
-        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=0.1, abstol=1e-9, reltol=1e-6)
-        t = sol_p.t
-        sol_p = Array(sol_p[sol_idxs,:])
-        for i in 1:N
-            lower_bound = sol_p[i,:] .- σ
-            upper_bound = sol_p[i,:] .+ σ
-            if show_variance
-                CairoMakie.band!(axs[i], t, lower_bound, upper_bound; color=(:grey,0.1))
-                CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.9, color=:black)
-            end
-            CairoMakie.lines!(axs[i],t, sol_p[i,:]; alpha=0.5, color=:grey)
-        end
-    end
-
-    # Plot simulation and noisy observations.
-    # plot mean and variance
-    for i in 1:N
-        # =-=----
-        nonmissing = findall(mean_data[i,:] .!== missing)
-        data_i = Float64.(mean_data[i,:][nonmissing])
-        timepoints_i = Float64.(timepoints[nonmissing])
-        var_data_i = Float64.(var_data[i,:][nonmissing])
-
-        # skip if mean is empty
-        if isempty(data_i)
-            continue
-        end
-
-        indices = findall(x -> isnan(x),var_data_i)
-        var_data_i[indices] .= 0
-        CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 0/255, 139/255), alpha=1.)  
-        # have lower std capped at 0.01 (to be visible in the plots)
-        var_data_i_lower = copy(var_data_i)
-        for (n,var) in enumerate(var_data_i)
-            if sqrt(var) > data_i[n]
-                var_data_i_lower[n] = max(data_i[n]^2-1e-5, 0)
-                #var_data_i_lower[n] = data_i[n]^2
-            end
-        end
-
-        #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
-        CairoMakie.errorbars!(axs[i], timepoints_i, data_i, sqrt.(var_data_i_lower), sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
-        #CairoMakie.errorbars!(axs[i], timepoints_i, data_i, [0. for _ in 1:length(timepoints_i)], sqrt.(var_data_i); color=RGB(0/255, 71/255, 171/255), whiskerwidth=20, alpha=0.2)
-    end
-    # plot all data points across all samples
-    for i in 1:N
-        jiggle = rand(Normal(0,0.01),size(data)[3])
-        for k in axes(data,3)
-            # =-=----
-            nonmissing = findall(data[i,:,k] .!== missing)
-            data_i = Float64.(data[i,:,k][nonmissing])
-            timepoints_i = Float64.(timepoints[nonmissing] .+ jiggle[k])
-            CairoMakie.scatter!(axs[i], timepoints_i, data_i; color=RGB(0/255, 71/255, 171/255), alpha=0.4)  
-        end
-        CairoMakie.save(save_path * "/retrodiction_region_$(i).png", fs[i])
-    end
-
-    # we're done
-    return fs
-end
-
-
 """
-    plot_retrodiction_meanonly(inference; save_path=nothing, N_samples=200,
+    plot_retrodiction(inference; save_path=nothing, N_samples=200,
                                show_band=true, band=(0.25, 0.75),
                                data_error=:none)  # :none | :sd | :se
 
@@ -389,7 +263,7 @@ Arguments
 - band::Tuple: (low, high) quantiles for the band, e.g., (0.25, 0.75).
 - data_error::Symbol: :none (default), :sd, or :se to add error bars around the mean.
 """
-function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
+function plot_retrodiction(inference; save_path=nothing, N_samples=200,
     show_band=true, band=(0.25, 0.75),
     data_style::Symbol=:mean, data_error::Symbol=:none,
     level::Union{Nothing,Float64}=nothing,      # e.g., 0.50 or 0.95; if nothing, use `band`
@@ -401,7 +275,9 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
     sync_y::Bool=false,                         # auto-compute a common y-max from observed data
     y_padding::Float64=0.05,                    # headroom when sync_y is true (top only)
     clamp_floor::Union{Nothing,Float64}=0.0,    # floor for BOTH band/line and data error bars (physical floor)
-    lower_headroom_frac::Float64=0.03           # small visual headroom below clamp_floor
+    lower_headroom_frac::Float64=0.03,           # small visual headroom below clamp_floor
+    save_legend::Bool=true,
+    legend_filename::String="aretrodiction_legend.pdf"
 )
 
     # --- Unpack ---
@@ -470,11 +346,13 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
     par_names   = chain.name_map.parameters
     sigma_ch_idx = findfirst(==(Symbol("σ")), par_names)
     sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
+    
     seed_ch_idx = nothing
     if get(inference, "bayesian_seed", false)
         seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
         seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
     end
+    
 
     # Zero template u0 (only seed nonzero per draw)
     u0_template = fill!(similar(inference["u0"]), 0.0)
@@ -629,7 +507,7 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
 
         if save_path !== nothing
             try; mkdir(save_path); catch; end
-            CairoMakie.save(joinpath(save_path, "retrodiction_datachoice_region_$(i).png"), fs[i])
+            CairoMakie.save(joinpath(save_path, "retrodiction_region_$(i).pdf"), fs[i])
         end
     end
 
@@ -641,7 +519,311 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         end
     end
 
+    # --- Standalone legend figure (optional) ---
+    if save_legend
+        # Colors/sizes consistent with the panels
+        model_line_color   = :black
+        model_line_width   = 5
+        band_fill_color    = (:gray, 0.25)                       # 25% gray alpha
+        data_color         = RGB(0/255, 71/255, 171/255)
+        data_marker_size   = round(Int, data_style == :mean ? 1.2*18 : 0.4*18)
+
+        # Build legend entries using explicit elements
+        line_el  = CairoMakie.LineElement(color=model_line_color, linewidth=model_line_width)
+        band_el  = CairoMakie.PolyElement(color=band_fill_color, strokecolor=:transparent)  # 95% CI patch
+        mark_el  = CairoMakie.MarkerElement(marker=:circle, color=data_color, markersize=data_marker_size)
+
+        leg_fig  = CairoMakie.Figure(resolution = (480, 200), figure_padding=20)
+        legend   = CairoMakie.Legend(
+            leg_fig,
+            [line_el, band_el, mark_el],
+            ["Model fit", "95% CI", "Experimental data"];
+            orientation = :horizontal,
+            framevisible = false,
+            padding = (10,10,10,10),
+            patchsize = (35,18)
+        )
+        leg_fig[1,1] = legend
+
+        if save_path !== nothing
+            try; mkdir(save_path); catch; end
+            CairoMakie.save(joinpath(save_path, legend_filename), leg_fig)
+        end
+    end
+
     return fs
+end
+
+using CairoMakie
+using Statistics
+using StatsBase
+
+"""
+Quantile-binned calibration curve: mean observed vs mean predicted with 95% CI.
+
+- interval: :process (trajectory only) or :predictive (trajectory + Normal noise)
+- bins:     number of quantile bins over predicted values
+- skip_first_timepoint: often useful if y(0)=0 trivially
+- truncate_at_zero & clamp_floor: apply a common physical floor to plotted values
+
+Saves a single PDF if save_path is provided.
+"""
+
+function plot_calibration(inference;
+    save_path::Union{Nothing,String}=nothing,
+    N_samples::Int=200,
+    interval::Symbol=:process,          # :process or :predictive
+    bins::Int=20,
+    skip_first_timepoint::Bool=true,
+    truncate_at_zero::Bool=true,
+    clamp_floor::Union{Nothing,Float64}=0.0,
+    binning::Symbol=:quantile,          # :quantile | :geometric | :adaptive
+    min_bin_count::Int=100              # only used for :adaptive
+)
+    # --- Unpack ---
+    data        = inference["data"]
+    chain       = inference["chain"]
+    timepoints  = inference["timepoints"]
+    seed        = inference["seed_idx"]
+    sol_idxs    = inference["sol_idxs"]
+    Ltuple      = inference["L"]
+    labels      = inference["labels"]
+    ks          = collect(keys(inference["priors"]))
+    N_pars      = findall(x->x=="σ", ks)[1] - 1
+    factors     = [1.0 for _ in 1:N_pars]
+    ode         = odes[inference["ode"]]
+    N           = size(data, 1)
+
+    # Data summaries (match your conventions)
+    if ndims(data) == 3
+        mean_data = mean3(data)             # (region,time)
+        n_rep     = size(data, 3)
+    elseif ndims(data) == 2
+        mean_data = data
+        n_rep     = 1
+    else
+        error("Unsupported data array with ndims=$(ndims(data)).")
+    end
+
+    # We calibrate at the observed timepoints (no dense grid)
+    tgrid = timepoints
+
+    # ODE problem (u0 set per draw below)
+    prob = make_ode_problem(ode;
+        labels     = labels,
+        Ltuple     = Ltuple,
+        factors    = factors,
+        u0         = inference["u0"],
+        timepoints = tgrid,
+    )
+
+    # Posterior draws
+    posterior_samples = sample(chain, min(N_samples, length(chain[:lp])); replace=false)
+    S = size(posterior_samples, 1)
+    T = length(tgrid)
+    traj = Array{Float64}(undef, N, T, S)
+
+    # Parameter indices
+    par_names     = chain.name_map.parameters
+    sigma_ch_idx  = findfirst(==(Symbol("σ")), par_names)
+    sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
+    seed_ch_idx = nothing
+    if get(inference, "bayesian_seed", false)
+        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    end
+
+    # Zero template u0 (seed per draw)
+    u0_template = fill!(similar(inference["u0"]), 0.0)
+
+    # Solve per draw on observed timepoints
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        p    = sample_vec[1:N_pars]
+        u0_s = copy(u0_template)
+        if get(inference, "bayesian_seed", false)
+            u0_s[seed] = sample_vec[seed_ch_idx]
+        else
+            u0_s[seed] = inference["seed_value"]
+        end
+        sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
+        traj[:, :, s] = Array(sol[sol_idxs, :])
+    end
+
+    # Choose process vs predictive
+    arr = traj
+    if interval == :predictive
+        ytraj = similar(traj)
+        for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+            σ_s = sample_vec[sigma_ch_idx]
+            ytraj[:, :, s] = traj[:, :, s] .+ (σ_s .* randn(N, T))
+        end
+        arr = ytraj
+    elseif interval != :process
+        error("interval must be :process or :predictive")
+    end
+
+    # Predicted median across draws at each (region, time)
+    pred_med = mapslices(x -> quantile(x, 0.5), arr; dims=3)[:, :, 1]   # (N,T)
+
+    # Optionally skip the first timepoint (often trivial at t=0)
+    first_col = skip_first_timepoint ? 2 : 1
+    if first_col > size(pred_med, 2)
+        error("No timepoints left after skipping the first.")
+    end
+
+    # Vectorize (region,time) pairs
+    p_vec = vec(pred_med[:, first_col:end])     # predicted
+    o_vec = vec(mean_data[:, first_col:end])    # observed summary
+
+    # Joint missing/finite mask
+    mask = .!ismissing.(o_vec) .& isfinite.(p_vec)
+    p_vec = Float64.(p_vec[mask])
+    o_vec = Float64.(o_vec[mask])
+
+    if isempty(p_vec)
+        error("No data available for calibration after filtering.")
+    end
+
+    # Optional truncation/clamping
+    if truncate_at_zero
+        floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+        p_vec = clamp.(p_vec, floor, Inf)
+        o_vec = clamp.(o_vec, floor, Inf)
+    end
+
+    # ----------------- Non-uniform bins (robust) -----------------
+    bins = max(bins, 2)
+
+    # normalize binning symbol to avoid :Geometric / :GEOMETRIC mismatches
+    _binning = Symbol(lowercase(String(binning)))
+
+    # helper: enforce strictly increasing edges
+    _monotone!(edges::Vector{Float64}) = begin
+        for i in 2:length(edges)
+            if edges[i] <= edges[i-1]
+                edges[i] = nextfloat(edges[i-1])
+            end
+        end
+        edges
+    end
+
+    edges = Float64[]  # will be assigned below
+
+    if _binning === :quantile
+        edges = collect(Float64.(quantile(p_vec, range(0, 1; length=bins+1))))
+        _monotone!(edges)
+
+    elseif _binning === :geometric || _binning === :adaptive
+        pmin, pmax = minimum(p_vec), maximum(p_vec)
+        ε = 1e-12
+        # start strictly >0 for geometric spacing; if all ~0, create a tiny span
+        start = max(ε, min(pmin > 0 ? pmin : ε, pmax))
+        stopv = max(pmax, start*10)  # ensure a span if pmax≈start
+        ge = 10.0 .^ range(log10(start), log10(stopv); length=bins+1) |> collect
+        if pmin == 0.0
+            ge[1] = 0.0  # include zeros in the first bin
+        end
+        edges = _monotone!(Float64.(ge))
+
+        if _binning === :adaptive
+            # iteratively merge bins until each has >= min_bin_count points
+            while true
+                if length(edges) < 3
+                    break  # need at least 2 bins
+                end
+                idx = [min(searchsortedlast(edges, v), length(edges)-1) for v in p_vec]
+                counts = [count(==(b), idx) for b in 1:(length(edges)-1)]
+                small = findall(<(min_bin_count), counts)  # bins with too few pts
+                isempty(small) && break
+
+                new_edges = Float64[edges[1]]
+                b = 1
+                while b <= length(counts)
+                    if counts[b] < min_bin_count
+                        if b < length(counts)
+                            # merge bin b with b+1 (keep right edge of b+1)
+                            push!(new_edges, edges[b+2])
+                            b += 2
+                        else
+                            # last bin small: merge into previous
+                            new_edges[end] = edges[end]
+                            b += 1
+                        end
+                    else
+                        push!(new_edges, edges[b+1])
+                        b += 1
+                    end
+                end
+                edges = _monotone!(new_edges)
+            end
+        end
+
+    else
+        error("binning must be :quantile, :geometric, or :adaptive (got $binning)")
+    end
+
+    (length(edges) >= 2) || error("Failed to build bin edges")
+
+    # Assign bin index for each predicted value
+    binidx = [min(searchsortedlast(edges, v), length(edges)-1) for v in p_vec]
+    # -------------------------------------------------------------
+    B = length(edges) - 1
+    μ_pred = fill(NaN, B)
+    μ_obs  = fill(NaN, B)
+    lo95   = fill(NaN, B)
+    hi95   = fill(NaN, B)
+    m_in_bin = zeros(Int, B)
+
+    for b in 1:B
+        I = findall(==(b), binidx)
+        m = length(I)
+        m_in_bin[b] = m
+        if m == 0
+            continue
+        end
+        pv = p_vec[I]
+        ov = o_vec[I]
+        μ_pred[b] = mean(pv)                        # mean predicted (original scale)
+        μ_obs[b]  = mean(ov)                        # mean observed
+        s  = std(ov)
+        se = m > 1 ? s / sqrt(m) : 0.0
+        lo95[b] = μ_obs[b] - 1.96 * se
+        hi95[b] = μ_obs[b] + 1.96 * se
+        if truncate_at_zero
+            floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+            lo95[b] = max(lo95[b], floor)
+        end
+    end
+
+    # Figure
+    f = CairoMakie.Figure()
+    ax = CairoMakie.Axis(f[1,1];
+        title  = "Calibration curve",
+        xlabel = "Predicted (bin mean)",
+        ylabel = "Observed (mean ± 95% CI)"
+    )
+
+    # y = x guide over the span of μ_pred
+    keep_x = .!isnan.(μ_pred)
+    if any(keep_x)
+        xmin = minimum(μ_pred[keep_x])
+        xmax = maximum(μ_pred[keep_x])
+        CairoMakie.lines!(ax, [xmin, xmax], [xmin, xmax], color=:grey, alpha=0.6)
+    end
+
+    # Error bars + points (only finite bins)
+    keep = .!isnan.(μ_pred) .& .!isnan.(μ_obs) .& .!isnan.(lo95) .& .!isnan.(hi95)
+    CairoMakie.errorbars!(ax, μ_pred[keep], μ_obs[keep],
+                          μ_obs[keep] .- lo95[keep],  # lower whisker
+                          hi95[keep] .- μ_obs[keep],  # upper whisker
+                          whiskerwidth=20, linewidth=4, alpha=0.7)
+    CairoMakie.scatter!(ax, μ_pred[keep], μ_obs[keep]; markersize=20, alpha=1.0)
+
+    if save_path !== nothing
+        try; mkdir(save_path); catch; end
+        CairoMakie.save(joinpath(save_path, "calibration_curve_$(String(interval))_$(String(binning)).pdf"), f)
+    end
+    return f
 end
 
 
@@ -674,6 +856,298 @@ function plot_priors(inference; save_path="")
     return nothing 
 end
 
+using CairoMakie
+using Statistics
+
+using CairoMakie
+using Statistics
+
+using CairoMakie
+using Statistics
+
+function plot_calibration_cross(inference;
+    save_path::Union{Nothing,String}=nothing,
+    N_samples::Int=200,
+    interval::Symbol=:process,      # y-interval source: :process or :predictive
+    x_ci_from::Symbol=:process,     # x-interval source: :process or :predictive
+    bins::Int=20,
+    binning::Symbol=:geometric,     # :quantile | :geometric | :adaptive
+    min_bin_count::Int=100,         # used only for :adaptive
+    skip_first_timepoint::Bool=true,
+    truncate_at_zero::Bool=true,
+    clamp_floor::Union{Nothing,Float64}=0.0,
+    v_linewidth::Real=8,
+    h_linewidth::Real=8
+)
+    # --- Unpack ---
+    data        = inference["data"]
+    chain       = inference["chain"]
+    timepoints  = inference["timepoints"]
+    seed        = inference["seed_idx"]
+    sol_idxs    = inference["sol_idxs"]
+    Ltuple      = inference["L"]
+    labels      = inference["labels"]
+    ks          = collect(keys(inference["priors"]))
+    N_pars      = findall(x->x=="σ", ks)[1] - 1
+    factors     = [1.0 for _ in 1:N_pars]
+    ode         = odes[inference["ode"]]
+    N           = size(data, 1)
+
+    # aesthetics
+    cross_color = RGBAf(0/255, 71/255, 171/255, 1.0)  # Penn blue, semi-transparent
+
+    # Data summaries
+    mean_data =
+        ndims(data) == 3 ? mean3(data) :
+        ndims(data) == 2 ? data :
+        error("Unsupported data array with ndims=$(ndims(data)).")
+
+    # Observed time grid
+    tgrid = timepoints
+
+    # ODE problem
+    prob = make_ode_problem(ode;
+        labels     = labels,
+        Ltuple     = Ltuple,
+        factors    = factors,
+        u0         = inference["u0"],
+        timepoints = tgrid,
+    )
+
+    # Posterior draws
+    posterior_samples = sample(chain, min(N_samples, length(chain[:lp])); replace=false)
+    S = size(posterior_samples, 1)
+    T = length(tgrid)
+    traj = Array{Float64}(undef, N, T, S)   # process trajectories
+
+    # Parameter indices (robust)
+    par_names    = chain.name_map.parameters
+    sigma_ch_idx = findfirst(==(Symbol("σ")), par_names)
+    sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
+    seed_ch_idx = nothing
+    if get(inference, "bayesian_seed", false)
+        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    end
+
+    # Zero template u0
+    u0_template = fill!(similar(inference["u0"]), 0.0)
+
+    # Solve per draw
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        p    = sample_vec[1:N_pars]
+        u0_s = copy(u0_template)
+        if seed_ch_idx === nothing
+            u0_s[seed] = inference["seed_value"]
+        else
+            u0_s[seed] = sample_vec[seed_ch_idx]
+        end
+        sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
+        traj[:, :, s] = Array(sol[sol_idxs, :])
+    end
+
+    # Predictive (process + Normal noise)
+    ytraj = similar(traj)
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        σ_s = sample_vec[sigma_ch_idx]
+        ytraj[:, :, s] = traj[:, :, s] .+ (σ_s .* randn(N, T))
+    end
+
+    # Choose arrays for vertical (y) and horizontal (x) CIs
+    arr_y = (interval  === :predictive) ? ytraj : traj
+    arr_x = (x_ci_from === :predictive) ? ytraj : traj
+
+    # Predicted medians at observed grid (from process traj for stable x-centers)
+    pred_med = mapslices(x -> quantile(x, 0.5), traj; dims=3)[:, :, 1]   # (N,T)
+
+    # Skip first timepoint if desired
+    first_col = skip_first_timepoint ? 2 : 1
+    first_col <= size(pred_med, 2) || error("No timepoints left after skipping the first.")
+
+    # --- Work in matrix form to keep original linear indices ---
+    Mpred = pred_med[:, first_col:end]          # (Nreg, Tsel)
+    Mobs  = mean_data[:, first_col:end]
+    maskM = .!ismissing.(Mobs) .& isfinite.(Mpred)
+    orig_lin_idx = findall(maskM)               # linear indices into (Nreg, Tsel)
+
+    p_vec = Float64.(Mpred[maskM])              # predicted centers (x)
+    o_vec = Float64.(Mobs[maskM])               # observed centers (y)
+    isempty(p_vec) && error("No data for calibration after filtering.")
+
+    # Optional clamp
+    if truncate_at_zero
+        floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+        p_vec = clamp.(p_vec, floor, Inf)
+        o_vec = clamp.(o_vec, floor, Inf)
+    end
+
+    # ----------------- Non-uniform bins -----------------
+    bins = max(bins, 2)
+    _binning = Symbol(lowercase(String(binning)))
+
+    _monotone!(edges::Vector{Float64}) = begin
+        for i in 2:length(edges)
+            if edges[i] <= edges[i-1]
+                edges[i] = nextfloat(edges[i-1])
+            end
+        end
+        edges
+    end
+
+    edges = Float64[]
+    if _binning === :quantile
+        edges = collect(Float64.(quantile(p_vec, range(0, 1; length=bins+1))))
+        _monotone!(edges)
+    elseif _binning === :geometric || _binning === :adaptive
+        pmin, pmax = minimum(p_vec), maximum(p_vec)
+        ε = 1e-12
+        start = max(ε, min(pmin > 0 ? pmin : ε, pmax))
+        stopv = max(pmax, start*10)
+        ge = 10.0 .^ range(log10(start), log10(stopv); length=bins+1) |> collect
+        if pmin == 0.0
+            ge[1] = 0.0
+        end
+        edges = _monotone!(Float64.(ge))
+        if _binning === :adaptive
+            while true
+                if length(edges) < 3; break; end
+                idx_tmp = [min(searchsortedlast(edges, v), length(edges)-1) for v in p_vec]
+                counts  = [count(==(b), idx_tmp) for b in 1:(length(edges)-1)]
+                isempty(findall(b -> counts[b] < min_bin_count, 1:length(counts))) && break
+                new_edges = Float64[edges[1]]
+                b = 1
+                while b <= length(counts)
+                    if counts[b] < min_bin_count
+                        if b < length(counts)
+                            push!(new_edges, edges[b+2]); b += 2
+                        else
+                            new_edges[end] = edges[end]; b += 1
+                        end
+                    else
+                        push!(new_edges, edges[b+1]); b += 1
+                    end
+                end
+                edges = _monotone!(new_edges)
+            end
+        end
+    else
+        error("binning must be :quantile, :geometric, or :adaptive")
+    end
+    (length(edges) >= 2) || error("Failed to build bin edges")
+
+    # Assign bins in x
+    binidx = [min(searchsortedlast(edges, v), length(edges)-1) for v in p_vec]
+    B = length(edges) - 1
+
+    # Aggregates per bin
+    μ_pred = fill(NaN, B)
+    μ_obs  = fill(NaN, B)
+    lo95_y = fill(NaN, B)
+    hi95_y = fill(NaN, B)
+    lo95_x = fill(NaN, B)
+    hi95_x = fill(NaN, B)
+    m_in   = zeros(Int, B)
+
+    # sizes to decode linear indices
+    Nreg, Tsel = size(Mpred)
+
+    for b in 1:B
+        I = findall(==(b), binidx)      # indices into p_vec/o_vec (and orig_lin_idx)
+        m = length(I)
+        m_in[b] = m
+        if m == 0; continue; end
+
+        pv = p_vec[I]; ov = o_vec[I]
+        μ_pred[b] = mean(pv)
+        μ_obs[b]  = mean(ov)
+
+        # Vertical CI for mean observed (normal approx)
+        s  = std(ov)
+        se = m > 1 ? s / sqrt(m) : 0.0
+        lo95_y[b] = μ_obs[b] - 1.96 * se
+        hi95_y[b] = μ_obs[b] + 1.96 * se
+        if truncate_at_zero
+            floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+            lo95_y[b] = max(lo95_y[b], floor)
+        end
+
+        # Horizontal CI for predictions from arr_x across draws and the SAME positions
+        xsamps = Float64[]
+        sizehint!(xsamps, m * size(arr_x, 3))
+        for idx_in_vec in I
+            lin = orig_lin_idx[idx_in_vec]          # linear index into (Nreg, Tsel)
+            ci = CartesianIndices((Nreg, Tsel))[lin]
+            i, j = Tuple(ci)
+            t = (first_col - 1) + j                 # original time index
+            @inbounds for sidx in axes(arr_x, 3)
+                push!(xsamps, arr_x[i, t, sidx])
+            end
+        end
+        if !isempty(xsamps)
+            lo95_x[b] = quantile(xsamps, 0.025)
+            hi95_x[b] = quantile(xsamps, 0.975)
+        end
+    end
+
+    # Figure
+    f = CairoMakie.Figure()
+    ax = CairoMakie.Axis(f[1,1];
+        title  = "Calibration curve",
+        xlabel = "Predicted (mean ± 95% CI) ",
+        ylabel = "Observed (mean ± 95% CI)"
+    )
+
+    # y = x guide
+    keepx = .!isnan.(μ_pred)
+    if any(keepx)
+        xmin, xmax = minimum(μ_pred[keepx]), maximum(μ_pred[keepx])
+        CairoMakie.lines!(ax, [xmin, xmax], [xmin, xmax], color=:grey, alpha=0.5)
+    end
+
+    # Cross error bars
+    keep = .!isnan.(μ_pred) .& .!isnan.(μ_obs)
+    for b in findall(keep)
+        # horizontal (predicted) 95% CI through the dot's y
+        #if isfinite(lo95_x[b]) && isfinite(hi95_x[b])
+        #    CairoMakie.lines!(ax, [lo95_x[b], hi95_x[b]], [μ_obs[b], μ_obs[b]];
+        #                      color=cross_color, alpha=0.75, linewidth=h_linewidth)
+        #end
+        # horizontal WITH WHISKERS? (predicted) 95% CI through the dot's y
+        if isfinite(lo95_x[b]) && isfinite(hi95_x[b])
+            CairoMakie.errorbars!(ax,
+                [μ_pred[b]], [μ_obs[b]],    # center
+                [μ_pred[b] - lo95_x[b]],    # left extent
+                [hi95_x[b] - μ_pred[b]];    # right extent
+                direction = :x,
+                color = cross_color,
+                alpha = 0.75,
+                whiskerwidth = 15,
+                linewidth = h_linewidth
+            )
+        end
+
+        # vertical (observed-mean) CI through the dot's x
+        if isfinite(lo95_y[b]) && isfinite(hi95_y[b])
+            CairoMakie.errorbars!(ax, [μ_pred[b]], [μ_obs[b]],
+                                  [μ_obs[b] - lo95_y[b]], [hi95_y[b] - μ_obs[b]];
+                                  color=cross_color, alpha=0.75, whiskerwidth=15, linewidth=v_linewidth)
+        end
+        CairoMakie.scatter!(ax, [μ_pred[b]], [μ_obs[b]]; markersize=20, color=cross_color, alpha=0.9,strokecolor=:black, strokewidth=1.5 )
+    end
+
+    if save_path !== nothing
+        try; mkdir(save_path); catch; end
+        CairoMakie.save(joinpath(save_path,
+            "calibration_curve_cross_$(String(interval))_x$(String(x_ci_from))_$(String(binning)).pdf"), f)
+    end
+    return f
+end
+
+
+
+
+
+
 #=
 plot priors and posteriors together from inference result
  =#
@@ -702,7 +1176,7 @@ end
 #=
 master plotting function (plot everything relevant to inference)
  =#
-function plot_inference(inference, save_path; plotscale=log10, N_samples=300, show_variance=false)
+function plot_inference(inference, save_path; N_samples=300, show_variance=false)
     # load inference simulation 
     #display(inference["chain"])
 
@@ -719,9 +1193,38 @@ function plot_inference(inference, save_path; plotscale=log10, N_samples=300, sh
     end
     
     # plot
-    predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
-    #plot_retrodiction(inference; save_path=save_path*"/retrodiction", N_samples=N_samples, show_variance=show_variance);
-    plot_retrodiction2(inference; save_path=save_path*"/retrodiction",
+    plot_calibration(inference;
+    save_path=save_path*"/calibration",      # directory to save output (or nothing for no file)
+    N_samples=200,         # how many posterior samples to draw
+    interval=:process,     # :process (traj only) or :predictive (traj + noise)
+    binning = :geometric,
+    bins=50,               # number of quantile bins
+    #binning = :adaptive,
+    #min_bin_count = 100,
+    skip_first_timepoint=true,
+    truncate_at_zero=true,
+    clamp_floor=0.0
+    )
+
+    # plot
+    plot_calibration_cross(inference;
+        save_path = save_path*"/calibration_cross",  # directory to save output (or nothing for no file)
+        N_samples = 200,          # how many posterior samples to draw
+        interval = :process,      # vertical CI source: :process (traj only) or :predictive (traj + noise)
+        x_ci_from = :process,     # horizontal CI source: :process or :predictive
+        binning = :geometric,     # :quantile | :geometric | :adaptive
+        bins = 50,                # number of bins (ignored if :adaptive)
+        #binning = :adaptive,
+        #min_bin_count = 100,     # minimum points per bin (adaptive only)
+        skip_first_timepoint = true,
+        truncate_at_zero = true,
+        clamp_floor = 0.0,
+        v_linewidth = 5,          # thickness of vertical bars
+        h_linewidth = 5           # thickness of horizontal bars
+    )
+    predicted_observed(inference; save_path=save_path*"/predicted_observed_log10", plotscale=log10);
+    predicted_observed(inference; save_path=save_path*"/predicted_observed_id", plotscale=identity);
+    plot_retrodiction(inference; save_path=save_path*"/retrodiction",
                            N_samples=1000, level=0.90, interval=:predictive, line_from=:process,
                            data_style=:mean, data_error=:sd,
                            y_padding=0.05#, sync_y=true, ymax=1.0, ymin=-0.05

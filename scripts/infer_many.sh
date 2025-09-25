@@ -20,7 +20,7 @@ set -e  # exit on first error
 #julia --project=. scripts/infer_this_main.jl DIFFGAM_bidirectional data/W_labeled_filtered.csv  data/total_path.csv --retrograde=true --n_chains=4 --out_file=DIFFGAM_BIDIR.jl
 #
 ## ... and Euclidean transport
-julia --project=. scripts/infer_this_main.jl DIFF  data/Euclidean_distance_matrix_filtered.csv  data/total_path.csv --retrograde=true --n_chains=4 --out_file=DIFF_EUCL.jl
-julia --project=. scripts/infer_this_main.jl DIFFG data/Euclidean_distance_matrix_filtered.csv  data/total_path.csv --retrograde=true --n_chains=4 --out_file=DIFFG_EUCL.jl
-julia --project=. scripts/infer_this_main.jl DIFFGA data/Euclidean_distance_matrix_filtered.csv  data/total_path.csv --retrograde=true --n_chains=4 --out_file=DIFFGA_EUCL.jl
-julia --project=. scripts/infer_this_main.jl DIFFGAM data/Euclidean_distance_matrix_filtered.csv  data/total_path.csv --retrograde=true --n_chains=4 --out_file=DIFFGAM_EUCL.jl
+#julia --project=. scripts/infer_this_main.jl DIFF  data/Euclidean_distance_matrix_filtered.csv  data/total_path.csv --retrograde=true --n_chains=4 --out_file=DIFF_EUCL.jl
+#julia --project=. scripts/infer_this_main.jl DIFFG data/Euclidean_distance_matrix_filtered.csv  data/total_path.csv --retrograde=true --n_chains=4 --out_file=DIFFG_EUCL.jl
+julia --project=. scripts/infer_this_main.jl DIFFGA data/Euclidean_distance_matrix_filtered.csv  data/total_path.csv --retrograde=true --n_chains=1 --out_file=DIFFGA_EUCL.jl
+#julia --project=. scripts/infer_this_main.jl DIFFGAM data/Euclidean_distance_matrix_filtered.csv  data/total_path.csv --retrograde=true --n_chains=4 --out_file=DIFFGAM_EUCL.jl
