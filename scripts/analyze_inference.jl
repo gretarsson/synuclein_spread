@@ -6,7 +6,7 @@ include("helpers_plots.jl");
 
 # simulation to analyze
 #simulation = "total_DIFFGAM_bilateral_N=40_threads=1_var1_NEWRHS";
-simulation = "DIFFGA_RETRO";
+simulation = "DIFFGA_ANTERO";
 
 # plot 
 inference_obj = deserialize("simulations/"*simulation*".jl")
