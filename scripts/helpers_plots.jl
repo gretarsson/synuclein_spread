@@ -43,8 +43,8 @@ function setup_plot_theme!(; font="Arial", base=18, lw=2, markersize=10, dpi=300
         ),
         Legend   = (labelsize = round(Int, 1.0*base), titlesize = round(Int, 1.2*base)),
         Colorbar = (labelsize = round(Int, 1.0*base), ticklabelsize = round(Int, 1.0*base)),
-        Scatter  = (markersize = round(Int, 1.2*base),),
-        Lines    = (linewidth  = round(Int, 0.8*base),)
+        Scatter  = (markersize = round(Int, 0.8*base),),
+        Lines    = (linewidth  = round(Int, 0.5*base),)
     ))
 
     # StatsPlots / Plots defaults
@@ -721,7 +721,7 @@ function plot_inference(inference, save_path; plotscale=log10, N_samples=300, sh
     # plot
     predicted_observed(inference; save_path=save_path*"/predicted_observed", plotscale=plotscale);
     #plot_retrodiction(inference; save_path=save_path*"/retrodiction", N_samples=N_samples, show_variance=show_variance);
-    plot_retrodiction2(inference; save_path=save_path*"/retrodiction_meanonly",
+    plot_retrodiction2(inference; save_path=save_path*"/retrodiction",
                            N_samples=1000, level=0.90, interval=:predictive, line_from=:process,
                            data_style=:mean, data_error=:sd,
                            y_padding=0.05#, sync_y=true, ymax=1.0, ymin=-0.05
