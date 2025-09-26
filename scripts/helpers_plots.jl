@@ -1211,7 +1211,7 @@ function plot_inference(inference, save_path; N_samples=300, show_variance=false
         save_path = save_path*"/calibration_cross",  # directory to save output (or nothing for no file)
         N_samples = 200,          # how many posterior samples to draw
         interval = :process,      # vertical CI source: :process (traj only) or :predictive (traj + noise)
-        x_ci_from = :process,     # horizontal CI source: :process or :predictive
+        x_ci_from = :predictive,     # horizontal CI source: :process or :predictive
         binning = :geometric,     # :quantile | :geometric | :adaptive
         bins = 50,                # number of bins (ignored if :adaptive)
         #binning = :adaptive,
