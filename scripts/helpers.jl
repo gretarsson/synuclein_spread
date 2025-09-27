@@ -929,90 +929,9 @@ function thresholded_bilateral_idxs(thr_idxs,bi_idxs)
 end
 
 
-# --- WAIC Computation ---
-function compute_waic(inference; S=10)
-    # unpack the inference object
-    priors = inference["priors"]
-    ks = collect(keys(priors))
-    chain = inference["chain"]
-    data = inference["data"]
-    seed = inference["seed_idx"]
-    ode = odes[inference["ode"]]
-    u0 = inference["u0"]
-    timepoints = inference["timepoints"]
-    L = inference["L"]
-    #if typeof(L) != Tuple{Matrix{Float64},Int64}
-    #    N = size(L)[1]
-    #    L = (L,N)
-    #else
-    #    N = size(L[1])[1]
-    #end
-    N = size(L[1])[1]
-    factors = inference["factors"]
-    N_pars = findall(x->x=="σ",ks)[1] - 1
-    par_names = chain.name_map.parameters
-    if inference["bayesian_seed"]
-        seed_ch_idx = findall(x->x==:seed,par_names)[1]  
-    end
-    sigma_idx = findall(x->x==:σ,par_names)[1]  
-
-    # reshape data
-    N_samples = size(data)[3]
-    vec_data = vec(data)
-    nonmissing = findall(vec_data .!== missing)
-    vec_data = vec_data[nonmissing]
-    vec_data = identity.(vec_data)  # this changes the type from Union{Missing,Float64}Y to Float64
-    n = length(vec_data)
-
-    # define ODE problem
-    tspan = (0, timepoints[end])
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-    prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
-
-    # sample from posterior and store solutions of ODE for each sample
-    posterior_samples = sample(chain, S; replace=false)
-    solutions = Vector{Vector{Float64}}()  # Array to hold matrices of size (N, length(timepoints))
-    sigmas = []
-    for sample in eachrow(Array(posterior_samples))
-        # samples
-        p = sample[1:N_pars]  
-        if inference["bayesian_seed"]
-            u0[seed] = sample[seed_ch_idx]  
-        else    
-            u0[seed] = inference["seed_value"]
-        end
-        # solve
-        σ = sample[sigma_idx]  # this should be done programmatically
-        sol_p = solve(prob,Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-9)
-        sol_p = Array(sol_p[inference["sol_idxs"],:])
-        solution = vec(cat([sol_p for _ in 1:N_samples]...,dims=3))
-        solution = solution[nonmissing]
-        push!(solutions,solution)
-        push!(sigmas,σ)
-    end
-    means = transpose(hcat(solutions...))  # Sxn matrix (S = number of posterior samples, n = length of data)
-    #return means
-    
-    # Compute pointwise log-likelihoods
-    log_lik = zeros(S, n)  # Posterior samples × data points
-    for s in 1:S
-        for i in 1:n
-            log_lik[s, i] = logpdf(Normal(means[s,i], sigmas[s]), vec_data[i])
-        end
-    end
-
-    # Compute WAIC components
-    lppd = sum(log.(mean(exp.(log_lik), dims=1)))  # Log Pointwise Predictive Density
-    p_waic = sum(var(log_lik, dims=1))           # Effective number of parameters
-    waic = -2 * (lppd - p_waic)                  # WAIC formula
-    #display("lppd: $(lppd), p_eff: $(p_waic)")
-
-    return waic
-end
-
 
 # --- WAIC and WBIC Computation ---
-function compute_waic_wbic(inference; S=10)
+function compute_waic(inference; S=10)
     # unpack the inference object
     priors = inference["priors"]
     ks = collect(keys(priors))
@@ -1060,7 +979,7 @@ function compute_waic_wbic(inference; S=10)
         end
         σ = sample[sigma_idx]  # extract σ
         # solve the ODE
-        sol_p = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-9)
+        sol_p = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-6, reltol=1e-6)
         sol_p = Array(sol_p[inference["sol_idxs"],:])
         # Repeat solution for each of the N_samples (if data has replicated observations)
         solution = vec(cat([sol_p for _ in 1:N_samples]..., dims=3))
@@ -1079,24 +998,33 @@ function compute_waic_wbic(inference; S=10)
     end
 
     # --- WAIC computation ---
-    lppd = sum(log.(mean(exp.(log_lik), dims=1)))   # Log Pointwise Predictive Density
+    #lppd = sum(log.(mean(exp.(log_lik), dims=1)))   # Log Pointwise Predictive Density, OLD
+    # stabilized computation of lppd
+    m = maximum(log_lik; dims=1)                       # 1×n (max per data point across draws)
+    lppd = sum(vec(m) .+ log.(vec(mean(exp.(log_lik .- m); dims=1))))
     p_waic = sum(var(log_lik, dims=1))                # Effective number of parameters
     waic = -2 * (lppd - p_waic)                       # WAIC formula
 
+    # WAIC STANDARD DEVIATION
+    waic_i = [-2 * (log(mean(exp.(log_lik[:,i]))) - var(log_lik[:,i])) for i in 1:n]
+    se_waic = sqrt(n * var(waic_i))
+
+
     # --- WBIC computation ---
     # Compute total log-likelihood per posterior sample
-    total_log_lik = vec(sum(log_lik, dims=2))  # vector of length S
-    # Temperature for WBIC: T = 1 / log(n)
-    T = 1 / log(n)
-    # Compute log-weights to stabilize the exponentiation
-    log_weights = (T - 1) * total_log_lik
-    max_log_weight = maximum(log_weights)
-    stabilized_weights = exp.(log_weights .- max_log_weight)
-    # Compute weighted expectation of the log-likelihood
-    wbic_expectation = sum(stabilized_weights .* total_log_lik) / sum(stabilized_weights)
-    wbic = -2 * wbic_expectation
+    #total_log_lik = vec(sum(log_lik, dims=2))  # vector of length S
+    ## Temperature for WBIC: T = 1 / log(n)
+    #T = 1 / log(n)
+    ## Compute log-weights to stabilize the exponentiation
+    #log_weights = (T - 1) * total_log_lik
+    #max_log_weight = maximum(log_weights)
+    #stabilized_weights = exp.(log_weights .- max_log_weight)
+    ## Compute weighted expectation of the log-likelihood
+    #wbic_expectation = sum(stabilized_weights .* total_log_lik) / sum(stabilized_weights)
+    #wbic = -2 * wbic_expectation
 
-    return waic, wbic
+    #return waic, se_waic, wbic
+    return waic, se_waic, waic_i::Vector{Float64}, lppd, p_waic, n
 end
 
 
@@ -2835,4 +2763,19 @@ function make_ode_problem(ode_fn; labels, Ltuple, factors, u0, timepoints)
     tspan = (timepoints[1], timepoints[end])
 
     return ODEProblem(rhs, u0, tspan)
+end
+
+
+"""
+regions_any_above_eps(data; eps=0.05) -> Vector{Int}
+
+Compute mean across replicates (via mean3 if data is 3D), then return all
+region indices i such that there exists at least one timepoint t with
+mean_data[i,t] > eps. `missing` values are ignored.
+"""
+function nonzero_regions(data; eps::Real=0.05)
+    M = ndims(data) == 3 ? mean3(data) : data           # R×T, may contain missing
+    Mc = coalesce.(M, -Inf)                              # treat missings as -Inf
+    sel = vec(any(Mc .> eps, dims=2))                    # Bool vector length R
+    return findall(sel)                                  # Vector{Int}
 end
