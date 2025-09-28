@@ -103,6 +103,11 @@ function build_parser()
         "--test"
             action = :store_true
             help = "if set, use test subset (this is hardcoded don't use)"
+        "--holdout_last"
+            arg_type = Int
+            default  = 0
+            help     = "Number of last timepoints to remove from data/timepoints before inference (0 = keep all)"
+
     end
 
     return s
@@ -120,6 +125,8 @@ function main(parsed)
     target_acceptance = parsed["target_acceptance"]
     out_file = parsed["out_file"]
     test = parsed["test"]
+    holdout_last = parsed["holdout_last"]
+
 
     # PRINT ARGS
     println("→ ODE:        $ode")
@@ -129,6 +136,7 @@ function main(parsed)
     println("→ Retrograde:    $retrograde")
     println("→ Seed label:    $seed_label")
     println("→ Infer seed:    $infer_seed")
+    println("→ Hold out last timepoints: $holdout_last")
     println("→ Target acceptance:    $target_acceptance")
     println("→ Output:     $out_file")
     if test
@@ -156,6 +164,15 @@ function main(parsed)
         # STRUCTURAL DATA
         Lr,N,labels = read_W(w_file, direction=:retro);
         La,_,_ = read_W(w_file, direction=:antero);
+        # REMOVE LAST TIMEPOINTS IF SPECIFIED
+        if holdout_last < 0
+            error("holdout_last must be ≥ 0, got $holdout_last")
+        elseif holdout_last > 0
+            T = length(timepoints)
+            @assert holdout_last < T "holdout_last ($holdout_last) must be < number of timepoints ($T)."
+            data        = data[:, 1:(T - holdout_last), :]
+            timepoints  = timepoints[1:(T - holdout_last)]
+        end
     end 
 
     # ADD EXTRA LAPLACIAN IF BIDIRECTIONAL TRANSPORT

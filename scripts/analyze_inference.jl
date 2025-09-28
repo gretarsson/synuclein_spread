@@ -5,7 +5,7 @@ include("helpers.jl");
 include("helpers_plots.jl");
 
 # simulation to analyze
-simulation = "DIFFGA_RETRO";
+simulation = "DIFFGAM_BIDIR";
 
 # read file 
 inference_obj = deserialize("simulations/"*simulation*".jl")
