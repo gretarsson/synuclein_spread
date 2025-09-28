@@ -11,6 +11,9 @@ using StatsBase
 using Distributions
 using MathTeXEngine  # for LaTeXStrings L"..." font control (optional)
 using Plots
+using Printf
+using Graphs
+using SimpleWeightedGraphs
 
 
 
@@ -894,7 +897,7 @@ function plot_calibration_cross(inference;
     N           = size(data, 1)
 
     # aesthetics
-    cross_color = RGBAf(0/255, 71/255, 171/255, 1.0)  # Penn blue, semi-transparent
+    cross_color = RGBf(0/255, 71/255, 171/255)           # no alpha baked in
 
     # Data summaries
     mean_data =
@@ -1061,11 +1064,13 @@ function plot_calibration_cross(inference;
         μ_pred[b] = mean(pv)
         μ_obs[b]  = mean(ov)
 
-        # Vertical CI for mean observed (normal approx)
-        s  = std(ov)
-        se = m > 1 ? s / sqrt(m) : 0.0
-        lo95_y[b] = μ_obs[b] - 1.96 * se
-        hi95_y[b] = μ_obs[b] + 1.96 * se
+        # Vertical = empirical 95% PI of observed values in the bin
+        lo95_y[b] = quantile(ov, 0.025)
+        hi95_y[b] = quantile(ov, 0.975)
+        if truncate_at_zero
+            floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+            lo95_y[b] = max(lo95_y[b], floor)
+        end
         if truncate_at_zero
             floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
             lo95_y[b] = max(lo95_y[b], floor)
@@ -1092,9 +1097,9 @@ function plot_calibration_cross(inference;
     # Figure
     f = CairoMakie.Figure()
     ax = CairoMakie.Axis(f[1,1];
-        title  = "Calibration curve",
-        xlabel = "Predicted (mean ± 95% CI) ",
-        ylabel = "Observed (mean ± 95% CI)"
+        title  = "Binned predictive vs observed",
+        xlabel = "Predicted (mean ± 95% PI) ",
+        ylabel = "Observed (mean ± 95% QI)"
     )
 
     # y = x guide
@@ -1119,8 +1124,7 @@ function plot_calibration_cross(inference;
                 [μ_pred[b] - lo95_x[b]],    # left extent
                 [hi95_x[b] - μ_pred[b]];    # right extent
                 direction = :x,
-                color = cross_color,
-                alpha = 0.75,
+                color = (cross_color,0.7),
                 whiskerwidth = 15,
                 linewidth = h_linewidth
             )
@@ -1130,9 +1134,9 @@ function plot_calibration_cross(inference;
         if isfinite(lo95_y[b]) && isfinite(hi95_y[b])
             CairoMakie.errorbars!(ax, [μ_pred[b]], [μ_obs[b]],
                                   [μ_obs[b] - lo95_y[b]], [hi95_y[b] - μ_obs[b]];
-                                  color=cross_color, alpha=0.75, whiskerwidth=15, linewidth=v_linewidth)
+                                  color=(cross_color,0.7), whiskerwidth=15, linewidth=v_linewidth)
         end
-        CairoMakie.scatter!(ax, [μ_pred[b]], [μ_obs[b]]; markersize=20, color=cross_color, alpha=0.9,strokecolor=:black, strokewidth=1.5 )
+        CairoMakie.scatter!(ax, [μ_pred[b]], [μ_obs[b]]; markersize=20, color=(cross_color,0.9), strokecolor=:black, strokewidth=1.5 )
     end
 
     if save_path !== nothing
@@ -1173,10 +1177,647 @@ function plot_prior_and_posterior(inference; save_path="")
     return nothing
 end
 
+
+function plot_ppc_coverages(inference;
+    save_path::Union{Nothing,String}=nothing,
+    levels::AbstractVector{<:Real} = [0.50, 0.80, 0.95],
+    N_samples::Int = 200,
+    skip_first_timepoint::Bool = true,
+    truncate_at_zero::Bool = true,
+    clamp_floor::Union{Nothing,Float64} = 0.0,
+)
+    # --- Unpack ---
+    data        = inference["data"]
+    chain       = inference["chain"]
+    timepoints  = inference["timepoints"]
+    seed        = inference["seed_idx"]
+    sol_idxs    = inference["sol_idxs"]
+    Ltuple      = inference["L"]
+    labels      = inference["labels"]
+    ks          = collect(keys(inference["priors"]))
+    N_pars      = findall(x->x=="σ", ks)[1] - 1
+    factors     = get(inference, "factors", [1.0 for _ in 1:N_pars])  # fallback
+    ode         = odes[inference["ode"]]
+    N           = size(data, 1)
+
+    # Observed values to check coverage against
+    # If 3D: treat each replicate as a separate observation
+    # If 2D: just those values
+    if ndims(data) == 3
+        obs_mat = data                      # (region, time, rep)
+        n_rep   = size(data, 3)
+    elseif ndims(data) == 2
+        obs_mat = reshape(data, N, size(data,2), 1)
+        n_rep   = 1
+    else
+        error("Unsupported data array with ndims=$(ndims(data)).")
+    end
+
+    # Time grid = observed times
+    tgrid = timepoints
+
+    # ODE problem definition (we will set u0 per draw)
+    prob = make_ode_problem(ode;
+        labels     = labels,
+        Ltuple     = Ltuple,
+        factors    = factors,
+        u0         = inference["u0"],
+        timepoints = tgrid,
+    )
+
+    # Posterior draws
+    posterior_samples = sample(chain, min(N_samples, length(chain[:lp])); replace=false)
+    S = size(posterior_samples, 1)
+    T = length(tgrid)
+
+    # Parameter indices
+    par_names    = chain.name_map.parameters
+    sigma_ch_idx = findfirst(==(Symbol("σ")), par_names)
+    sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
+    seed_ch_idx = nothing
+    if get(inference, "bayesian_seed", false)
+        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    end
+
+    # Solve trajectories per draw
+    traj = Array{Float64}(undef, N, T, S)   # process trajectories
+    u0_template = fill!(similar(inference["u0"]), 0.0)
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        p    = sample_vec[1:N_pars]
+        u0_s = copy(u0_template)
+        if seed_ch_idx === nothing
+            u0_s[seed] = inference["seed_value"]
+        else
+            u0_s[seed] = sample_vec[seed_ch_idx]
+        end
+        sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
+        traj[:, :, s] = Array(sol[sol_idxs, :])
+    end
+
+    # Posterior predictive: add Normal noise per draw
+    ypred = similar(traj)
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        σ_s = sample_vec[sigma_ch_idx]
+        @inbounds ypred[:, :, s] = traj[:, :, s] .+ (σ_s .* randn(N, T))
+    end
+
+    # Optionally skip the first timepoint
+    first_col = skip_first_timepoint ? 2 : 1
+    first_col <= T || error("No timepoints left after skipping the first.")
+
+    # Clamp to floor if requested (both predictive and observed)
+    if truncate_at_zero
+        floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+        @inbounds ypred .= clamp.(ypred, floor, Inf)
+    end
+
+    # Build masks for valid observed entries (exclude missing)
+    obs_slice = view(obs_mat, :, first_col:T, :)                       # (N, Tsel, R)
+    valid_mask = .!ismissing.(obs_slice)
+
+    # Convert observed to Float64 where valid
+    obs_vals = similar(obs_slice, Float64)
+    @inbounds for i in axes(obs_slice,1), j in axes(obs_slice,2), k in axes(obs_slice,3)
+        if valid_mask[i,j,k]
+            v = obs_slice[i,j,k]
+            obs_vals[i,j,k] = Float64(v)
+        else
+            obs_vals[i,j,k] = NaN
+        end
+    end
+    if truncate_at_zero
+        floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+        @inbounds obs_vals .= clamp.(obs_vals, floor, Inf)
+    end
+
+    # Coverage per level
+    levels = collect(levels)
+    (all(0 .< levels .< 1)) || error("levels must be in (0,1).")
+    Tsel = T - (first_col - 1)
+
+    cover_fracs = Float64[]
+    nominal     = Float64[]
+
+    # Pre-allocate buffers for quantiles
+    lowq   = similar(obs_vals, Float64, N, Tsel)
+    highq  = similar(obs_vals, Float64, N, Tsel)
+
+    for α in levels
+        lo = (1 - α)/2
+        hi = 1 - lo
+
+        # Compute predictive interval bounds per (i,t)
+        @inbounds for i in 1:N, tj in 1:Tsel
+            t = (first_col - 1) + tj
+            v = view(ypred, i, t, :)
+            lowq[i, tj]  = quantile(v, lo)
+            highq[i, tj] = quantile(v, hi)
+        end
+
+        # Count coverage over all valid observed replicates
+        inside = 0
+        total  = 0
+        @inbounds for i in 1:N, tj in 1:Tsel, k in 1:n_rep
+            if valid_mask[i, tj, k]
+                y = obs_vals[i, tj, k]
+                # skip if y is NaN (shouldn’t happen given mask)
+                if isfinite(y)
+                    total += 1
+                    if lowq[i, tj] <= y <= highq[i, tj]
+                        inside += 1
+                    end
+                end
+            end
+        end
+
+        push!(nominal, α)
+        push!(cover_fracs, total == 0 ? NaN : inside / total)
+    end
+
+    # ---- Plot bar chart of coverage vs nominal level ----
+    labels = string.(round.(100 .* nominal; digits=0)) .* "%"
+    f = CairoMakie.Figure()
+    ax = CairoMakie.Axis(f[1,1];
+        title  = "Posterior predictive coverage",
+        xlabel = "Nominal level",
+        ylabel = "Empirical coverage"
+    )
+
+    # bars
+    xs = 1:length(levels)
+    CairoMakie.barplot!(ax, xs, cover_fracs; color=RGBAf(0.2,0.4,0.7,0.8))
+    ax.xticks = (xs, labels)
+
+    # reference points/line at y = nominal level (helpful visual target)
+    CairoMakie.scatter!(ax, xs, nominal; color=:black, markersize=10)
+    CairoMakie.lines!(ax, xs, nominal; color=:black, linestyle=:dash, alpha=0.6)
+
+    # y-limits [0,1] with small headroom
+    Makie.ylims!(ax, 0.0, 1.02)
+    Makie.xlims!(ax, 0.5, length(xs) + 0.5)
+
+    if save_path !== nothing
+        try; mkdir(save_path); catch; end
+        CairoMakie.save(joinpath(save_path, "ppc_coverage_levels.pdf"), f)
+    end
+    return f, (; levels=nominal, coverage=cover_fracs)
+end
+
+
+using CairoMakie, Statistics, Distributions
+
+function plot_ppc_coverage_by_region(inference;
+    save_path::Union{Nothing,String}=nothing,
+    N_samples::Int=400,
+    level::Float64=0.95,
+    skip_first_timepoint::Bool=true,
+    truncate_at_zero::Bool=true,
+    clamp_floor::Union{Nothing,Float64}=0.0,
+)
+    # --- Unpack ---
+    data       = inference["data"]
+    chain      = inference["chain"]
+    timepoints = inference["timepoints"]
+    seed       = inference["seed_idx"]
+    sol_idxs   = inference["sol_idxs"]
+    Ltuple     = inference["L"]
+    labels     = inference["labels"]
+    ks         = collect(keys(inference["priors"]))
+    N_pars     = findall(x->x=="σ", ks)[1] - 1
+    factors    = get(inference, "factors", [1.0 for _ in 1:N_pars])
+    ode        = odes[inference["ode"]]
+
+    # Shapes
+    R = size(data, 1)
+    nd = ndims(data)
+    if nd == 3
+        # (region, time, replicate)
+        nothing
+    elseif nd == 2
+        # (region, time)
+        nothing
+    else
+        error("Unsupported data dims $(ndims(data)).")
+    end
+
+    # Use observed time grid
+    tgrid = timepoints
+    T     = length(tgrid)                  # ensure consistency with lo/hi shapes
+    first_col = skip_first_timepoint ? 2 : 1
+    tsel = first_col:T
+    isempty(tsel) && error("No timepoints left after skipping the first.")
+
+    # ODE problem template
+    prob = make_ode_problem(ode;
+        labels     = labels,
+        Ltuple     = Ltuple,
+        factors    = factors,
+        u0         = inference["u0"],
+        timepoints = tgrid,
+    )
+
+    # Posterior samples
+    posterior_samples = sample(chain, min(N_samples, length(chain[:lp])); replace=false)
+    S = size(posterior_samples, 1)
+
+    # Parameter indices
+    par_names    = chain.name_map.parameters
+    sigma_ch_idx = findfirst(==(Symbol("σ")), par_names)
+    sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
+    seed_ch_idx = nothing
+    if get(inference, "bayesian_seed", false)
+        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    end
+
+    # Simulate process trajectories for each draw at observed timepoints
+    traj = Array{Float64}(undef, R, T, S)
+    u0_template = fill!(similar(inference["u0"]), 0.0)
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        p    = sample_vec[1:N_pars]
+        u0_s = copy(u0_template)
+        if seed_ch_idx === nothing
+            u0_s[seed] = inference["seed_value"]
+        else
+            u0_s[seed] = sample_vec[seed_ch_idx]
+        end
+        sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
+        traj[:, :, s] = Array(sol[sol_idxs, :])
+    end
+
+    # Posterior predictive draws: add Normal noise per draw using that draw’s σ
+    ypred = similar(traj)
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        σ_s = sample_vec[sigma_ch_idx]
+        ypred[:, :, s] = traj[:, :, s] .+ (σ_s .* randn(R, T))
+    end
+
+    # Truncate floor if requested (affects the interval and comparisons)
+    if truncate_at_zero
+        floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+        ypred = clamp.(ypred, floor, Inf)
+    end
+
+    # Predictive interval bounds at each (r,t) across S draws
+    α = (1 - level)/2
+    lo = mapslices(x -> quantile(x, α),   ypred; dims=3)[:, :, 1]   # (R,T)
+    hi = mapslices(x -> quantile(x, 1-α), ypred; dims=3)[:, :, 1]
+
+    # Count per region: numerator = inside PI, denominator = total observed points
+    num = zeros(Int, R)
+    den = zeros(Int, R)
+
+    if nd == 3
+        # data: (r,t,k)
+        for r in 1:R
+            for t in tsel
+                ℓ = lo[r,t]; h = hi[r,t]
+                @inbounds for k in axes(data, 3)
+                    v = data[r,t,k]
+                    if v !== missing
+                        y = Float64(v)
+                        den[r] += 1
+                        if (y >= ℓ) && (y <= h)
+                            num[r] += 1
+                        end
+                    end
+                end
+            end
+        end
+    else
+        # data: (r,t)
+        for r in 1:R
+            for t in tsel
+                v = data[r,t]
+                if v !== missing
+                    y = Float64(v)
+                    ℓ = lo[r,t]; h = hi[r,t]
+                    den[r] += 1
+                    if (y >= ℓ) && (y <= h)
+                        num[r] += 1
+                    end
+                end
+            end
+        end
+    end
+
+    frac = fill(NaN, R)
+    for r in 1:R
+        frac[r] = den[r] > 0 ? num[r] / den[r] : NaN
+    end
+
+    # Sanity check
+    bad = findall(r -> !isnan(frac[r]) && (frac[r] > 1 + 1e-12 || frac[r] < -1e-12), 1:R)
+    if !isempty(bad)
+        @warn "Coverage out of bounds detected" bad_regions=bad num=num[bad] den=den[bad]
+        frac[bad] .= clamp.(frac[bad], 0.0, 1.0)  # last-resort clamp to render plot
+    end
+
+    # --- Plot (keep labels sane for large R) ---
+    f = Figure(resolution=(max(1400, 3R), 500))
+    ax = Axis(f[1,1];
+        title  = "Posterior predictive coverage by region (level=$(round(level*100))%)",
+        xlabel = "Region",
+        ylabel = "Coverage (fraction in interval)",
+    )
+    CairoMakie.barplot!(ax, 1:R, frac; color=:steelblue)
+    CairoMakie.hlines!(ax, [level]; color=:red, linewidth=3, linestyle=:dash)
+    Makie.ylims!(ax, 0, 1.0)
+
+    # Hide labels if too many; otherwise show a subset
+    if R > 60
+        ax.xticklabelsvisible = false
+    else
+        k = max(1, ceil(Int, R/20))
+        sel = 1:k:R
+        Makie.xticks!(ax, (sel, labels[sel]))
+        ax.xticklabelrotation = π/2
+        ax.xticklabelsize = 8
+    end
+
+    if save_path !== nothing
+        try; mkdir(save_path); catch; end
+        CairoMakie.save(joinpath(save_path, "ppc_coverage_by_region.pdf"), f)
+    end
+
+    return f, (; frac, num, den, level, tsel)
+end
+
+
+# ----- PARAM PATH LENGTH
+"""
+Return unique base names from priors that look like `name[<int>]`, in first-seen order.
+"""
+function vector_bases_from_priors(inference)::Vector{String}
+    bases, seen = String[], Set{String}()
+    for v in collect(keys(inference["priors"]))
+        m = match(r"^([^\[]+)\[(\d+)\]$", v)  # base[i]
+        m === nothing && continue
+        b = String(m.captures[1])
+        if !(b in seen); push!(bases, b); push!(seen, b); end
+    end
+    bases
+end
+
+"""
+Posterior-mean vector μ (length R) for one base, using `priors` order to map base[i] -> p[k].
+Assumes chain stores components as p[1] / p__1 / p_1 / p.1 .
+"""
+function posterior_mean_vector_from_priors(chain, priors, base::String, R::Int)
+    # 1) map base[i] -> global index k using priors order up to "σ"
+    pri_keys = collect(keys(priors))
+    kσ = findfirst(==("σ"), pri_keys)
+    N_pars = isnothing(kσ) ? length(pri_keys) : (kσ - 1)
+    idxs = fill(0, R)
+    for (k, name) in enumerate(pri_keys[1:N_pars])
+        m = match(Regex("^" * escape_string(base) * "\\[(\\d+)\\]\$"), name)
+        if m !== nothing
+            j = parse(Int, m.captures[1])
+            (1 ≤ j ≤ R) && (idxs[j] = k)
+        end
+    end
+    any(==(0), idxs) && error("Family '$base' missing some indices 1:$R in priors order.")
+
+    # 2) tiny getter for p[k] with common encodings
+    function _pvals(k)
+        for sym in (Symbol("p[$k]"), Symbol("p__$(k)"), Symbol("p_$(k)"), Symbol("p.$(k)"))
+            try
+                return chain[sym]   # returns array of draws
+            catch
+            end
+        end
+        error("Could not find chain column for p[$k] (tried [k], __k, _k, .k).")
+    end
+
+    # 3) compute means
+    μ = Vector{Float64}(undef, R)
+    @inbounds for i in 1:R
+        μ[i] = mean(vec(_pvals(idxs[i])))
+    end
+    μ
+end
+
+"""
+Weighted shortest-path lengths from Laplacian L = inference["L"][1].
+edge_cost = :reciprocal -> cost = 1/w (default), or :direct -> cost = w.
+"""
+function pathlengths_from_L(inference; symmetrize::Bool=false, edge_cost::Symbol=:reciprocal)
+    L = Matrix(inference["L"][1])
+    W = max.(0.0, -Float64.(L));  W[diagind(W)] .= 0.0
+    if symmetrize; W = 0.5 .* (W .+ W'); end
+    cost = edge_cost === :reciprocal ? (w->1.0/w) :
+            edge_cost === :direct     ? (w->w)    :
+            error("edge_cost must be :reciprocal or :direct")
+    n = size(W,1)
+    g = symmetrize ? SimpleWeightedGraph(n) : SimpleWeightedDiGraph(n)
+    if symmetrize
+        @inbounds for i in 1:n, j in i+1:n
+            (W[i,j] > 0) && add_edge!(g, i, j, cost(W[i,j]))
+        end
+    else
+        @inbounds for i in 1:n, j in 1:n
+            (i!=j && W[i,j] > 0) && add_edge!(g, i, j, cost(W[i,j]))
+        end
+    end
+    dijkstra_shortest_paths(g, inference["seed_idx"]).dists
+end
+
+"""
+Plot posterior-mean of `base[i]` vs weighted path length from seed.
+"""
+function plot_param_vs_pathlength(inference;
+    base::String,
+    symmetrize::Bool=false,
+    overlay_regression::Bool=false,
+    show_r2::Bool=true,
+    min_prior_shift::Union{Nothing,Float64}=nothing,  # standardized shift filter (≥ threshold)
+    region_idxs::Union{Nothing,AbstractVector{<:Integer}}=nothing,  # <-- NEW: only plot these regions
+    save_path::Union{Nothing,String}=nothing,
+    filename::String="param_vs_pathlength.pdf"
+)
+    R = size(inference["data"], 1)
+    chain, priors = inference["chain"], inference["priors"]
+
+    # distances (cost = 1/w; you already fixed pathlengths_from_L)
+    d = pathlengths_from_L(inference; symmetrize=symmetrize)
+    @assert length(d) == R
+    keep = .!isinf.(d) .& .!isnan.(d)
+
+    # optional: restrict to a user-provided subset of region indices
+    if region_idxs !== nothing
+        sel = falses(R)
+        @inbounds for i in region_idxs
+            if 1 <= i <= R
+                sel[i] = true
+            end
+        end
+        keep .&= sel
+    end
+
+    # posterior means for base[i] via your priors→p[k] mapping
+    y = posterior_mean_vector_from_priors(chain, priors, base, R)
+
+    # single filter: standardized mean shift relative to prior SD
+    if min_prior_shift !== nothing
+        μprior = similar(d); σprior = similar(d)
+        @inbounds for i in 1:R
+            pr = priors["$base[$i]"]
+            μprior[i] = mean(pr)
+            σprior[i] = std(pr)
+        end
+        δ = abs.(y .- μprior) ./ σprior
+        keep .&= (δ .>= min_prior_shift)
+    end
+
+    keep .&= .!isnan.(y)
+
+    f = Figure()
+    ax = Axis(f[1,1];
+        title  = base,
+        xlabel = symmetrize ? "Weighted path length (undirected)" : "Weighted path length (directed)",
+        ylabel = "Posterior mean of $(base)[i]"
+    )
+    CairoMakie.scatter!(ax, d[keep], y[keep])
+
+    if overlay_regression && sum(keep) ≥ 2
+        X  = hcat(ones(sum(keep)), d[keep]); β = X \ y[keep]
+        xs = range(minimum(d[keep]), maximum(d[keep]); length=200)
+        lines!(ax, xs, β[1] .+ β[2] .* xs)
+        if show_r2 && sum(keep) ≥ 3
+            ŷ  = X * β
+            r2 = 1 - sum((y[keep] .- ŷ).^2) / sum((y[keep] .- mean(y[keep])).^2)
+            ax.title = "$(base)  (R² = $(round(r2, digits=3))), n=$(sum(keep))"
+        end
+    end
+
+    if save_path !== nothing
+        try; mkdir(save_path); catch; end
+        CairoMakie.save(joinpath(save_path, filename), f)
+    end
+    return f
+end
+
+
+using CairoMakie, Statistics, Distributions
+
+# Assumes you already have this mapping helper (from earlier):
+# posterior_mean_vector_from_priors(chain, priors, base::String, R::Int)
+
+"""
+plot_two_local_params_scatter(inference; bases=nothing, min_prior_shift=nothing,
+                              region_idxs=nothing, overlay_regression=false,
+                              show_r2=true, save_path=nothing,
+                              filename="two_local_params_scatter.pdf")
+
+- If `bases === nothing`, auto-detects exactly TWO local families from keys(priors).
+  If it doesn't find exactly two, returns `nothing` and does nothing.
+- If `bases` is provided, pass a Tuple like ("beta","gamma").
+
+Filters:
+- `region_idxs` :: Vector{Int} — only plot these regions.
+- `min_prior_shift` :: Real — keep regions where *either* family moved by at least
+  this many prior SDs: |E_post - E_prior| / SD_prior ≥ threshold.
+
+Scatter axes: x = mean of first base, y = mean of second base.
+"""
+function plot_two_local_params_scatter(inference;
+    bases::Union{Nothing,Tuple{String,String}}=nothing,
+    min_prior_shift::Union{Nothing,Float64}=nothing,
+    region_idxs::Union{Nothing,AbstractVector{<:Integer}}=nothing,
+    overlay_regression::Bool=false,
+    show_r2::Bool=false,
+    save_path::Union{Nothing,String}=nothing,
+    filename::String="two_local_params_scatter.pdf",
+)
+    R       = size(inference["data"], 1)
+    chain   = inference["chain"]
+    priors  = inference["priors"]
+    pk      = collect(keys(priors))
+
+    # Auto-detect two bases from priors if not provided
+    if bases === nothing
+        found = String[]
+        seen  = Set{String}()
+        @inbounds for v in pk
+            m = match(r"^([^\[]+)\[(\d+)\]$", v)
+            if m !== nothing
+                b = String(m.captures[1])
+                if !(b in seen)
+                    push!(found, b); push!(seen, b)
+                end
+            end
+        end
+        if length(found) != 2
+            @info "plot_two_local_params_scatter: expected exactly 2 local families, found $(length(found)). Doing nothing."
+            return nothing
+        end
+        bases = (found[1], found[2])
+    end
+    b1, b2 = bases
+
+    # Posterior means per region for both families (via priors→p[k] mapping)
+    μx = posterior_mean_vector_from_priors(chain, priors, b1, R)
+    μy = posterior_mean_vector_from_priors(chain, priors, b2, R)
+
+    # Build keep mask
+    keep = trues(R)
+    if region_idxs !== nothing
+        sel = falses(R)
+        @inbounds for i in region_idxs
+            if 1 <= i <= R; sel[i] = true; end
+        end
+        keep .&= sel
+    end
+
+    if min_prior_shift !== nothing
+        μp1 = similar(μx); σp1 = similar(μx)
+        μp2 = similar(μy); σp2 = similar(μy)
+        @inbounds for i in 1:R
+            pr1 = priors["$b1[$i]"]; μp1[i] = mean(pr1); σp1[i] = std(pr1)
+            pr2 = priors["$b2[$i]"]; μp2[i] = mean(pr2); σp2[i] = std(pr2)
+        end
+        δ1 = abs.(μx .- μp1) ./ σp1
+        δ2 = abs.(μy .- μp2) ./ σp2
+        keep .&= (δ1 .>= min_prior_shift) .| (δ2 .>= min_prior_shift)
+    end
+
+    keep .&= .!isnan.(μx) .& .!isnan.(μy)
+
+    # Plot
+    f = Figure()
+    ax = Axis(f[1,1];
+        title  = "$(b1) vs $(b2) (posterior means)",
+        xlabel = "$(b1) posterior mean",
+        ylabel = "$(b2) posterior mean",
+    )
+    CairoMakie.scatter!(ax, μx[keep], μy[keep])
+
+    if overlay_regression && sum(keep) ≥ 2
+        X  = hcat(ones(sum(keep)), μx[keep])
+        β  = X \ μy[keep]
+        xs = range(minimum(μx[keep]), maximum(μx[keep]); length=200)
+        lines!(ax, xs, β[1] .+ β[2] .* xs)
+        if show_r2 && sum(keep) ≥ 3
+            ŷ  = X * β
+            r2 = 1 - sum((μy[keep] .- ŷ).^2) / sum((μy[keep] .- mean(μy[keep])).^2)
+            ax.title = @sprintf("%s vs %s  (R² = %.3f, n=%d)", b1, b2, r2, sum(keep))
+        end
+    end
+
+    if save_path !== nothing
+        try; mkdir(save_path); catch; end
+        CairoMakie.save(joinpath(save_path, filename), f)
+    end
+    return f
+end
+
+
+
 #=
 master plotting function (plot everything relevant to inference)
  =#
-function plot_inference(inference, save_path; N_samples=300, show_variance=false)
+function plot_inference(inference, save_path; N_samples=300, show_variance=false, nonzero_regions=false)
     # load inference simulation 
     #display(inference["chain"])
 
@@ -1191,8 +1832,43 @@ function plot_inference(inference, save_path; N_samples=300, show_variance=false
         catch
         end
     end
-    
+
+    # find nonzero indices for plotting if needed
+    region_idxs = nothing
+    if nonzero_regions
+        region_idxs = nonzero_regions(inference["data"], eps=0.22)
+    end
+        
     # plot
+    plot_two_local_params_scatter(inference;
+    save_path=save_path*"/two_param_scatter",
+    )
+    # Plot parameters means as function of path length from seed
+    for b in vector_bases_from_priors(inference)
+        plot_param_vs_pathlength(
+            inference;
+            base      = b,
+            min_prior_shift = nothing,
+            region_idxs = region_idxs,
+            save_path = save_path*"/path_parameters",
+            filename  = "$(b)_vs_pathlength.pdf",
+        )
+    end
+
+    plot_ppc_coverages(inference;
+    save_path = save_path*"/coverage",
+    levels = [0.25, 0.5, 0.75, 0.95],
+    N_samples = 1000,
+    skip_first_timepoint = false,
+    truncate_at_zero = true,
+    clamp_floor = 0.0
+    )
+    plot_ppc_coverage_by_region(inference;
+    save_path=save_path*"/coverage",
+    N_samples=400,
+    level=0.75,
+    skip_first_timepoint=false
+    )
     plot_calibration(inference;
     save_path=save_path*"/calibration",      # directory to save output (or nothing for no file)
     N_samples=200,         # how many posterior samples to draw
@@ -1205,17 +1881,15 @@ function plot_inference(inference, save_path; N_samples=300, show_variance=false
     truncate_at_zero=true,
     clamp_floor=0.0
     )
-
-    # plot
     plot_calibration_cross(inference;
         save_path = save_path*"/calibration_cross",  # directory to save output (or nothing for no file)
         N_samples = 200,          # how many posterior samples to draw
         interval = :process,      # vertical CI source: :process (traj only) or :predictive (traj + noise)
-        x_ci_from = :predictive,     # horizontal CI source: :process or :predictive
-        binning = :geometric,     # :quantile | :geometric | :adaptive
-        bins = 50,                # number of bins (ignored if :adaptive)
-        #binning = :adaptive,
-        #min_bin_count = 100,     # minimum points per bin (adaptive only)
+        x_ci_from = :process,     # horizontal CI source: :process or :predictive
+        #binning = :geometric,     # :quantile | :geometric | :adaptive
+        #bins = 40,                # number of bins (ignored if :adaptive), we have ~3000 data points -> 50-200 bins
+        binning = :adaptive,
+        min_bin_count = 3,     # minimum points per bin (adaptive only), 30-100 bins for ~3000 data points
         skip_first_timepoint = true,
         truncate_at_zero = true,
         clamp_floor = 0.0,
