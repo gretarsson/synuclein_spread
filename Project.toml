@@ -1,4 +1,4 @@
-name = "synuclein"
+name = "PathoSpread"
 uuid = "05ce577d-75c9-4f45-b5e7-b2a56d014591"
 authors = ["gretarsson <cga323@gmail.com>"]
 version = "0.1.0"

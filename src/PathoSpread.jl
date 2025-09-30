@@ -1,4 +1,4 @@
-module synuclein
+module PathoSpread
 
 greet() = print("Hello World!")
 
