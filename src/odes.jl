@@ -1,9 +1,4 @@
-# odes.jl
-
-module ODEs
-
-export DIFFGAM, DIFFGAM_bilateral
-
+# src/odes.jl  (no module here)
 using LinearAlgebra
 using Statistics
 
@@ -137,7 +132,7 @@ function DIFFGAM_bilateral(du, u, p, t; L, factors = (1.,1.), region_group::Vect
 end
 
 # Dictionary containing the ODEs
-odes = Dict("DIFF" => DIFF,
+const odes = Dict("DIFF" => DIFF,
             "DIFFG" => DIFFG,
             "DIFFGA" => DIFFGA,
             "DIFFGAM" => DIFFGAM,
@@ -149,6 +144,3 @@ odes = Dict("DIFF" => DIFF,
             #"DIFFGA_bilateral" => DIFFGA_bilateral,
             "DIFFGAM_bilateral" => DIFFGAM_bilateral,
             )
-
-
-end # module ODEs

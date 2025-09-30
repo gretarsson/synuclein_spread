@@ -18,3 +18,4 @@ const ode_dimensions = Dict(
     "DIFFGAM_bidirectional" => N -> 2N,
     "DIFFGAM_bilateral"     => N -> 2N,
 )
+

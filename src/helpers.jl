@@ -21,8 +21,6 @@ using Plots
 using DataFrames, StatsBase, GLM
 using Plots
 using LaTeXStrings
-include("odes.jl")
-using .ODEs: odes
 #=
 Helper functions for the project
 =#
@@ -2779,3 +2777,36 @@ function nonzero_regions(data; eps::Real=0.05)
     sel = vec(any(Mc .> eps, dims=2))                    # Bool vector length R
     return findall(sel)                                  # Vector{Int}
 end
+
+
+using Serialization: serialize, deserialize
+
+"""
+    load_inference(path::AbstractString)
+
+Load a serialized inference object from disk.
+
+This is a thin wrapper around `Serialization.deserialize`.  
+It expects `path` to point to a `.jl` file produced by `save_inference`.  
+Returns the stored object (typically a `Dict` containing chains, priors, data, …).
+"""
+function load_inference(path::AbstractString)
+    return deserialize(path)
+end
+
+"""
+    save_inference(path::AbstractString, obj)
+
+Serialize an inference object to disk.
+
+This wraps `Serialization.serialize` and writes `obj` to the given `path`.  
+The object should contain only types whose defining modules are loaded at
+deserialize-time (e.g. `MCMCChains.Chains`, `Distributions.Normal`, your own
+`PathoSpread` structs).  
+By convention we use `.jl` files under a `simulations/` directory.
+"""
+function save_inference(path::AbstractString, obj)
+    serialize(path, obj)
+    return nothing
+end
+

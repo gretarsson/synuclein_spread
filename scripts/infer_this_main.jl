@@ -55,9 +55,18 @@
 
 using ArgParse
 using Distributed
-include("Data_processing.jl")
-include("ODE_dimensions.jl")
-using .Data_processing: process_pathology
+
+# NEW
+using PathoSpread
+# OLD
+#include("Data_processing.jl")
+#include("ODE_dimensions.jl")
+#using .Data_processing: process_pathology
+
+# for algorithm solver choice, sensitivity analysis
+using DifferentialEquations
+using SciMLSensitivity
+using Turing
 
 
 # use ArgParse to define CLI arguments
@@ -217,11 +226,11 @@ function main(parsed)
                     n_chains=n_chains,
                     bayesian_seed=infer_seed,
                     seed=seed,
-                    alg=Tsit5(),
+                    alg=Tsit5(),  # from DifferentialEquations
                     abstol=1e-6,
                     reltol=1e-3,
-                    adtype=AutoReverseDiff(),  # without compile much faster for aggregation and death
-                    sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
+                    adtype=AutoReverseDiff(),  # without compile much faster, from SciMLSensitivity
+                    sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),  # from Turing/SciMLSensitivity
                     target_acceptance=target_acceptance,
                     benchmark=false,
                     benchmark_ad=[:reversediff],
@@ -232,9 +241,11 @@ function main(parsed)
 
     # SAVE 
     if isnothing(out_file)
-        serialize("simulations/$(ode)_N=$(N)_threads=$(n_chains).jls", inference)
+        save_inference("simulations/$(ode)_N=$(N)_threads=$(n_chains).jls", inference)
+        #serialize("simulations/$(ode)_N=$(N)_threads=$(n_chains).jls", inference)
     else
-        serialize(out_file, inference)
+        #serialize(out_file, inference)
+        save_inference(out_file, inference)
     end
 end
 
@@ -265,8 +276,11 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # 3) on each worker, bring in your modeling code
     @everywhere using Turing
     @everywhere using ParallelDataTransfer
-    @everywhere include("helpers.jl")
-    @everywhere include("model_priors.jl")
+    # NEW
+    @everywhere using PathoSpread
+    # OLD
+    #@everywhere include("helpers.jl")
+    #@everywhere include("model_priors.jl")
 
     try
         main(parsed)

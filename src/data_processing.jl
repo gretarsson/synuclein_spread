@@ -1,9 +1,3 @@
-module Data_processing
-
-using CSV, DataFrames
-
-export process_pathology
-
 """
     process_pathology(path_csv::String; W_csv::Union{Nothing,String}=nothing)
 
@@ -62,4 +56,3 @@ function process_pathology(path_csv::String; W_csv::Union{Nothing,String}=nothin
     return data, mpis
 end
 
-end # module
