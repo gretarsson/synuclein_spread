@@ -11,9 +11,9 @@ simulation = "DIFFGAM_BIDIR";
 inference_obj = deserialize("simulations/"*simulation*".jl")
 
 # look at chains
-#display(inference_obj["chain"][:,:,[1,2,3,4]])
-#inference_obj["chain"] = inference_obj["chain"][:,:,[1,3,4]]
-#serialize("simulations/" * simulation * ".jl", inference_obj)
+display(inference_obj["chain"][:,:,[1,2,3]])
+inference_obj["chain"] = inference_obj["chain"][:,:,[1,2,3]]
+serialize("simulations/" * simulation * ".jl", inference_obj)
 
 # plot
 plot_inference(inference_obj,"figures/"*simulation)  

@@ -19,14 +19,15 @@ simulations = [
     #"simulations/DIFFGA_RETRO",
     #"simulations/DIFFGA_BIDIR",
     ##
-    #"simulations/DIFFGAM_ANTERO",
-    #"simulations/DIFFGAM_RETRO",
-    #"simulations/DIFFGAM_BIDIR",
-    #
-    "simulations/DIFF_RETRO",
-    "simulations/DIFFG_RETRO",
-    "simulations/DIFFGA_RETRO",
+    "simulations/DIFFGAM_EUCL",
+    "simulations/DIFFGAM_ANTERO",
     "simulations/DIFFGAM_RETRO",
+    "simulations/DIFFGAM_BIDIR",
+    #
+    #"simulations/DIFF_RETRO",
+    #"simulations/DIFFG_RETRO",
+    #"simulations/DIFFGA_RETRO",
+    #"simulations/DIFFGAM_RETRO",
 
 ]
 model_names = [
@@ -45,14 +46,15 @@ model_names = [
     #"DIFFGA retrograde", 
     #"DIFFGA bidirectional", 
     ##
-    #"DIFFGAM anterograde", 
-    #"DIFFGAM retrograde", 
-    #"DIFFGAM bidirectional", 
-    #
-    "DIFF retrograde", 
-    "DIFFG retrograde", 
-    "DIFFGA retrograde", 
+    "DIFFGAM euclidean", 
+    "DIFFGAM anterograde", 
     "DIFFGAM retrograde", 
+    "DIFFGAM bidirectional", 
+    #
+    #"DIFF retrograde", 
+    #"DIFFG retrograde", 
+    #"DIFFGA retrograde", 
+    #"DIFFGAM retrograde", 
 ]
 inferences = []
 for simulation in simulations
@@ -280,4 +282,4 @@ Makie.xlims!(ax, xmin-0.1*pad, xmax + pad)
 
 # save figure
 fig
-save("figures/model_comparison/models_delta_waic_vs_best.pdf", fig)
+save("figures/model_comparison/DIFFGAM_delta_waic_vs_best.pdf", fig)

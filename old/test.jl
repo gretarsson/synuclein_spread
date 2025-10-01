@@ -1,15 +1,9 @@
-using Turing
+using Serialization
+include("Data_processing.jl")
+using .Data_processing: process_pathology
 
-# Simple model
-@model function simple_model(p)
-    s ~ Normal(0,1)
-    p ~ Normal(s, 5)
-end
+data1 = deserialize("data/total_path_3D.jls")
+data2 = process_pathology("data/total_path.csv"; W_csv="data/W_labeled.csv")
 
-# Callback function
-function my_callback(rng, model, sampler, sample, iteration)
-    println("Iteration: $iteration, p: $(sample[:p])")
-end
+isequal(data1,data2)
 
-# Sample with callback
-chain = sample(simple_model(1.), NUTS(), 1000; callback=my_callback)
