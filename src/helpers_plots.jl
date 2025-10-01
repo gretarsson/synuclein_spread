@@ -2468,6 +2468,184 @@ function plot_calibration_cross2(inference;
 end
 
 
+# === Posterior SD per region for a local family base[i] ===
+function posterior_sd_vector_from_priors(chain, priors, base::String, R::Int)
+    # Map base[i] -> global p[k] index via priors order, same as your mean helper
+    pri_keys = collect(keys(priors))
+    kσ = findfirst(==("σ"), pri_keys)
+    N_pars = isnothing(kσ) ? length(pri_keys) : (kσ - 1)
+    idxs = fill(0, R)
+    for (k, name) in enumerate(pri_keys[1:N_pars])
+        m = match(Regex("^" * escape_string(base) * "\\[(\\d+)\\]\$"), name)
+        if m !== nothing
+            j = parse(Int, m.captures[1])
+            (1 ≤ j ≤ R) && (idxs[j] = k)
+        end
+    end
+    any(==(0), idxs) && error("Family '$base' missing some indices 1:$R in priors order.")
+
+    # getter for p[k] draws (same conventions you used)
+    function _pvals(k)
+        for sym in (Symbol("p[$k]"), Symbol("p__$(k)"), Symbol("p_$(k)"), Symbol("p.$(k)"))
+            try; return chain[sym]; catch; end
+        end
+        error("Could not find chain column for p[$k]")
+    end
+
+    σ = Vector{Float64}(undef, R)
+    @inbounds for i in 1:R
+        σ[i] = std(vec(_pvals(idxs[i])))
+    end
+    σ
+end
+
+# === Effect-size shift between two inferences for one local family ===
+function local_effectsize_delta(infA, infB; base::String)
+    R = size(infA["data"], 1)
+    μA = posterior_mean_vector_from_priors(infA["chain"], infA["priors"], base, R)
+    μB = posterior_mean_vector_from_priors(infB["chain"], infB["priors"], base, R)
+    σA = posterior_sd_vector_from_priors(infA["chain"], infA["priors"], base, R)
+    σB = posterior_sd_vector_from_priors(infB["chain"], infB["priors"], base, R)
+    Δμ = μB .- μA
+    δ  = abs.(Δμ) ./ sqrt.(σA.^2 .+ σB.^2 .+ eps())  # eps to avoid 0
+    (; Δμ, δ, μA, μB)
+end
+
+# === Detect global parameters from priors (non-[i] and before σ) ===
+function global_param_names(inference)
+    pk = collect(keys(inference["priors"]))
+    kσ = findfirst(==("σ"), pk)
+    upto = isnothing(kσ) ? length(pk) : kσ - 1
+    names = String[]
+    for j in 1:upto
+        if match(r"^[^\[]+\[\d+\]$", pk[j]) === nothing  # not base[i]
+            push!(names, pk[j])
+        end
+    end
+    # remove duplicates and keep order
+    unique(names)
+end
+
+# === Extract posterior quantiles for a global parameter given priors index ===
+function _global_quantiles(chain, priors, name::String; qs=(0.025,0.5,0.975))
+    # find index k where priors key == name (before σ)
+    pk = collect(keys(priors))
+    k = findfirst(==(name), pk)
+    k === nothing && error("Global param '$name' not found in priors.")
+    function _pvals(k)
+        for sym in (Symbol("p[$k]"), Symbol("p__$(k)"), Symbol("p_$(k)"), Symbol("p.$(k)"))
+            try; return chain[sym]; catch; end
+        end
+        error("Could not find chain column for p[$k]")
+    end
+    v = vec(_pvals(k))
+    map(q -> quantile(v, q), qs)
+end
+
+# === 1) Global: slope-with-intervals across multiple inferences ===
+using CairoMakie
+
+function plot_global_posterior_slope(infs::Vector, inf_names::Vector{<:AbstractString};
+    save_path::Union{Nothing,String}=nothing)
+    @assert length(infs) == length(inf_names)
+    # intersect global param names across all inferences to be safe
+    gsets = [Set(global_param_names(inf)) for inf in infs]
+    gpars = collect(intersect(gsets...))
+    isempty(gpars) && return nothing
+
+    f = Figure(resolution=(900, 250 + 60*length(gpars)))
+    ax = Axis(f[1,1]; title="Global parameters: posterior medians with 95% CI",
+              xlabel="Inference", ylabel="Value")
+    xs = 1:length(infs)
+    for (i,g) in enumerate(gpars)
+        meds = Float64[]; lo = Float64[]; hi = Float64[]
+        for inf in infs
+            q = _global_quantiles(inf["chain"], inf["priors"], g)
+            push!(lo,  q[1]); push!(meds, q[2]); push!(hi,  q[3])
+        end
+        # vertical offset per parameter
+        # draw line & points for this param
+        lines!(ax, xs, meds; color=:black, linewidth=2)
+        errorbars!(ax, xs, meds, meds .- lo, hi .- meds; color=:black, whiskerwidth=15)
+        CairoMakie.scatter!(ax, xs, meds; markersize=10, color=:black)
+        # label on the right
+        text!(ax, maximum(xs) + 0.2, meds[end]; text=g, align=(:left,:center), fontsize=12)
+    end
+    ax.xticks = (xs, inf_names)
+    if save_path !== nothing
+        try; mkpath(save_path); catch; end
+        save(joinpath(save_path, "global_posterior_slope.pdf"), f)
+    end
+    f
+end
+
+# === 2) Local: heatmap of effect-size deltas across pairs ===
+function plot_local_delta_heatmap(infs::Vector, inf_names::Vector{<:AbstractString};
+    base::String,
+    compare_pairs::Vector{Tuple{Int,Int}} = [(1,2),(2,3)],
+    order::Symbol = :pathlength,     # :pathlength | :by_median_delta
+    cap::Float64 = 2.0,              # colorbar cap (δ clipped at cap)
+    save_path::Union{Nothing,String}=nothing
+)
+    R = size(infs[1]["data"], 1)
+    # compute δ per pair
+    D = Matrix{Float64}(undef, R, length(compare_pairs))
+    for (j,(a,b)) in enumerate(compare_pairs)
+        D[:,j] = local_effectsize_delta(infs[a], infs[b]; base=base).δ
+    end
+    # row order
+    ord = collect(1:R)
+    if order == :pathlength
+        d = pathlengths_from_L(infs[end]; symmetrize=false)
+        keep = .!isinf.(d) .& .!isnan.(d)
+        ord = sortperm(d)  # unreachable last can still be placed at end
+        # push NaNs/Infs to bottom
+        ord = vcat(ord[keep[ord]], ord[.!keep[ord]])
+    elseif order == :by_median_delta
+        md = mapslices(median, D; dims=2)[:,1]
+        ord = sortperm(md; rev=true)
+    end
+
+    # clipped matrix for color
+    Dc = clamp.(D[ord, :], 0, cap)
+
+    rows   = size(Dc, 1)         # or just R
+    height = 250 + ceil(Int, 0.7 * rows)   # or round(Int, ...), or floor(Int, ...)
+    f = Figure(resolution = (600, height))
+    ax = Axis(f[1,1]; title="$base: effect-size shift (δ)", xlabel="Comparison", ylabel="Region (ordered)")
+    hm = CairoMakie.heatmap!(ax, Dc'; colormap=:viridis)  # transpose to put pairs on x-axis
+    ax.xticks = (1:length(compare_pairs), ["$(inf_names[a])→$(inf_names[b])" for (a,b) in compare_pairs])
+    Colorbar(f[1,2], hm, label="δ (|Δμ| / pooled sd)", ticks=[0,0.5,1,1.5,2.0])
+    if save_path !== nothing
+        try; mkpath(save_path); catch; end
+        save(joinpath(save_path, "local_$(base)_delta_heatmap.pdf"), f)
+    end
+    f
+end
+
+# === 3) Local: stability scatter vs Full ===
+function plot_local_scatter_vs_full(full_inf, other_inf; base::String,
+    other_name::AbstractString="T-1", full_name::AbstractString="Full",
+    alpha::Float64 = 0.25, save_path::Union{Nothing,String}=nothing)
+    R = size(full_inf["data"], 1)
+    μ_full  = posterior_mean_vector_from_priors(full_inf["chain"],  full_inf["priors"],  base, R)
+    μ_other = posterior_mean_vector_from_priors(other_inf["chain"], other_inf["priors"], base, R)
+
+    f = Figure(resolution=(700,600))
+    ax = Axis(f[1,1]; title="$base: posterior means ($other_name vs $full_name)",
+              xlabel="$other_name", ylabel="$full_name")
+    CairoMakie.scatter!(ax, μ_other, μ_full; markersize=8, color=(RGBf(0,0,0), alpha))
+    # y = x
+    mn = min(minimum(μ_other), minimum(μ_full))
+    mx = max(maximum(μ_other), maximum(μ_full))
+    lines!(ax, [mn,mx], [mn,mx]; color=:gray, linestyle=:dash)
+
+    if save_path !== nothing
+        try; mkpath(save_path); catch; end
+        save(joinpath(save_path, "local_$(base)_scatter_$(other_name)_vs_$(full_name).pdf"), f)
+    end
+    f
+end
 
 
 
