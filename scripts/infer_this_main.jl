@@ -164,9 +164,10 @@ function main(parsed)
     if test 
         # HARD-CODED TEST, N=40 
         _, idxs = read_data("data/avg_total_path.csv", remove_nans=true, threshold=0.15);
-        data, timepoints = process_pathology(data_file; W_csv=w_file)[idxs,:,:];
-        Lr,N,labels = read_W(w_file, direction=:retro, idxs=idxs);
-        La,_,_ = read_W(w_file, direction=:antero, idxs=idxs);
+        data, timepoints = process_pathology(data_file; W_csv="data/W_labeled.csv");
+        data = data[idxs,:,:];
+        Lr,N,labels = read_W("data/W_labeled.csv", direction=:retro, idxs=idxs);
+        La,_,_ = read_W("data/W_labeled.csv", direction=:antero, idxs=idxs);
     else
         # PATHOLOGY DATA
         data, timepoints = process_pathology(data_file; W_csv=w_file);
