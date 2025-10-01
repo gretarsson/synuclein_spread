@@ -2778,6 +2778,170 @@ function nonzero_regions(data; eps::Real=0.05)
     return findall(sel)                                  # Vector{Int}
 end
 
+# --- Predictive accuracy on held-out timepoints: log score & CRPS -----------------------------
+"""
+    compute_heldout_scores(inference;
+        data_full, timepoints_full, S=400, rng=Random.default_rng())
+
+Returns a NamedTuple with:
+- elpd_mean :: Float64   (mean per-point log predictive density)
+- crps_mean :: Float64   (mean per-point CRPS, in the same 0–100 units as data)
+- n_points  :: Int
+- elpd_i    :: Vector{Float64}   (per held-out point)
+- crps_i    :: Vector{Float64}   (per held-out point)
+"""
+function compute_heldout_scores(inference::Dict;
+    data_full,
+    timepoints_full::AbstractVector{<:Real},
+    S::Int=400,
+    rng = Random.default_rng()
+)
+    # --- helpers ---------------------------------------------------------------
+    logmeanexp(v::AbstractVector{<:Real}) = (m = maximum(v); m + log(mean(exp.(v .- m))))
+    # fast (1/S^2) * sum_{i,j} |x_i - x_j| using sorted samples
+    function mean_abs_pairwise(xs::Vector{Float64})
+        S = length(xs)
+        xs_sorted = sort(xs)
+        # 2 * sum_{i<j} (x_j - x_i) = 2 * sum_{i=1}^S (2i - S - 1) * x_(i)
+        pair_sum = 2.0 * sum(((2i - S - 1) * xs_sorted[i]) for i in 1:S)
+        return pair_sum / (S^2)
+    end
+    # ---------------------------------------------------------------------------
+
+    chain      = inference["chain"]
+    priors     = inference["priors"]
+    time_train = inference["timepoints"]
+    R          = size(data_full, 1)
+    Tfull      = length(timepoints_full)
+    K          = ndims(data_full) == 3 ? size(data_full, 3) : 1
+    sol_idxs   = get(inference, "sol_idxs", collect(1:R))
+    u0_base    = copy(inference["u0"])
+    Ltuple     = inference["L"]
+    factors    = get(inference, "factors", ones(Float64, length(chain.name_map.parameters)))
+    bayes_seed = inference["bayesian_seed"]
+    seed_idx   = inference["seed_idx"]
+    seed_value = inference["seed_value"]
+
+    # ODE function from your global dictionary
+    ode_fn = odes[inference["ode"]]
+
+    # indices in the full grid that are NOT in the training grid
+    heldout_t = [j for (j,t) in enumerate(timepoints_full)
+                if !any(isapprox(t, τ; atol=1e-8, rtol=1e-8) for τ in time_train)]
+
+
+    # build list of held-out (r, t, y) points (each replicate counts as a separate point)
+    rs, ts, ys = Int[], Int[], Float64[]
+    if K == 1
+        for r in 1:R, tj in heldout_t
+            y = data_full[r, tj]
+            if !(ismissing(y))
+                push!(rs, r); push!(ts, tj); push!(ys, Float64(y))
+            end
+        end
+    else
+        for r in 1:R, tj in heldout_t, k in 1:K
+            y = data_full[r, tj, k]
+            if !(ismissing(y))
+                push!(rs, r); push!(ts, tj); push!(ys, Float64(y))
+            end
+        end
+    end
+    n_points = length(ys)
+    @assert n_points > 0 "No held-out points found."
+
+    # figure out σ indexing (global or regional)
+    pnames_sym = chain.name_map.parameters
+    sigma_cols = findall(n -> occursin("σ[", String(n)) || n == :σ, pnames_sym)
+    regional_sigma = length(sigma_cols) > 1
+
+    # index of first non-σ parameter count
+    ks = collect(keys(priors))
+    N_pars = findfirst(x -> x == "σ", ks) - 1
+
+    # set up ODE Problem at full time grid
+    function rhs(du,u,p,t)
+        ode_fn(du, u, p, t; L=Ltuple, factors=factors)
+    end
+    tspan = (timepoints_full[1], timepoints_full[end])
+    prob  = ODEProblem(rhs, u0_base, tspan; alg=Tsit5())
+
+    # sample S posterior draws
+    draws = sample(chain, S; replace=false)
+    drawsA = Array(draws)  # (S, n_pars_total, 1)
+
+    # storage
+    # for ELPD we keep log-lik per draw; for CRPS we keep one predictive sample per draw
+    ll = Array{Float64}(undef, S, n_points)
+    x  = Array{Float64}(undef, S, n_points)
+
+    for s in 1:S
+        θ = vec(drawsA[s, :, 1])
+        p = θ[1:N_pars]
+
+        # initial conditions with/without Bayesian seed
+        u0 = copy(u0_base)
+        if bayes_seed
+            # find "seed" column safely
+            seed_col = findfirst(n -> n == :seed || String(n) == "seed", pnames_sym)
+            @assert seed_col !== nothing "Could not find :seed in chain names."
+            u0[seed_idx] = θ[seed_col]
+        else
+            u0[seed_idx] = seed_value
+        end
+
+        # extract σ (global or per-region)
+        if regional_sigma
+            # σ[1], σ[2], ...
+            sigma_for_region = r -> θ[sigma_cols[r]]
+        else
+            σ = θ[sigma_cols[1]]
+            sigma_for_region = r -> σ
+        end
+
+        # solve the ODE at the full grid
+        sol = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints_full, abstol=1e-9, reltol=1e-6)
+        U   = Array(sol[sol_idxs, :])  # R × Tfull
+
+        # fill per-point arrays for this draw
+        @inbounds for i in 1:n_points
+            r = rs[i]; t = ts[i]; y = ys[i]
+            μ = U[r, t]
+            σi = sigma_for_region(r)
+
+            ll[s, i] = logpdf(Normal(μ, σi), y)
+            x[s,  i] = μ + randn(rng) * σi
+        end
+    end
+
+    # ELPD per point (mixture over draws)
+    elpd_i = [logmeanexp(ll[:, i]) for i in 1:n_points]
+
+    # CRPS per point via sample identity:
+    # CRPS ≈ mean(|X - y|) - 0.5 * E|X - X'|, with E|X - X'| ≈ (1/S^2)∑_{i,j} |x_i - x_j|
+    crps_i = Vector{Float64}(undef, n_points)
+    for i in 1:n_points
+        xi = view(x, :, i)
+        term1 = mean(abs.(xi .- ys[i]))
+        term2 = 0.5 * mean_abs_pairwise(Vector{Float64}(xi))
+        crps_i[i] = term1 - term2
+    end
+
+    return (
+        elpd_mean = mean(elpd_i),
+        crps_mean = mean(crps_i),
+        n_points  = n_points,
+        elpd_i    = elpd_i,
+        crps_i    = crps_i,
+    )
+end
+
+
+
+
+
+
+
 
 using Serialization: serialize, deserialize
 

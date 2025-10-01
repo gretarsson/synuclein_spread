@@ -1812,34 +1812,408 @@ function plot_two_local_params_scatter(inference;
     return f
 end
 
+function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
+    show_band=true, band=(0.25, 0.75),
+    data_style::Symbol=:mean, data_error::Symbol=:none,
+    level::Union{Nothing,Float64}=nothing,      # e.g., 0.50 or 0.95; if nothing, use `band`
+    interval::Symbol=:process,                  # :process (traj only) or :predictive (traj + Normal noise)
+    line_from::Symbol=:process,                 # :process or :predictive median line
+    truncate_at_zero::Bool=true,                # clamp band/line & data bars at a floor
+    ymin::Float64=0.0,                          # axis lower bound (visual)
+    ymax::Union{Nothing,Float64}=nothing,       # fixed common y-max (overrides sync_y)
+    sync_y::Bool=false,                         # auto-compute a common y-max from observed data
+    y_padding::Float64=0.05,                    # headroom when sync_y is true (top only)
+    clamp_floor::Union{Nothing,Float64}=0.0,    # floor for BOTH band/line and data error bars (physical floor)
+    lower_headroom_frac::Float64=0.03,          # small visual headroom below clamp_floor
+    save_legend::Bool=true,
+    legend_filename::String="aretrodiction_legend.pdf",
+
+    # --- NEW ---
+    data_override::Union{Nothing,AbstractArray}=nothing,          # full observed data to plot (2D or 3D)
+    timepoints_override::Union{Nothing,AbstractVector}=nothing,   # full observed timepoints to plot
+    train_timepoints::Union{Nothing,AbstractVector}=nothing,      # which timepoints were used for fitting
+    mark_heldout::Bool=true
+)
+
+    # ---------- Unpack inference ----------
+    chain       = inference["chain"]
+    seed        = inference["seed_idx"]
+    sol_idxs    = inference["sol_idxs"]
+    Ltuple      = inference["L"]
+    labels      = inference["labels"]
+    ks          = collect(keys(inference["priors"]))
+    N_pars      = findall(x->x=="σ", ks)[1] - 1
+    factors     = [1.0 for _ in 1:N_pars]
+    ode         = odes[inference["ode"]]
+
+    # ---------- Choose plot data/timepoints (overrides or defaults) ----------
+    local_data       = data_override       === nothing ? inference["data"]       : data_override
+    local_timepoints = timepoints_override === nothing ? inference["timepoints"] : timepoints_override
+
+    # Basic checks
+    @assert ndims(local_data) == 2 || ndims(local_data) == 3 "data must be (region,time) or (region,time,rep)"
+    R_local = size(local_data, 1)
+    @assert length(local_timepoints) == size(local_data, 2) "timepoints length must match data's 2nd dimension"
+
+    # Inference’s region count must match plot data’s region count
+    R_inf = size(inference["data"], 1)
+    @assert R_local == R_inf "Region count in override data ($(R_local)) differs from inference ($(R_inf))."
+
+    # Data summaries (consistent with your conventions)
+    if ndims(local_data) == 3
+        mean_data = mean3(local_data)             # (region,time)
+        var_data  = var3(local_data)              # (region,time)
+        n_rep     = size(local_data, 3)
+    else
+        mean_data = local_data
+        var_data  = fill!(similar(local_data), 0.0)
+        n_rep     = 1
+    end
+
+    # ---------- Time grid for simulation (extend to max of plot timepoints) ----------
+    tmax  = maximum(local_timepoints)
+    tgrid = collect(range(0, stop=tmax, step=0.1))
+
+    # ODE problem (we pass u0 per-draw to solve)
+    prob = make_ode_problem(ode;
+        labels     = labels,
+        Ltuple     = Ltuple,
+        factors    = factors,
+        u0         = inference["u0"],
+        timepoints = tgrid,
+    )
+
+    # Figures & axes
+    N = R_local
+    fs  = Vector{Any}(undef, N)
+    axs = Vector{Any}(undef, N)
+    for i in 1:N
+        f  = CairoMakie.Figure()
+        ax = CairoMakie.Axis(
+            f[1,1];
+            title  = "Region $(i): $(labels[i])",
+            xlabel = "Time (months)",
+            ylabel = "\u03b1-synuclein pathology (% area)",
+            limits = truncate_at_zero ? (nothing, nothing, ymin, nothing) :
+                                        (nothing, nothing, nothing, nothing)
+        )
+        fs[i]  = f
+        axs[i] = ax
+    end
+
+    # Posterior trajectories
+    posterior_samples = sample(chain, min(N_samples, length(chain[:lp])); replace=false)
+    S = size(posterior_samples, 1)
+    T = length(tgrid)
+    traj = Array{Float64}(undef, N, T, S)
+
+    # Parameter indices
+    par_names     = chain.name_map.parameters
+    sigma_ch_idx  = findfirst(==(Symbol("σ")), par_names)
+    sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
+    seed_ch_idx = nothing
+    if get(inference, "bayesian_seed", false)
+        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    end
+
+    # Zero template u0 (only seed nonzero per draw)
+    u0_template = fill!(similar(inference["u0"]), 0.0)
+
+    # Solve per-draw (fresh u0; per-draw seed)
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        p    = sample_vec[1:N_pars]
+        u0_s = copy(u0_template)
+        if get(inference, "bayesian_seed", false)
+            u0_s[seed] = sample_vec[seed_ch_idx]
+        else
+            u0_s[seed] = inference["seed_value"]
+        end
+        sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
+        traj[:, :, s] = Array(sol[sol_idxs, :])
+    end
+
+    # Quantiles
+    lowq, highq = isnothing(level) ? band : ((1 - level)/2, 1 - (1 - level)/2)
+    q_med_proc  = mapslices(x -> quantile(x, 0.5),   traj; dims=3)[:, :, 1]
+    q_low_proc  = mapslices(x -> quantile(x, lowq),  traj; dims=3)[:, :, 1]
+    q_high_proc = mapslices(x -> quantile(x, highq), traj; dims=3)[:, :, 1]
+
+    # Predictive quantiles (simulate Normal noise per draw using that draw's σ)
+    q_med_pred = q_low_pred = q_high_pred = nothing
+    if interval == :predictive || line_from == :predictive
+        ytraj = similar(traj)
+        for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+            σ_s = sample_vec[sigma_ch_idx]
+            ytraj[:, :, s] = traj[:, :, s] .+ (σ_s .* randn(N, T))
+        end
+        q_med_pred  = mapslices(x -> quantile(x, 0.5),   ytraj; dims=3)[:, :, 1]
+        q_low_pred  = mapslices(x -> quantile(x, lowq),  ytraj; dims=3)[:, :, 1]
+        q_high_pred = mapslices(x -> quantile(x, highq), ytraj; dims=3)[:, :, 1]
+    end
+
+    # Choose band/line sources
+    q_low_draw, q_high_draw =
+        interval == :predictive ? (q_low_pred, q_high_pred) :
+        interval == :process    ? (q_low_proc, q_high_proc) :
+        error("interval must be :process or :predictive")
+    q_med_draw = (line_from == :predictive && q_med_pred !== nothing) ? q_med_pred : q_med_proc
+
+    # Clamp to floor
+    if truncate_at_zero
+        floor = isnothing(clamp_floor) ? ymin : clamp_floor
+        q_low_draw  = clamp.(q_low_draw,  floor, Inf)
+        q_high_draw = clamp.(q_high_draw, floor, Inf)
+        q_med_draw  = clamp.(q_med_draw,  floor, Inf)
+    end
+
+    # Common y-max (optional)
+    global_ymax = ymax
+    if isnothing(global_ymax) && sync_y
+        dvals = collect(skipmissing(vec(local_data)))
+        dvals = Float64.(filter(isfinite, dvals))
+        global_ymax = isempty(dvals) ? ymin + 1.0 : maximum(dvals)
+        global_ymax = max(global_ymax, ymin) * (1 + y_padding)
+        if !isfinite(global_ymax) || !(global_ymax > ymin)
+            global_ymax = ymin + 1.0
+        end
+    end
+
+    # If we have a shared top, compute a shared lower headroom below clamp_floor
+    shared_ymin = nothing
+    if !isnothing(global_ymax)
+        floor = isnothing(clamp_floor) ? ymin : clamp_floor
+        shared_ymin = floor - lower_headroom_frac * max(global_ymax - floor, 1e-9)
+    end
+
+    # ---------------- Training vs held-out marker logic ----------------
+    # Reference set considered “train”:
+    train_tp = train_timepoints === nothing ? inference["timepoints"] : train_timepoints
+    train_tp_set = Set(Float64.(train_tp))
+    # For numeric robustness, match by exact values in provided vectors
+    is_train = x -> (Float64(x) in train_tp_set)
+
+    # Aesthetics
+    train_color   = RGB(0/255,71/255,171/255)
+    heldout_color = RGB(200/255, 60/255, 50/255)
+
+    # ---------------- Plot per region ----------------
+    for i in 1:N
+        # Band + line
+        if show_band
+            CairoMakie.band!(axs[i], tgrid, q_low_draw[i, :], q_high_draw[i, :]; color=(:gray, 0.25))
+        end
+        CairoMakie.lines!(axs[i], tgrid, q_med_draw[i, :]; color=:black, linewidth=5)
+
+        # Data
+        if data_style == :mean
+            nonmissing = findall(mean_data[i, :] .!== missing)
+            if !isempty(nonmissing)
+                t_i = Float64.(local_timepoints[nonmissing])
+                μ_i = Float64.(mean_data[i, :][nonmissing])
+
+                # Split into train vs held-out (by timepoints)
+                if mark_heldout
+                    I_train  = [k for (k,t) in enumerate(t_i) if is_train(t)]
+                    I_held   = [k for (k,t) in enumerate(t_i) if !is_train(t)]
+
+                    if !isempty(I_train)
+                        CairoMakie.scatter!(axs[i], t_i[I_train], μ_i[I_train];
+                            color=train_color, markersize=round(Int, 1.2*18), alpha=0.95)
+                    end
+                    if !isempty(I_held)
+                        CairoMakie.scatter!(axs[i], t_i[I_held], μ_i[I_held];
+                            color=heldout_color, marker=:utriangle, markersize=round(Int, 1.3*18), alpha=0.95)
+                    end
+                else
+                    CairoMakie.scatter!(axs[i], t_i, μ_i;
+                        color=train_color, markersize=round(Int, 1.2*18), alpha=0.95)
+                end
+
+                # Error bars (optional)
+                if data_error != :none
+                    v_i = Float64.(var_data[i, :][nonmissing])
+                    v_i = max.(v_i, 0.0)
+                    σ_i = sqrt.(v_i)
+                    if data_error === :se && n_rep > 1
+                        σ_i ./= sqrt(n_rep)
+                    end
+                    replace!(σ_i, NaN => 0.0)
+
+                    if truncate_at_zero
+                        floor = isnothing(clamp_floor) ? ymin : clamp_floor
+                        lower_cap = max.(0.0, μ_i .- floor)
+                        σ_low = map(min, σ_i, lower_cap)
+                        σ_up  = σ_i
+                        CairoMakie.errorbars!(axs[i], t_i, μ_i, σ_low, σ_up;
+                            color=(train_color,0.5), whiskerwidth=20, linewidth=5)
+                    else
+                        CairoMakie.errorbars!(axs[i], t_i, μ_i, σ_i;
+                            color=(train_color,0.5), whiskerwidth=20, linewidth=3)
+                    end
+                end
+            end
+
+        elseif data_style == :all
+            for k in axes(local_data, 3)
+                nonmissing = findall(local_data[i, :, k] .!== missing)
+                if !isempty(nonmissing)
+                    # jitter for visibility
+                    t_i = Float64.(local_timepoints[nonmissing]) .+ randn(length(nonmissing)) .* 0.04
+                    y_i = Float64.(local_data[i, :, k][nonmissing])
+                    # if marking held-out, split colors; otherwise one color
+                    if mark_heldout
+                        I_train  = [m for (m,t) in enumerate(t_i) if is_train(t)]
+                        I_held   = [m for (m,t) in enumerate(t_i) if !is_train(t)]
+                        if !isempty(I_train)
+                            CairoMakie.scatter!(axs[i], t_i[I_train], y_i[I_train];
+                                color=(train_color,0.35), markersize=round(Int, 0.4*18))
+                        end
+                        if !isempty(I_held)
+                            CairoMakie.scatter!(axs[i], t_i[I_held], y_i[I_held];
+                                color=(heldout_color,0.35), marker=:utriangle, markersize=round(Int, 0.5*18))
+                        end
+                    else
+                        CairoMakie.scatter!(axs[i], t_i, y_i;
+                            color=(train_color,0.35), markersize=round(Int, 0.4*18))
+                    end
+                end
+            end
+        else
+            error("data_style must be :mean or :all")
+        end
+
+        # Y limits
+        if !isnothing(global_ymax) && isfinite(global_ymax)
+            low = (shared_ymin isa Number && isfinite(shared_ymin)) ? shared_ymin : ymin
+            Makie.ylims!(axs[i], low, global_ymax)
+        else
+            dvals_i = ndims(local_data) == 3 ? vec(local_data[i, :, :]) : vec(local_data[i, :])
+            dvals_i = Float64.(filter(isfinite, collect(skipmissing(dvals_i))))
+            panel_data_max = isempty(dvals_i) ? ymin + 1.0 : maximum(dvals_i)
+            panel_band_max = show_band ? maximum(q_high_draw[i, :]) : maximum(q_med_draw[i, :])
+            panel_top = max(panel_data_max, panel_band_max)
+
+            floor = isnothing(clamp_floor) ? ymin : clamp_floor
+            panel_low = floor - lower_headroom_frac * max(panel_top - floor, 1e-9)
+            if !(panel_top > panel_low) || !isfinite(panel_top)
+                panel_top = floor + 1.0
+            end
+            Makie.ylims!(axs[i], panel_low, panel_top)
+        end
+
+        if save_path !== nothing
+            try; mkdir(save_path); catch; end
+            CairoMakie.save(joinpath(save_path, "retrodiction_region_$(i).pdf"), fs[i])
+        end
+    end
+
+    # Link y-axes if we synced / fixed
+    if !isnothing(global_ymax) || sync_y
+        try; Makie.linkyaxes!(axs...); catch; end
+    end
+
+    # Legend (kept as before; no need to encode train/held-out here since panel markers are obvious)
+    if save_legend
+        model_line_color   = :black
+        model_line_width   = 5
+        band_fill_color    = (:gray, 0.25)
+        data_color         = RGB(0/255, 71/255, 171/255)
+        data_marker_size   = round(Int, data_style == :mean ? 1.2*18 : 0.4*18)
+
+        line_el  = CairoMakie.LineElement(color=model_line_color, linewidth=model_line_width)
+        band_el  = CairoMakie.PolyElement(color=band_fill_color, strokecolor=:transparent)
+        mark_el  = CairoMakie.MarkerElement(marker=:circle, color=data_color, markersize=data_marker_size)
+
+        leg_fig  = CairoMakie.Figure(resolution = (480, 200), figure_padding=20)
+        legend   = CairoMakie.Legend(
+            leg_fig,
+            [line_el, band_el, mark_el],
+            ["Model fit", "95% CI", "Experimental data"];
+            orientation = :horizontal,
+            framevisible = false,
+            padding = (10,10,10,10),
+            patchsize = (35,18)
+        )
+        leg_fig[1,1] = legend
+
+        if save_path !== nothing
+            try; mkdir(save_path); catch; end
+            CairoMakie.save(joinpath(save_path, legend_filename), leg_fig)
+        end
+    end
+
+    return fs
+end
+
+
+
+
+
 
 
 #=
 master plotting function (plot everything relevant to inference)
- =#
-function plot_inference(inference, save_path; N_samples=300, show_variance=false, nonzero_regions=false)
-    # load inference simulation 
-    #display(inference["chain"])
-
+=#
+function plot_inference(inference, save_path;
+    N_samples::Int=300,
+    show_variance::Bool=false,
+    nonzero_regions::Bool=false,
+    # --- NEW (optional) ---
+    full_data::Union{Nothing,AbstractArray}=nothing,          # (R, T_full) or (R, T_full, K)
+    full_timepoints::Union{Nothing,AbstractVector}=nothing    # length T_full
+)
     # create folder
-    try
-        mkdir(save_path);
-    catch
-    end
+    try; mkdir(save_path); catch; end
+
     if !inference["bayesian_seed"]
-        try
-            delete!(inference["priors"], "seed")
-        catch
-        end
+        try; delete!(inference["priors"], "seed"); catch; end
     end
 
-    # find nonzero indices for plotting if needed
+    # optional: region subset
     region_idxs = nothing
     if nonzero_regions
         region_idxs = nonzero_regions(inference["data"], eps=0.22)
     end
-        
-    # plot
+
+    # ----------------------- RETRODICTION CALL -----------------------
+    # Decide whether we have a true "full" series to overlay (i.e., holdout exists)
+    use_override = false
+    if !(full_data === nothing || full_timepoints === nothing)
+        # shape checks
+        R_inf = size(inference["data"], 1)
+        @assert size(full_data, 1) == R_inf "full_data has $(size(full_data,1)) regions; expected $R_inf"
+        @assert size(full_data, 2) == length(full_timepoints) "full_timepoints length must match full_data's 2nd dim"
+
+        # consider it a holdout case only if full_timepoints strictly extends the trained grid
+        tp_fit  = collect(Float64.(inference["timepoints"]))
+        tp_full = collect(Float64.(full_timepoints))
+        use_override = (length(tp_full) > length(tp_fit)) && all(tp_fit .== tp_full[1:length(tp_fit)])
+    end
+
+    if use_override
+        # trained on truncated series; plot against full series, mark held-out
+        plot_retrodiction2(inference;
+            save_path = joinpath(save_path, "retrodiction_full"),
+            data_override = full_data,
+            timepoints_override = full_timepoints,
+            train_timepoints = inference["timepoints"],
+            mark_heldout = true,
+            N_samples = N_samples, level = 0.90,
+            interval = :predictive, line_from = :process,
+            data_style = :mean, data_error = :sd
+        )
+    else
+        # no holdout (or no valid full series supplied): just plot fitted range
+        plot_retrodiction2(inference;
+            save_path = joinpath(save_path, "retrodiction"),
+            N_samples = N_samples, level = 0.90,
+            interval = :predictive, line_from = :process,
+            data_style = :mean, data_error = :sd,
+            mark_heldout = false
+        )
+    end
+
     plot_two_local_params_scatter(inference;
     save_path=save_path*"/two_param_scatter",
     )
@@ -1898,11 +2272,11 @@ function plot_inference(inference, save_path; N_samples=300, show_variance=false
     )
     predicted_observed(inference; save_path=save_path*"/predicted_observed_log10", plotscale=log10);
     predicted_observed(inference; save_path=save_path*"/predicted_observed_id", plotscale=identity);
-    plot_retrodiction(inference; save_path=save_path*"/retrodiction",
-                           N_samples=1000, level=0.90, interval=:predictive, line_from=:process,
-                           data_style=:mean, data_error=:sd,
-                           y_padding=0.05#, sync_y=true, ymax=1.0, ymin=-0.05
-                           )
+    #plot_retrodiction(inference; save_path=save_path*"/retrodiction",
+    #                       N_samples=1000, level=0.90, interval=:predictive, line_from=:process,
+    #                       data_style=:mean, data_error=:sd,
+    #                       y_padding=0.05#, sync_y=true, ymax=1.0, ymin=-0.05
+    #                       )
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
