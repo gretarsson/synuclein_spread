@@ -39,13 +39,4 @@ export ode_dimensions
 # model_priors.jl  
 export get_priors
 
-
-
-#export odes
-#export ode_dimensions
-#export infer, compute_psis_loo, compute_waic, compute_aic_bic, posterior_mode
-#export read_W, make_ode_problem, nonzero_regions
-#export predicted_vs_observed_plots
-
-
 end # module PathoSpread

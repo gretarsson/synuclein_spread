@@ -2147,6 +2147,326 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
 end
 
 
+using CairoMakie, Statistics, StatsBase
+
+"""
+plot_calibration_cross2(inference; ...)
+
+Like plot_calibration_cross, but with optional full-series overrides and the
+ability to show **train vs held-out** aggregates in the same plot.
+
+New kwargs
+- data_override             :: (R,T_full) or (R,T_full,K) — full observed data
+- timepoints_override       :: Vector{T_full}              — full time grid
+- train_timepoints          :: Vector{T_fit}               — which times were used for fitting
+- mark_groups               :: Bool (default=true)         — split into train vs held-out
+- group_labels              :: Tuple{String,String}        — legend labels
+
+Other args are the same as plot_calibration_cross.
+"""
+function plot_calibration_cross2(inference;
+    save_path::Union{Nothing,String}=nothing,
+    N_samples::Int=200,
+    interval::Symbol=:process,          # vertical CI source: :process | :predictive
+    x_ci_from::Symbol=:process,         # horizontal CI source: :process | :predictive
+    bins::Int=20,
+    binning::Symbol=:geometric,         # :quantile | :geometric | :adaptive
+    min_bin_count::Int=100,             # only for :adaptive
+    skip_first_timepoint::Bool=true,
+    truncate_at_zero::Bool=true,
+    clamp_floor::Union{Nothing,Float64}=0.0,
+
+    # --- group & override controls (like plot_retrodiction2) ---
+    data_override::Union{Nothing,AbstractArray}=nothing,
+    timepoints_override::Union{Nothing,AbstractVector}=nothing,
+    train_timepoints::Union{Nothing,AbstractVector}=nothing,  # if nothing, assume inference["timepoints"]
+    mark_groups::Bool=true,
+
+    # --- new: transparencies ---
+    alpha_cross::Float64=0.45,
+    alpha_point::Float64=0.80,
+)
+    # ---------- Unpack ----------
+    chain       = inference["chain"]
+    seed        = inference["seed_idx"]
+    sol_idxs    = inference["sol_idxs"]
+    Ltuple      = inference["L"]
+    labels      = inference["labels"]
+    ks          = collect(keys(inference["priors"]))
+    N_pars      = findall(x->x=="σ", ks)[1] - 1
+    factors     = [1.0 for _ in 1:N_pars]
+    ode         = odes[inference["ode"]]
+
+    # ---------- Choose data/timepoints (overrides or defaults) ----------
+    local_data       = data_override       === nothing ? inference["data"]       : data_override
+    local_timepoints = timepoints_override === nothing ? inference["timepoints"] : timepoints_override
+
+    @assert ndims(local_data) in (2,3) "data must be (region,time) or (region,time,rep)"
+    @assert length(local_timepoints) == size(local_data, 2) "timepoints length must match data's 2nd dim"
+    R = size(local_data, 1)
+
+    # Data means for calibration
+    mean_data =
+        ndims(local_data) == 3 ? mean3(local_data) :
+        ndims(local_data) == 2 ? local_data :
+        error("Unsupported data array.")
+
+    # Observed grid only (no densification)
+    tgrid = collect(local_timepoints)
+    T = length(tgrid)
+
+    # ODE problem
+    prob = make_ode_problem(ode;
+        labels     = labels,
+        Ltuple     = Ltuple,
+        factors    = factors,
+        u0         = inference["u0"],
+        timepoints = tgrid,
+    )
+
+    # Posterior draws & process trajectories
+    posterior_samples = sample(chain, min(N_samples, length(chain[:lp])); replace=false)
+    S = size(posterior_samples, 1)
+
+    par_names    = chain.name_map.parameters
+    sigma_ch_idx = findfirst(==(Symbol("σ")), par_names)
+    sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
+
+    seed_ch_idx = nothing
+    if get(inference, "bayesian_seed", false)
+        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    end
+
+    traj = Array{Float64}(undef, R, T, S)   # process
+    u0_template = fill!(similar(inference["u0"]), 0.0)
+
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        p    = sample_vec[1:N_pars]
+        u0_s = copy(u0_template)
+        if seed_ch_idx === nothing
+            u0_s[seed] = inference["seed_value"]
+        else
+            u0_s[seed] = sample_vec[seed_ch_idx]
+        end
+        sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
+        traj[:, :, s] = Array(sol[sol_idxs, :])
+    end
+
+    # Predictive
+    ytraj = similar(traj)
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        σ_s = sample_vec[sigma_ch_idx]
+        ytraj[:, :, s] = traj[:, :, s] .+ (σ_s .* randn(R, T))
+    end
+
+    arr_y = (interval  === :predictive) ? ytraj : traj
+    arr_x = (x_ci_from === :predictive) ? ytraj : traj
+
+    # Medians at observed grid (centers use process for stability)
+    pred_med = mapslices(x -> quantile(x, 0.5), traj; dims=3)[:, :, 1]
+
+    # Skip first timepoint if requested
+    first_col = skip_first_timepoint ? 2 : 1
+    first_col <= size(pred_med, 2) || error("No timepoints left after skipping.")
+
+    # Matrix views on the selected columns
+    Mpred = pred_med[:, first_col:end]     # (R, Tsel)
+    Mobs  = mean_data[:, first_col:end]
+    maskM = .!ismissing.(Mobs) .& isfinite.(Mpred)
+
+    # Handy sizes & index decoding
+    Nreg, Tsel = size(Mpred)
+    CIdecode = CartesianIndices((Nreg, Tsel))
+
+    # Flatten valid entries with their original matrix linear indices
+    orig_lin_idx_all = findall(maskM)
+    p_all = Float64.(Mpred[maskM])
+    o_all = Float64.(Mobs[maskM])
+
+    # Optional clamping
+    if truncate_at_zero
+        floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+        p_all = clamp.(p_all, floor, Inf)
+        o_all = clamp.(o_all, floor, Inf)
+    end
+
+    # --- Split into TRAIN vs HELD-OUT by timepoints ---
+    train_tp = train_timepoints === nothing ? inference["timepoints"] : train_timepoints
+    train_set = Set(Float64.(train_tp))
+
+    idx_train = Int[]
+    idx_hold  = Int[]
+    for (k, lin) in enumerate(orig_lin_idx_all)
+        ci = CIdecode[lin]            # (i,j) in (R,Tsel)
+        i, j = Tuple(ci)
+        t = (first_col - 1) + j       # original time index in local_timepoints
+        (Float64(tgrid[t]) in train_set) ? push!(idx_train, k) : push!(idx_hold, k)
+    end
+
+    p_tr = p_all[idx_train]; o_tr = o_all[idx_train]; lin_tr = orig_lin_idx_all[idx_train]
+    p_ho = p_all[idx_hold];  o_ho = o_all[idx_hold];  lin_ho = orig_lin_idx_all[idx_hold]
+
+    # Small helpers ----------------------------------------------------
+    _monotone!(edges::Vector{Float64}) = begin
+        for i in 2:length(edges)
+            if edges[i] <= edges[i-1]; edges[i] = nextfloat(edges[i-1]); end
+        end; edges
+    end
+
+    function _edges(pv::Vector{Float64})
+        isempty(pv) && return Float64[]
+        _binning = Symbol(lowercase(String(binning)))
+        if _binning === :quantile
+            e = collect(Float64.(quantile(pv, range(0, 1; length=bins+1))))
+            return _monotone!(e)
+        elseif _binning === :geometric || _binning === :adaptive
+            pmin, pmax = minimum(pv), maximum(pv)
+            ε = 1e-12
+            start = max(ε, min(pmin > 0 ? pmin : ε, pmax))
+            stopv = max(pmax, start*10)
+            ge = 10.0 .^ range(log10(start), log10(stopv); length=bins+1) |> collect
+            if pmin == 0.0; ge[1] = 0.0; end
+            e = _monotone!(Float64.(ge))
+            if _binning === :adaptive
+                # merge undersized bins until each has ≥ min_bin_count
+                while true
+                    if length(e) < 3; break; end
+                    idx_tmp = [min(searchsortedlast(e, v), length(e)-1) for v in pv]
+                    counts  = [count(==(b), idx_tmp) for b in 1:(length(e)-1)]
+                    small   = findall(b -> counts[b] < min_bin_count, 1:length(counts))
+                    isempty(small) && break
+                    newe = Float64[e[1]]
+                    b = 1
+                    while b <= length(counts)
+                        if counts[b] < min_bin_count
+                            if b < length(counts); push!(newe, e[b+2]); b += 2
+                            else; newe[end] = e[end]; b += 1
+                            end
+                        else
+                            push!(newe, e[b+1]); b += 1
+                        end
+                    end
+                    e = _monotone!(newe)
+                end
+            end
+            return e
+        else
+            error("binning must be :quantile | :geometric | :adaptive")
+        end
+    end
+
+    function _stats_for_group(pv::Vector{Float64}, ov::Vector{Float64}, linv, edges::Vector{Float64})
+        if isempty(pv) || length(edges) < 2
+            return (Float64[], Float64[], Float64[], Float64[], Float64[], Float64[], Int[])
+        end
+        binidx = [min(searchsortedlast(edges, v), length(edges)-1) for v in pv]
+        B = length(edges) - 1
+
+        μ_pred = fill(NaN, B)
+        μ_obs  = fill(NaN, B)
+        lo95_y = fill(NaN, B)
+        hi95_y = fill(NaN, B)
+        lo95_x = fill(NaN, B)
+        hi95_x = fill(NaN, B)
+        m_in   = zeros(Int, B)
+
+        @inbounds for b in 1:B
+            I = findall(==(b), binidx)
+            m = length(I)
+            m_in[b] = m
+            if m == 0; continue; end
+            pv_b = pv[I]; ov_b = ov[I]
+            μ_pred[b] = mean(pv_b)
+            μ_obs[b]  = mean(ov_b)
+            lo95_y[b] = quantile(ov_b, 0.025)
+            hi95_y[b] = quantile(ov_b, 0.975)
+            if truncate_at_zero
+                floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+                lo95_y[b] = max(lo95_y[b], floor)
+            end
+
+            # Horizontal CI from arr_x across draws at these exact positions
+            xsamps = Float64[]
+            sizehint!(xsamps, m * size(arr_x, 3))
+            for idx_in_vec in I
+                lin = linv[idx_in_vec]        # linear index into (R, Tsel)
+                ci  = CIdecode[lin]
+                i, j = Tuple(ci)
+                t = (first_col - 1) + j
+                for sidx in axes(arr_x, 3)
+                    push!(xsamps, arr_x[i, t, sidx])
+                end
+            end
+            if !isempty(xsamps)
+                lo95_x[b] = quantile(xsamps, 0.025)
+                hi95_x[b] = quantile(xsamps, 0.975)
+            end
+        end
+
+        return (μ_pred, μ_obs, lo95_y, hi95_y, lo95_x, hi95_x, m_in)
+    end
+
+    # Build edges independently for train & held-out
+    edges_tr = _edges(p_tr)
+    edges_ho = _edges(p_ho)
+
+    stats_tr = _stats_for_group(p_tr, o_tr, lin_tr, edges_tr)
+    stats_ho = _stats_for_group(p_ho, o_ho, lin_ho, edges_ho)
+
+    # --- Plot ---
+    train_color   = RGBf(0/255,71/255,171/255)
+    heldout_color = RGBf(200/255, 60/255, 50/255)
+
+    f = CairoMakie.Figure()
+    ax = CairoMakie.Axis(f[1,1];
+        title  = "Binned predictive vs observed (independent bins)",
+        xlabel = "Predicted (bin mean ± 95% PI)",
+        ylabel = "Observed (bin mean ± 95% QI)",
+    )
+
+    # Reference y=x line over combined span
+    comb_pred = vcat(stats_tr[1], stats_ho[1])
+    keepx = .!isnan.(comb_pred)
+    if any(keepx)
+        xmin, xmax = minimum(comb_pred[keepx]), maximum(comb_pred[keepx])
+        CairoMakie.lines!(ax, [xmin, xmax], [xmin, xmax]; color=:grey, alpha=0.5)
+    end
+
+    function _draw!(color, μ_pred, μ_obs, lo95_y, hi95_y, lo95_x, hi95_x)
+        keep = .!isnan.(μ_pred) .& .!isnan.(μ_obs)
+        for b in findall(keep)
+            # horizontal
+            if isfinite(lo95_x[b]) && isfinite(hi95_x[b])
+                CairoMakie.errorbars!(ax, [μ_pred[b]], [μ_obs[b]],
+                    [μ_pred[b] - lo95_x[b]], [hi95_x[b] - μ_pred[b]];
+                    direction=:x, color=(color, alpha_cross), whiskerwidth=15, linewidth=6)
+            end
+            # vertical
+            if isfinite(lo95_y[b]) && isfinite(hi95_y[b])
+                CairoMakie.errorbars!(ax, [μ_pred[b]], [μ_obs[b]],
+                    [μ_obs[b] - lo95_y[b]], [hi95_y[b] - μ_obs[b]];
+                    color=(color, alpha_cross), whiskerwidth=15, linewidth=6)
+            end
+            # point
+            CairoMakie.scatter!(ax, [μ_pred[b]], [μ_obs[b]];
+                color=(color, alpha_point), markersize=18, strokecolor=:black, strokewidth=1.0)
+        end
+    end
+
+    mark_groups && _draw!(train_color, stats_tr[1], stats_tr[2], stats_tr[3], stats_tr[4], stats_tr[5], stats_tr[6])
+    mark_groups && _draw!(heldout_color, stats_ho[1], stats_ho[2], stats_ho[3], stats_ho[4], stats_ho[5], stats_ho[6])
+
+    if save_path !== nothing
+        try; mkdir(save_path); catch; end
+        CairoMakie.save(joinpath(
+            save_path,
+            "calibration_cross2_independentbins_$(String(interval))_x$(String(x_ci_from))_$(String(binning)).pdf"
+        ), f)
+    end
+    return f
+end
+
 
 
 
@@ -2215,8 +2535,9 @@ function plot_inference(inference, save_path;
     end
 
     plot_two_local_params_scatter(inference;
-    save_path=save_path*"/two_param_scatter",
+        save_path=save_path*"/two_param_scatter",
     )
+
     # Plot parameters means as function of path length from seed
     for b in vector_bases_from_priors(inference)
         plot_param_vs_pathlength(
@@ -2230,53 +2551,73 @@ function plot_inference(inference, save_path;
     end
 
     plot_ppc_coverages(inference;
-    save_path = save_path*"/coverage",
-    levels = [0.25, 0.5, 0.75, 0.95],
-    N_samples = 1000,
-    skip_first_timepoint = false,
-    truncate_at_zero = true,
-    clamp_floor = 0.0
-    )
-    plot_ppc_coverage_by_region(inference;
-    save_path=save_path*"/coverage",
-    N_samples=400,
-    level=0.75,
-    skip_first_timepoint=false
-    )
-    plot_calibration(inference;
-    save_path=save_path*"/calibration",      # directory to save output (or nothing for no file)
-    N_samples=200,         # how many posterior samples to draw
-    interval=:process,     # :process (traj only) or :predictive (traj + noise)
-    binning = :geometric,
-    bins=50,               # number of quantile bins
-    #binning = :adaptive,
-    #min_bin_count = 100,
-    skip_first_timepoint=true,
-    truncate_at_zero=true,
-    clamp_floor=0.0
-    )
-    plot_calibration_cross(inference;
-        save_path = save_path*"/calibration_cross",  # directory to save output (or nothing for no file)
-        N_samples = 200,          # how many posterior samples to draw
-        interval = :process,      # vertical CI source: :process (traj only) or :predictive (traj + noise)
-        x_ci_from = :process,     # horizontal CI source: :process or :predictive
-        #binning = :geometric,     # :quantile | :geometric | :adaptive
-        #bins = 40,                # number of bins (ignored if :adaptive), we have ~3000 data points -> 50-200 bins
-        binning = :adaptive,
-        min_bin_count = 3,     # minimum points per bin (adaptive only), 30-100 bins for ~3000 data points
-        skip_first_timepoint = true,
+        save_path = save_path*"/coverage",
+        levels = [0.25, 0.5, 0.75, 0.95],
+        N_samples = 1000,
+        skip_first_timepoint = false,
         truncate_at_zero = true,
-        clamp_floor = 0.0,
-        v_linewidth = 5,          # thickness of vertical bars
-        h_linewidth = 5           # thickness of horizontal bars
+        clamp_floor = 0.0
     )
+
+    plot_ppc_coverage_by_region(inference;
+        save_path=save_path*"/coverage",
+        N_samples=400,
+        level=0.75,
+        skip_first_timepoint=false
+    )
+
+    # calibration_cross is better
+    #plot_calibration(inference;
+    #    save_path=save_path*"/calibration",      # directory to save output (or nothing for no file)
+    #    N_samples=200,         # how many posterior samples to draw
+    #    interval=:process,     # :process (traj only) or :predictive (traj + noise)
+    #    binning = :geometric,
+    #    bins=50,               # number of bins
+    #    #binning = :adaptive,
+    #    #min_bin_count = 100,
+    #    skip_first_timepoint=true,
+    #    truncate_at_zero=true,
+    #    clamp_floor=0.0
+    #)
+
+    # ----------------------- CALIBRATION-CROSS CALL (v2) -----------------------
+    if use_override
+        # full series available: split into train vs held-out groups
+        plot_calibration_cross2(inference;
+            save_path = joinpath(save_path, "calibration_cross_full"),
+            data_override = full_data,
+            timepoints_override = full_timepoints,
+            train_timepoints = inference["timepoints"],
+            mark_groups = true,
+            N_samples = 200,
+            interval = :process,      # vertical CI source
+            x_ci_from = :process,     # horizontal CI source
+            binning = :adaptive,
+            min_bin_count = 3,
+            skip_first_timepoint = true,
+            truncate_at_zero = true,
+            clamp_floor = 0.0,
+        )
+    else
+        # no full series: show fitted range only (no group split)
+        plot_calibration_cross2(inference;
+            save_path = joinpath(save_path, "calibration_cross"),
+            mark_groups = false,
+            N_samples = 200,
+            interval = :process,
+            x_ci_from = :process,
+            binning = :adaptive,
+            min_bin_count = 3,
+            skip_first_timepoint = true,
+            truncate_at_zero = true,
+            clamp_floor = 0.0,
+        )
+    end
+    # --------------------------------------------------------------------------
+
     predicted_observed(inference; save_path=save_path*"/predicted_observed_log10", plotscale=log10);
-    predicted_observed(inference; save_path=save_path*"/predicted_observed_id", plotscale=identity);
-    #plot_retrodiction(inference; save_path=save_path*"/retrodiction",
-    #                       N_samples=1000, level=0.90, interval=:predictive, line_from=:process,
-    #                       data_style=:mean, data_error=:sd,
-    #                       y_padding=0.05#, sync_y=true, ymax=1.0, ymin=-0.05
-    #                       )
+    predicted_observed(inference; save_path=save_path*"/predicted_observed_id",  plotscale=identity);
+
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
