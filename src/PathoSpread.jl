@@ -27,6 +27,7 @@ include("data_processing.jl")
 # ---- exports (start minimal; add more when you need them) ----
 # helpers.jl
 export infer, make_ode_problem, build_region_groups, read_W, read_data, load_inference, save_inference
+export compute_aic_bic, compute_waic, compute_regional_correlations, compute_mse_mc
 # helpers_plots.jl
 export plot_inference, setup_plot_theme!
 # data_processing.jl

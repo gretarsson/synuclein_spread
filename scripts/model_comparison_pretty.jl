@@ -1,5 +1,5 @@
-using Serialization
-include("helpers.jl")
+using PathoSpread
+using Serialization, Statistics
 using PrettyTables, DataFrames
 
 # Read inference results
@@ -58,7 +58,7 @@ model_names = [
 ]
 inferences = []
 for simulation in simulations
-    push!(inferences, deserialize(simulation * ".jl"))
+    push!(inferences, load_inference(simulation * ".jl"))
 end
 
 # Compute WAIC, AIC, BIC, MSE, and Frobenius covariance norm for models
@@ -161,8 +161,6 @@ pretty_table(
 
 # PAIRED WAIC COMPARISON
 # ─── Paired ΔWAIC ± SE(Δ) vs the best model ───────────────────────────────────
-using Statistics
-
 best_ix = argmin(waic_vals)
 ref_waic_i = waic_i_list[best_ix]
 n = length(ref_waic_i)
