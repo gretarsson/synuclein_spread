@@ -30,7 +30,7 @@ ics = sort(filter(r -> r.category == "initial_condition", df), :index)
 u0 = Float64.(ics.value)  # initial conditions (state vector at time zero)
 labels = String.(ics.name)  # name of brain regions
 
-# --- choose ODE and Laplacian ---
+# --- choose Laplacian ---
 L,N,labels = PathoSpread.read_W("data/W_labeled_filtered.csv", direction=:retro);  # my own function to write and set up Laplacian correctly, can be found in src/helpers.jl
 N = size(L,1)
 L_tuple = (L, N)
