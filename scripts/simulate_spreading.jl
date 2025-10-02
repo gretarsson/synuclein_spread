@@ -1,6 +1,6 @@
-# simulate_from_csv.jl
+# simulate_spreading.jl
 #
-# Reads optimal parameters and ICs from CSV,
+# Reads optimal parameters and initial conditions from CSV,
 # integrates chosen ODE with DifferentialEquations.jl,
 # saves results to CSV, and makes a simple overlay plot.
 
@@ -13,9 +13,9 @@ using PathoSpread
 include("../src/odes.jl")
 
 # --- choose input and output ---
-inference_csv = "simulations/optimal_parameters/posterior_mode_DIFFG.csv"
-sim_csv       = "simulations/PathSim/simulation_output.csv"
-plot_png      = "simulations/PathSim/simulation_plot.png"
+inference_csv = "simulations/optimal_parameters/posterior_mode_DIFFG.csv"  # CSV file with optimal parameters and initial conditions
+sim_csv       = "simulations/PathSim/simulation_output.csv"  # where to save simulation output
+plot_png      = "simulations/PathSim/simulation_plot.png"  # where to save plot
 
 # --- read parameters and initial conditions ---
 df = DataFrame(CSV.File(inference_csv))  # read data file with optimal parameters and initial conditions 
