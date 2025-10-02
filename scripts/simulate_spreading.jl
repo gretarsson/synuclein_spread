@@ -12,10 +12,13 @@ using PathoSpread
 # include ODE definitions (look in this file for ODE functions)
 include("../src/odes.jl")
 
+# --- choose ODE ---    
+ode! = DIFFGAM  # pick one: DIFF (diffusion/Kate's), DIFFG, DIFFGA, DIFFGAM (in increasing complexity)
+
 # --- choose input and output ---
-inference_csv = "simulations/optimal_parameters/posterior_mode_DIFFG.csv"  # CSV file with optimal parameters and initial conditions
-sim_csv       = "simulations/PathSim/simulation_output.csv"  # where to save simulation output
-plot_png      = "simulations/PathSim/simulation_plot.png"  # where to save plot
+inference_csv = "simulations/optimal_parameters/posterior_mode_$(ode!).csv"  # CSV file with optimal parameters and initial conditions
+sim_csv       = "simulations/PathSim/simulation_output_$(ode!).csv"  # where to save simulation output
+plot_png      = "simulations/PathSim/simulation_plot_$(ode!).png"  # where to save plot
 
 # --- read parameters and initial conditions ---
 df = DataFrame(CSV.File(inference_csv))  # read data file with optimal parameters and initial conditions 
@@ -28,7 +31,6 @@ u0 = Float64.(ics.value)  # initial conditions (state vector at time zero)
 labels = String.(ics.name)  # name of brain regions
 
 # --- choose ODE and Laplacian ---
-ode! = DIFFG  # pick one: DIFF (diffusion/Kate's), DIFFG, DIFFGA, DIFFGAM (in increasing complexity)
 L,N,labels = PathoSpread.read_W("data/W_labeled_filtered.csv", direction=:retro);  # my own function to write and set up Laplacian correctly, can be found in src/helpers.jl
 N = size(L,1)
 L_tuple = (L, N)
@@ -38,11 +40,12 @@ tspan = (0.0, 10.0)  # how long to run the simulation for
 dt = 0.01  # how often to save time steps (every dt time unit)
 ode_solver = RK4()  # pick method/algorithm to integrate ODE (these vary in speed and accuracy)
 
-prob = ODEProblem((du,u,p,t) -> ode!(du,u,p,t; L=L_tuple), u0, tspan, p)  # set up ODE problem, we need a Laplacian L, initial conditions u0, time span, and parameters p
-sol = solve(prob, ode_solver; dt=dt, adaptive=false, saveat=dt)  # solve ODE problem, we need to specify a solver (ode_solver), time step to save at (dt), and whether to use adaptive time stepping (adaptive=false). if using adaptive you save time, but we want it to be reproducible so we don't use it.
+
+prob = ODEProblem((du,u,p,t) -> ode!(du,u,p,t; L=L_tuple, factors=ones(length(p))), u0, tspan, p)  # set up ODE problem, we need a Laplacian L, initial conditions u0, time span, and parameters p
+sol = solve(prob, ode_solver; dt=dt, adaptive=false, saveat=dt, abstol=1e-6, reltol=1e-4)  # solve ODE problem, we need to specify a solver (ode_solver), time step to save at (dt), and whether to use adaptive time stepping (adaptive=false). if using adaptive you save time, but we want it to be reproducible so we don't use it.
 
 # --- save simulation to CSV ---
-X = Array(sol)'  # timepoints × states. This is the output of solve(), i.e. the simulation
+X = Array(sol)'[:,1:N]  # timepoints × states. This is the output of solve(), i.e. the simulation. Only save the first N states (these are the protein levels, DIFFGA and DIFFGAM have 2*N variables, but we're only interested in the protein levels)
 df_out = DataFrame(time=sol.t)
 for (j, nm) in enumerate(labels)
     df_out[!, Symbol(nm)] = X[:, j]
