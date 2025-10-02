@@ -56,3 +56,52 @@ function process_pathology(path_csv::String; W_csv::Union{Nothing,String}=nothin
     return data, mpis
 end
 
+
+function save_inference_MAP_csv(inference; path="inference_mode.csv")
+    chain    = inference["chain"]
+    priors   = inference["priors"]            # OrderedDict: param names in order
+    labels   = get(inference, "labels", nothing)
+    u0       = inference["u0"]
+    seed_idx = inference["seed_idx"]
+
+    # find joint MAP row
+    df_chain = DataFrame(chain)
+    imax = argmax(df_chain[!,:lp])
+    row  = df_chain[imax, :]
+
+    rows = NamedTuple[]
+
+    # --- Parameters from p[i], names from priors (exclude σ) ---
+    keys_vec = collect(keys(priors))
+    stop_at = findfirst(==("σ"), keys_vec)
+    stop_at === nothing && error("Could not find σ in priors")
+    N_pars = stop_at - 1
+    for i in 1:N_pars
+        pname = keys_vec[i]
+        pcol  = Symbol("p[$i]")
+        @assert hasproperty(row, pcol) "Chain does not contain column $(String(pcol))"
+        push!(rows, (index=i, name=pname, value=Float64(row[pcol]), category="parameter"))
+    end
+
+    # --- y0 vector (supports N or 2N) ---
+    Nlabels = labels === nothing ? length(u0) : length(labels)
+    nu0 = length(u0)
+    for (i, v) in enumerate(u0)
+        label =
+            labels === nothing ? "Region_$i" :
+            (nu0 == Nlabels    ? labels[i] :
+             nu0 == 2*Nlabels  ? (i <= Nlabels ? labels[i] : string(labels[i-Nlabels], "_2")) :
+             error("Mismatch: u0 has $nu0 entries but labels has $Nlabels"))
+        push!(rows, (index=i, name=label, value=Float64(v), category="initial_condition"))
+    end
+
+    # --- seeded region row (index is node index) ---
+    seed_label = labels === nothing ? "Region_$seed_idx" : labels[seed_idx]
+    push!(rows, (index=seed_idx, name="SEED_$seed_label", value=Float64(u0[seed_idx]), category="seed"))
+
+    CSV.write(path, DataFrame(rows))
+    return path
+end
+
+
+

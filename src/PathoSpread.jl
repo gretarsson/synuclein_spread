@@ -31,7 +31,7 @@ export compute_aic_bic, compute_waic, compute_regional_correlations, compute_mse
 # helpers_plots.jl
 export plot_inference, setup_plot_theme!
 # data_processing.jl
-export process_pathology
+export process_pathology, save_inference_MAP_csv
 # odes.jl
 export odes
 # ode_dimensions.jl
