@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e  # exit on first error
+set -euo pipefail  # exit on first error
 
 # DIFFG test
 julia --project=. scripts/infer_this_main.jl DIFFG data/W_labeled_filtered.csv  data/total_path.csv --retrograde=true --n_chains=1 --out_file=simulations/DIFFG_TEST.jls
