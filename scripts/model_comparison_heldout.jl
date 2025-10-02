@@ -8,9 +8,11 @@ using CairoMakie, Printf, Colors
 # ------------------------------------------------------------------
 simulations = [
     "simulations/DIFFGA_RETRO_T-1",
+    "simulations/DIFFGAM_RETRO_T-1",
 ]
 model_names = [
-    "DIFFGA T minus 1",
+    "DIFFGA T-1",
+    "DIFFGAM T-1",
 ]
 inferences = [deserialize(sim * ".jls") for sim in simulations]
 
@@ -61,8 +63,6 @@ df = DataFrame(
     ELPD_SE        = elpd_se,
     CRPS_mean_pp   = crps_means,      # percentage points
     CRPS_SE_pp     = crps_se,         # percentage points
-    CRPS_mean_norm = crps_norm_means, # 0–1
-    CRPS_SE_norm   = crps_norm_se,    # 0–1
     ΔELPD_to_best  = delta_elpd,
     ΔCRPS_to_best  = delta_crps,
 )
@@ -73,7 +73,7 @@ sort!(df, [:ΔCRPS_to_best, :Model])  # primarily by CRPS
 # Print LaTeX (compact but informative)
 pretty_table(
     df;
-    header = ["Model","n","ELPD (per pt)","SE","CRPS (pp)","SE (pp)","CRPS (norm)","SE (norm)","ΔELPD","ΔCRPS"],
+    header = ["Model","n","ELPD (per pt)","SE","CRPS (pp)","SE (pp)","ΔELPD","ΔCRPS"],
     formatters = (
         ft_printf("%s", 1),
         ft_printf("%d",  2),
@@ -81,8 +81,6 @@ pretty_table(
         ft_printf("%.4f", 4),
         ft_printf("%.4f", 5),
         ft_printf("%.4f", 6),
-        ft_printf("%.4f", 7),
-        ft_printf("%.4f", 8),
         ft_printf("%+.4f", 9),
         ft_printf("%+.4f", 10),
     ),

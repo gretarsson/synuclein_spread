@@ -1,10 +1,10 @@
 using PathoSpread
 
 # Load inferences (adjust paths if your filenames differ)
-inf_T3   = load_inference("simulations/DIFFGA_RETRO_T-3.jls")
-inf_T2   = load_inference("simulations/DIFFGA_RETRO_T-2.jls")
-inf_T1   = load_inference("simulations/DIFFGA_RETRO_T-1.jls")
-inf_Full = load_inference("simulations/DIFFGA_RETRO.jls")
+inf_T3   = load_inference("simulations/DIFFGAM_RETRO_T-3.jls")
+inf_T2   = load_inference("simulations/DIFFGAM_RETRO_T-2.jls")
+inf_T1   = load_inference("simulations/DIFFGAM_RETRO_T-1.jls")
+inf_Full = load_inference("simulations/DIFFGAM_RETRO.jls")
 
 infs  = [inf_T3, inf_T2, inf_T1, inf_Full]
 names = ["T-3", "T-2", "T-1", "Full"]
@@ -13,7 +13,8 @@ names = ["T-3", "T-2", "T-1", "Full"]
 PathoSpread.plot_global_posterior_slope(infs, names; save_path="figures/posterior_comparison")
 
 # 2) Local families of interest
-bases = ["beta", "gamma"]
+bases = ["beta", "gamma"]  # DIFFGA
+bases = ["y0", "ydelta"]  # DIFFGAM
 
 # (a) Heatmaps of effect-size shifts across adjacent truncations up to Full
 #     Pairs: T-3→T-2, T-2→T-1, T-1→Full

@@ -3,7 +3,6 @@ using LinearAlgebra
 using Statistics
 
 #### Plain (per‑region) ODEs ####
-
 function DIFF(du,u,p,t;L=L,factors=nothing)
     L, _ = L
     ρ = p[1]
