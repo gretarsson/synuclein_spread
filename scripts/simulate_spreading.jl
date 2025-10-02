@@ -42,7 +42,7 @@ ode_solver = RK4()  # pick method/algorithm to integrate ODE (these vary in spee
 
 
 prob = ODEProblem((du,u,p,t) -> ode!(du,u,p,t; L=L_tuple, factors=ones(length(p))), u0, tspan, p)  # set up ODE problem, we need a Laplacian L, initial conditions u0, time span, and parameters p
-sol = solve(prob, ode_solver; dt=dt, adaptive=false, saveat=dt, abstol=1e-6, reltol=1e-4)  # solve ODE problem, we need to specify a solver (ode_solver), time step to save at (dt), and whether to use adaptive time stepping (adaptive=false). if using adaptive you save time, but we want it to be reproducible so we don't use it.
+sol = solve(prob, ode_solver; dt=dt, adaptive=false, saveat=dt, abstol=1e-6, reltol=1e-4)  # solve ODE problem, we need to specify a solver (ode_solver), time step to save at (dt), and whether to use adaptive time stepping (adaptive=false). if using adaptive you save time, but we want it to be reproducible so we don't use it. you can also set abstol and reltol, smaller values -> higher accuracy
 
 # --- save simulation to CSV ---
 X = Array(sol)'[:,1:N]  # timepoints × states. This is the output of solve(), i.e. the simulation. Only save the first N states (these are the protein levels, DIFFGA and DIFFGAM have 2*N variables, but we're only interested in the protein levels)
