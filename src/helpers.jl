@@ -408,7 +408,7 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
         isdir("logs") || mkpath("logs")
         logpath = joinpath("logs", "sampling.log")
     
-        open(logpath, "w") do io
+        open(logpath, "a") do io
             logger = ConsoleLogger(io, Logging.Info)
     
             # 6-arg callback compatible with older AbstractMCMC/Turing
