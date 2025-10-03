@@ -380,14 +380,41 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     # Sample to approximate posterior
     println("Starting MCMC sampling...")
     flush(stdout)
+    #if n_chains == 1
+        # OLD WORKS
+        #chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  
+    # NEW LOGGING
     if n_chains == 1
-        chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  
-        # TRY LOGGING TO FILE
-        #chain = with_logger(TerminalLogger(stderr, Logging.Info)) do
-        #    Turing.sample(model, NUTS(1000, target_acceptance; adtype=adtype),
-        #                  1000; progress=true)
-        #end
-
+        # Log quantitative progress to a file you can `tail -f sampling.log`
+        const NWARM  = 1000      # matches NUTS(1000, …)
+        const NSAMP  = 1000      # matches the 3rd arg to `sample`
+        const NTOTAL = NWARM + NSAMP
+        const KLOG   = 50        # log every 50 iterations (adjust as you like)
+    
+        open("sampling.log", "w") do io
+            logger = ConsoleLogger(io, Logging.Info)
+    
+            # Version-tolerant callback: last arg is always the iteration index
+            cb = AbstractMCMC.SamplingCallback() do args...
+                iter = args[end]::Int
+                if iter == 1 || iter % KLOG == 0 || iter == NTOTAL
+                    pct   = round(100 * iter / NTOTAL; digits=1)
+                    phase = (iter <= NWARM) ? "warmup" : "sample"
+                    @info "iter $iter/$NTOTAL  ($pct%)  phase=$phase  @ $(Dates.format(Dates.now(), "HH:MM:SS"))"
+                    flush(io)
+                end
+                false   # do not interrupt sampling
+            end
+    
+            chain = with_logger(logger) do
+                sample(model,
+                        NUTS(NWARM, target_acceptance; adtype=adtype),
+                        NSAMP;
+                        progress=false,          # disable the (invisible) TTY bar
+                        callback=cb)
+            end
+            # use/save `chain` here as before
+        end
     else
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)
         chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)
