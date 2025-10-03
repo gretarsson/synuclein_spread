@@ -261,6 +261,9 @@ end
 #   - Run main(), then clean up workers
 # ---------------------------------------------------------------------------
 if abspath(PROGRAM_FILE) == @__FILE__
+    # print to show we start
+    println("Starting inference script...")
+
     # parse arguments
     parsed = parse_args(build_parser())
     n_chains = parsed["n_chains"]
@@ -271,8 +274,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # 2) on *each* worker, load Pkg and prepare Env
     @everywhere using Pkg
     @everywhere Pkg.activate(".")
-    @everywhere Pkg.instantiate()
-    @everywhere Pkg.precompile()
+    #@everywhere Pkg.instantiate()  # supposedely not needed ChatGPT
+    #@everywhere Pkg.precompile()  # same here
 
     # 3) on each worker, bring in your modeling code
     @everywhere using Turing

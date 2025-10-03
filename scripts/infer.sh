@@ -30,8 +30,10 @@ echo "Julia: \$(which julia)"
 julia -v
 
 # reuse precompiled cache from home
-export JULIA_DEPOT_PATH="$HOME/.julia:$JULIA_DEPOT_PATH"
-export JULIA_PKG_PRECOMPILE_AUTO=0
+#export JULIA_DEPOT_PATH="$HOME/.julia:$JULIA_DEPOT_PATH"
+#export JULIA_PKG_PRECOMPILE_AUTO=0
+# first run only
+julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile'
 
 # Avoid BLAS oversubscription
 export OMP_NUM_THREADS=1
