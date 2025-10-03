@@ -389,7 +389,7 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
         NWARM  = 1000
         NSAMP  = 1000
         NTOTAL = NWARM + NSAMP
-        KLOG   = 50
+        KLOG   = 1
     
         # ensure logs directory
         isdir("logs") || mkpath("logs")
