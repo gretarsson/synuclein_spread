@@ -385,35 +385,39 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
         #chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  
     # NEW LOGGING
     if n_chains == 1
-        # Log quantitative progress to a file you can `tail -f sampling.log`
-        const NWARM  = 1000      # matches NUTS(1000, …)
-        const NSAMP  = 1000      # matches the 3rd arg to `sample`
-        const NTOTAL = NWARM + NSAMP
-        const KLOG   = 50        # log every 50 iterations (adjust as you like)
+        # match your existing settings
+        NWARM  = 1000
+        NSAMP  = 1000
+        NTOTAL = NWARM + NSAMP
+        KLOG   = 50
     
-        open("sampling.log", "w") do io
+        # ensure logs directory
+        isdir("logs") || mkpath("logs")
+        logpath = joinpath("logs", "sampling.log")
+    
+        open(logpath, "w") do io
             logger = ConsoleLogger(io, Logging.Info)
     
-            # Version-tolerant callback: last arg is always the iteration index
-            cb = AbstractMCMC.SamplingCallback() do args...
-                iter = args[end]::Int
+            # 6-arg callback compatible with older AbstractMCMC/Turing
+            cb = function (_rng, _model, _sampler, _state, _sample, iter::Int)
                 if iter == 1 || iter % KLOG == 0 || iter == NTOTAL
-                    pct   = round(100 * iter / NTOTAL; digits=1)
                     phase = (iter <= NWARM) ? "warmup" : "sample"
+                    pct   = round(100 * iter / NTOTAL; digits=1)
                     @info "iter $iter/$NTOTAL  ($pct%)  phase=$phase  @ $(Dates.format(Dates.now(), "HH:MM:SS"))"
                     flush(io)
                 end
-                false   # do not interrupt sampling
+                return false  # do not stop sampling
             end
     
             chain = with_logger(logger) do
                 sample(model,
-                        NUTS(NWARM, target_acceptance; adtype=adtype),
-                        NSAMP;
-                        progress=false,          # disable the (invisible) TTY bar
-                        callback=cb)
+                       NUTS(NWARM, target_acceptance; adtype=adtype),
+                       NSAMP;
+                       progress=false,     # bar is invisible in batch; we log instead
+                       callback=cb)
             end
-            # use/save `chain` here as before
+    
+            # use/save `chain` as you normally do
         end
     else
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)
