@@ -21,7 +21,7 @@ using Plots
 using DataFrames, StatsBase, GLM
 using Plots
 using LaTeXStrings
-using Logging, TerminalLoggers
+using Logging, TerminalLoggers, Dates
 #=
 Helper functions for the project
 =#
@@ -384,6 +384,19 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
         # OLD WORKS
         #chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  
     # NEW LOGGING
+    isdir("logs") || mkpath("logs")
+    open(joinpath("logs","sampling.log"), "w") do io
+        println(io, "[init]"); flush(io)
+        cb = (args...) -> begin
+            iter = Int(args[end])
+            println(io, "[cb] iter=", iter, " @ ", Dates.format(now(), "HH:MM:SS"))
+            flush(io)
+            false
+        end
+        # Manually invoke the callback like AbstractMCMC would:
+        cb(1)             # should append a line immediately
+    end
+     
     if n_chains == 1
         # match your existing settings
         NWARM  = 1000
