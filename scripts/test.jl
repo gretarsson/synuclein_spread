@@ -1,8 +1,14 @@
+println("Hello world")
+println("Starting inference script...")
+flush(stdout)
+
+using ArgParse
+println("argparse")
+using Distributed
+println("distr")
+
+# NEW
 using PathoSpread
+println("pathospread")
 
 
-# load inference object
-inference = load_inference("simulations/DIFFGAM_RETRO.jls")
-
-# save posterior modes
-save_inference_MAP_csv(inference; path="simulations/optimal_parameters/posterior_mode_DIFFGAM.csv")

@@ -377,6 +377,8 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     end
 
     # Sample to approximate posterior
+    println("Starting MCMC sampling...")
+    flush(stdout)
     if n_chains == 1
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), 1000; progress=true)  
         chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  

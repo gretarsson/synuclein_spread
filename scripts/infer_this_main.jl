@@ -52,6 +52,9 @@
 #       * "_bilateral"     → group parameters across left/right homologous regions
 #       * "_bidirectional" → use both retrograde and anterograde Laplacians
 # =============================================================================
+# print to show we start
+println("Starting inference script...")
+#flush(stdout)
 
 using ArgParse
 using Distributed
@@ -151,6 +154,7 @@ function main(parsed)
     if test
         println("→ Test:     $test")
     end
+    #flush(stdout)
 
     # -----------------------------------
     #=
@@ -261,8 +265,6 @@ end
 #   - Run main(), then clean up workers
 # ---------------------------------------------------------------------------
 if abspath(PROGRAM_FILE) == @__FILE__
-    # print to show we start
-    println("Starting inference script...")
 
     # parse arguments
     parsed = parse_args(build_parser())
