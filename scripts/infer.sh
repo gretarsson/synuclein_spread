@@ -6,6 +6,30 @@ PROJECT_DIR="$HOME/synuclein_spread"
 LOG_DIR="$PROJECT_DIR/logs"
 mkdir -p "$LOG_DIR"
 
+# --- INTERACTIVE MODE: run with a real TTY (progress shows) ---
+if [[ "${1:-}" == "-i" || "${1:-}" == "--interactive" ]]; then
+  salloc -N1 -n1 -c1 --mem=32G -p all -t 24:00:00 --hint=nomultithread \
+         --chdir="$PROJECT_DIR" \
+    bash -lc '
+      set -euo pipefail
+      module purge
+      module load julia
+      echo "Julia: $(which julia)"
+      julia -v
+
+      export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 JULIA_NUM_THREADS=4
+
+      echo "[${HOSTNAME}] starting Julia with a TTY (progress will render)"
+      julia --project=. scripts/infer_this_main.jl \
+        DIFFG data/W_labeled_filtered.csv data/total_path.csv \
+        --retrograde=true --n_chains=1 --out_file=simulations/DIFFG_TEST.jls
+    '
+  exit
+fi
+
+
+
+
 sbatch <<'EOF'
 #!/usr/bin/env bash
 #SBATCH --job-name=DIFFG_TEST
@@ -47,8 +71,8 @@ export JULIA_NUM_THREADS=4
 trap 'echo "[trap] SIGUSR1 received; attempting clean exit"; pkill -USR1 -P $$ || true' USR1
 
 echo "[`date`] Launching Julia job"
-#exec stdbuf -oL -eL julia --project=. scripts/infer_this_main.jl \
-#  DIFFG data/W_labeled_filtered.csv data/total_path.csv \
-#  --retrograde=true --n_chains=1 --out_file=simulations/DIFFG_TEST.jls
-exec script -q -e -f -c "julia --project=. scripts/test.jl" /dev/stdout 
+exec stdbuf -oL -eL julia --project=. scripts/infer_this_main.jl \
+  DIFFG data/W_labeled_filtered.csv data/total_path.csv \
+  --retrograde=true --n_chains=1 --out_file=simulations/DIFFG_TEST.jls
+#exec script -q -e -f -c "julia --project=. scripts/test.jl" /dev/stdout 
 EOF
