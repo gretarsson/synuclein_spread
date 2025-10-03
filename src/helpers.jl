@@ -381,12 +381,12 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     println("Starting MCMC sampling...")
     flush(stdout)
     if n_chains == 1
-        #chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  
+        chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  
         # TRY LOGGING TO FILE
-        chain = with_logger(TerminalLogger(stderr; color=false)) do
-            Turing.sample(model, NUTS(1000, target_acceptance; adtype=adtype),
-                          1000; progress=true)
-        end
+        #chain = with_logger(TerminalLogger(stderr, Logging.Info)) do
+        #    Turing.sample(model, NUTS(1000, target_acceptance; adtype=adtype),
+        #                  1000; progress=true)
+        #end
 
     else
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)

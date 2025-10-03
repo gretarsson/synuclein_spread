@@ -54,7 +54,7 @@
 # =============================================================================
 # print to show we start
 println("Starting inference script...")
-#flush(stdout)
+flush(stdout)
 
 using ArgParse
 using Distributed
@@ -154,7 +154,7 @@ function main(parsed)
     if test
         println("→ Test:     $test")
     end
-    #flush(stdout)
+    flush(stdout)
 
     # -----------------------------------
     #=

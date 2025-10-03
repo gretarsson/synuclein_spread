@@ -47,7 +47,8 @@ export JULIA_NUM_THREADS=4
 trap 'echo "[trap] SIGUSR1 received; attempting clean exit"; pkill -USR1 -P $$ || true' USR1
 
 echo "[`date`] Launching Julia job"
-exec stdbuf -oL -eL julia --project=. scripts/infer_this_main.jl \
-  DIFFG data/W_labeled_filtered.csv data/total_path.csv \
-  --retrograde=true --n_chains=1 --out_file=simulations/DIFFG_TEST.jls
+#exec stdbuf -oL -eL julia --project=. scripts/infer_this_main.jl \
+#  DIFFG data/W_labeled_filtered.csv data/total_path.csv \
+#  --retrograde=true --n_chains=1 --out_file=simulations/DIFFG_TEST.jls
+exec script -q -e -f -c "julia --project=. scripts/test.jl" /dev/stdout 
 EOF
