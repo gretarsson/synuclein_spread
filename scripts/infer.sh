@@ -29,8 +29,9 @@ module load julia
 echo "Julia: \$(which julia)"
 julia -v
 
-# (first run only) ensure env is present; harmless if already done
-julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
+# reuse precompiled cache from home
+export JULIA_DEPOT_PATH="$HOME/.julia:$JULIA_DEPOT_PATH"
+export JULIA_PKG_PRECOMPILE_AUTO=0
 
 # Avoid BLAS oversubscription
 export OMP_NUM_THREADS=1
