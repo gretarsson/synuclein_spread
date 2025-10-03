@@ -387,7 +387,7 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     # ---------------------
     # NEW LOGGING
     # Portable fsync for a Julia IO
-    const _fsync = Sys.iswindows() ?
+    _fsync = Sys.iswindows() ?
     (io -> ccall(:_commit, Cint, (Cint,), Base.Libc.fileno(io))) :   # Windows CRT
     (io -> ccall(:fsync,   Cint, (Cint,), Base.Libc.fileno(io)))     # POSIX libc
 
