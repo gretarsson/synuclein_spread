@@ -398,39 +398,44 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     end
      
     if n_chains == 1
-        # match your existing settings
         NWARM  = 1000
         NSAMP  = 1000
         NTOTAL = NWARM + NSAMP
-        KLOG   = 1
+        KLOG   = 1   # set 1 temporarily if you want dense testing
     
-        # ensure logs directory
         isdir("logs") || mkpath("logs")
         logpath = joinpath("logs", "sampling.log")
     
-        open(logpath, "a") do io
+        open(logpath, "a") do io                      # append so you don't clobber
+            # optional: route Julia @warn/@info into the same file
             logger = ConsoleLogger(io, Logging.Info)
     
-            # 6-arg callback compatible with older AbstractMCMC/Turing
+            # helper that forces bytes to disk
+            logline = function (s::AbstractString)
+                println(io, s)
+                flush(io)
+                Base.Libc.fsync(Base.Libc.fileno(io)) # <- force write-through
+            end
+    
+            logline("[init] $(Dates.now())")
+    
             cb = function (_rng, _model, _sampler, _state, _sample, iter::Int)
                 if iter == 1 || iter % KLOG == 0 || iter == NTOTAL
                     phase = (iter <= NWARM) ? "warmup" : "sample"
                     pct   = round(100 * iter / NTOTAL; digits=1)
-                    @info "iter $iter/$NTOTAL  ($pct%)  phase=$phase  @ $(Dates.format(Dates.now(), "HH:MM:SS"))"
-                    flush(io)
+                    logline("iter $iter/$NTOTAL ($pct%) phase=$phase @ $(Dates.format(Dates.now(), "HH:MM:SS"))")
                 end
-                return false  # do not stop sampling
+                return false
             end
     
             chain = with_logger(logger) do
                 sample(model,
                        NUTS(NWARM, target_acceptance; adtype=adtype),
                        NSAMP;
-                       progress=false,     # bar is invisible in batch; we log instead
+                       progress=false,
                        callback=cb)
             end
-    
-            # use/save `chain` as you normally do
+            # use/save `chain`...
         end
     else
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)
