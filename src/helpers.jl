@@ -380,10 +380,17 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     # Sample to approximate posterior
     println("Starting MCMC sampling...")
     flush(stdout)
+    # ----------------------
     #if n_chains == 1
         # OLD WORKS
         #chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  
+    # ---------------------
     # NEW LOGGING
+    # Portable fsync for a Julia IO
+    const _fsync = Sys.iswindows() ?
+    (io -> ccall(:_commit, Cint, (Cint,), Base.Libc.fileno(io))) :   # Windows CRT
+    (io -> ccall(:fsync,   Cint, (Cint,), Base.Libc.fileno(io)))     # POSIX libc
+
     isdir("logs") || mkpath("logs")
     open(joinpath("logs","sampling.log"), "w") do io
         println(io, "[init]"); flush(io)
@@ -414,7 +421,7 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
             logline = function (s::AbstractString)
                 println(io, s)
                 flush(io)
-                Base.Libc.fsync(Base.Libc.fileno(io)) # <- force write-through
+                _fsync(io)
             end
     
             logline("[init] $(Dates.now())")
