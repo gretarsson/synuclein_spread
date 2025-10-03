@@ -386,55 +386,36 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
         #chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  
     # ---------------------
     # NEW LOGGING
-    # Portable fsync for a Julia IO
-    _fsync = Sys.iswindows() ?
-    (io -> ccall(:_commit, Cint, (Cint,), Base.Libc.fileno(io))) :   # Windows CRT
-    (io -> ccall(:fsync,   Cint, (Cint,), Base.Libc.fileno(io)))     # POSIX libc
-
-    isdir("logs") || mkpath("logs")
-    open(joinpath("logs","sampling.log"), "w") do io
-        println(io, "[init]"); flush(io)
-        cb = (args...) -> begin
-            iter = Int(args[end])
-            println(io, "[cb] iter=", iter, " @ ", Dates.format(now(), "HH:MM:SS"))
-            flush(io)
-            false
-        end
-        # Manually invoke the callback like AbstractMCMC would:
-        cb(1)             # should append a line immediately
-    end
-     
     if n_chains == 1
         NWARM  = 1000
         NSAMP  = 1000
         NTOTAL = NWARM + NSAMP
-        KLOG   = 1   # set 1 temporarily if you want dense testing
+        KLOG   = 1    # set 1 temporarily if you want to verify
     
         isdir("logs") || mkpath("logs")
         logpath = joinpath("logs", "sampling.log")
     
-        open(logpath, "a") do io                      # append so you don't clobber
-            # optional: route Julia @warn/@info into the same file
-            logger = ConsoleLogger(io, Logging.Info)
+        # (Optional) put a header so you know the run started
+        open(logpath, "a") do io
+            println(io, "[init] ", Dates.now())
+        end
     
-            # helper that forces bytes to disk
-            logline = function (s::AbstractString)
-                println(io, s)
-                flush(io)
-                _fsync(io)
-            end
-    
-            logline("[init] $(Dates.now())")
-    
-            cb = function (_rng, _model, _sampler, _state, _sample, iter::Int)
-                if iter == 1 || iter % KLOG == 0 || iter == NTOTAL
-                    phase = (iter <= NWARM) ? "warmup" : "sample"
-                    pct   = round(100 * iter / NTOTAL; digits=1)
-                    logline("iter $iter/$NTOTAL ($pct%) phase=$phase @ $(Dates.format(Dates.now(), "HH:MM:SS"))")
+        # Callback that writes one line by reopening (append) each time
+        cb = function (_rng, _model, _sampler, _state, _sample, iter::Int)
+            if iter == 1 || iter % KLOG == 0 || iter == NTOTAL
+                phase = (iter <= NWARM) ? "warmup" : "sample"
+                pct   = round(100 * iter / NTOTAL; digits=1)
+                open(logpath, "a") do fio
+                    println(fio, "iter $iter/$NTOTAL ($pct%) phase=$phase @ ",
+                                 Dates.format(Dates.now(), "HH:MM:SS"))
                 end
-                return false
             end
+            return false
+        end
     
+        # If you also want package @warn/@info in the same file, redirect logging too:
+        open(logpath, "a") do io
+            logger = ConsoleLogger(io, Logging.Info)
             chain = with_logger(logger) do
                 sample(model,
                        NUTS(NWARM, target_acceptance; adtype=adtype),
@@ -442,7 +423,7 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
                        progress=false,
                        callback=cb)
             end
-            # use/save `chain`...
+            # save/use chain...
         end
     else
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)
