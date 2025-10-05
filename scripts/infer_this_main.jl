@@ -243,15 +243,18 @@ function main(parsed)
                     ode_name=string(ode),
                     test_typestable=false
                     )
+    println("Finished sampling")
+    flush(stdout)
 
     # SAVE 
     if isnothing(out_file)
-        save_inference("simulations/$(ode)_N=$(N)_threads=$(n_chains).jls", inference)
-        #serialize("simulations/$(ode)_N=$(N)_threads=$(n_chains).jls", inference)
+        out_file = "simulations/$(ode)_N=$(N)_threads=$(n_chains).jls"
+        save_inference(out_file, inference)
     else
-        #serialize(out_file, inference)
         save_inference(out_file, inference)
     end
+    println("Saved inference dictionary at $(out_file)")
+    flush(stdout)
 end
 
 
