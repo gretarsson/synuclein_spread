@@ -2690,7 +2690,9 @@ end
 function read_W(filename::AbstractString;
                 idxs::BitVector=BitVector(), 
                 direction::Symbol = :retro,
-                self_loops::Bool = false)
+                self_loops::Bool = false,
+                shuffle::Bool = false 
+                )
 
     # read structural data 
     W_lab = readdlm(filename, ',')
@@ -2704,6 +2706,13 @@ function read_W(filename::AbstractString;
     W = W[idxs, idxs]
     # normalize by max positive
     W ./= maximum(W[W .> 0])
+
+    # Optional weight shuffling (null model)
+    if shuffle
+        println("→ Shuffling adjacency matrix (null model control)")
+        flush(stdout)
+        W = PathoSpread.shuffle_weights(W)
+    end
 
     # pick direction
     @assert direction in (:retro, :antero) "direction must be :retro or :antero"
@@ -2976,4 +2985,39 @@ function save_inference(path::AbstractString, obj)
     serialize(path, obj)
     return nothing
 end
+
+
+
+"""
+    shuffle_weights(W; keep_diagonal_zero=true)
+
+Randomly permute all non-diagonal entries of a weighted adjacency matrix one-to-one.
+Preserves the exact multiset of weights (same mean, std, and sum).
+Optionally sets the diagonal to zero afterwards.
+"""
+function shuffle_weights(W::AbstractMatrix; keep_diagonal_zero::Bool=true)
+    W = copy(W)
+    N = size(W, 1)
+
+    # Get all off-diagonal linear indices
+    offdiag_idx = [LinearIndices(W)[i, j] for i in 1:N for j in 1:N if i != j]
+
+    # Extract values and permute
+    vals = W[offdiag_idx]
+    shuffled_vals = shuffle(vals)
+
+    # Assign one-to-one
+    W[offdiag_idx] .= shuffled_vals
+
+    # Optionally zero the diagonal
+    if keep_diagonal_zero
+        @inbounds for i in 1:N
+            W[i, i] = 0.0
+        end
+    end
+
+    return W
+end
+
+
 

@@ -119,7 +119,9 @@ function build_parser()
             arg_type = Int
             default  = 0
             help     = "Number of last timepoints to remove from data/timepoints before inference (0 = keep all)"
-
+        "--shuffle"
+            action = :store_true
+            help = "If set, randomly permute the weights of the adjacency matrix before building the Laplacian (null model control)"
     end
 
     return s
@@ -138,7 +140,7 @@ function main(parsed)
     out_file = parsed["out_file"]
     test = parsed["test"]
     holdout_last = parsed["holdout_last"]
-
+    shuffle = parsed["shuffle"]
 
     # PRINT ARGS
     println("→ ODE:        $ode")
@@ -149,6 +151,7 @@ function main(parsed)
     println("→ Seed label:    $seed_label")
     println("→ Infer seed:    $infer_seed")
     println("→ Hold out last timepoints: $holdout_last")
+    println("→ Shuffle network weights: $shuffle")
     println("→ Target acceptance:    $target_acceptance")
     println("→ Output:     $out_file")
     if test
@@ -176,8 +179,8 @@ function main(parsed)
         # PATHOLOGY DATA
         data, timepoints = process_pathology(data_file; W_csv=w_file);
         # STRUCTURAL DATA
-        Lr,N,labels = read_W(w_file, direction=:retro);
-        La,_,_ = read_W(w_file, direction=:antero);
+        Lr,N,labels = read_W(w_file, direction=:retro, shuffle=shuffle);
+        La,_,_ = read_W(w_file, direction=:antero, shuffle=shuffle);
         # REMOVE LAST TIMEPOINTS IF SPECIFIED
         if holdout_last < 0
             error("holdout_last must be ≥ 0, got $holdout_last")
