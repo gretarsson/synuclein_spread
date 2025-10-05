@@ -1531,7 +1531,7 @@ function plot_ppc_coverage_by_region(inference;
     else
         k = max(1, ceil(Int, R/20))
         sel = 1:k:R
-        Makie.xticks!(ax, (sel, labels[sel]))
+        ax.xticks = (sel, labels[sel])
         ax.xticklabelrotation = π/2
         ax.xticklabelsize = 8
     end
