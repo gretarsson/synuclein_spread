@@ -381,50 +381,8 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     println("Starting MCMC sampling...")
     flush(stdout)
     # ----------------------
-    #if n_chains == 1
-        # OLD WORKS
-        #chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  
-    # ---------------------
-    # NEW LOGGING
     if n_chains == 1
-        NWARM  = 1000
-        NSAMP  = 1000
-        NTOTAL = NWARM + NSAMP
-        KLOG   = 1    # set 1 temporarily if you want to verify
-    
-        isdir("logs") || mkpath("logs")
-        logpath = joinpath("logs", "sampling.log")
-    
-        # (Optional) put a header so you know the run started
-        open(logpath, "a") do io
-            println(io, "[init] ", Dates.now())
-        end
-    
-        # Callback that writes one line by reopening (append) each time
-        cb = function (_rng, _model, _sampler, _state, _sample, iter::Int)
-            if iter == 1 || iter % KLOG == 0 || iter == NTOTAL
-                phase = (iter <= NWARM) ? "warmup" : "sample"
-                pct   = round(100 * iter / NTOTAL; digits=1)
-                open(logpath, "a") do fio
-                    println(fio, "iter $iter/$NTOTAL ($pct%) phase=$phase @ ",
-                                 Dates.format(Dates.now(), "HH:MM:SS"))
-                end
-            end
-            return false
-        end
-    
-        # If you also want package @warn/@info in the same file, redirect logging too:
-        open(logpath, "a") do io
-            logger = ConsoleLogger(io, Logging.Info)
-            chain = with_logger(logger) do
-                sample(model,
-                       NUTS(NWARM, target_acceptance; adtype=adtype),
-                       NSAMP;
-                       progress=false,
-                       callback=cb)
-            end
-            # save/use chain...
-        end
+        chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), 1000; progress=true)  
     else
         #chain = sample(model, NUTS(1000,0.65;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)
         chain = sample(model, NUTS(1000,target_acceptance;adtype=adtype), MCMCDistributed(), 1000, n_chains; progress=true)
