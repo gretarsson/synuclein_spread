@@ -2709,8 +2709,6 @@ function read_W(filename::AbstractString;
 
     # Optional weight shuffling (null model)
     if shuffle
-        println("→ Shuffling adjacency matrix (null model control)")
-        flush(stdout)
         W = PathoSpread.shuffle_weights(W)
     end
 

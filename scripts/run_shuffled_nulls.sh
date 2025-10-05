@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=NULLS
-#SBATCH --array=1-100%20
+#SBATCH --array=1-100%100
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
 #SBATCH --partition=all
-#SBATCH --time=24:00:00
-#SBATCH --chdir=$HOME/synuclein_spread
+#SBATCH --time=48:00:00
+#SBATCH --chdir=/cbica/home/alexanderc/synuclein_spread
 #SBATCH --output=logs/nulls/%x_%A_%a.out
 #SBATCH --error=logs/nulls/%x_%A_%a.err
 #SBATCH --hint=nomultithread
