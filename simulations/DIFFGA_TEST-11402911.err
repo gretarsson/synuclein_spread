@@ -1,0 +1,199 @@
+  Activating project at `/gpfs/fs001/cbica/home/alexanderc/synuclein_spread`
+Sampling (4 processes)   0%|                            |  ETA: N/A
+Sampling (4 processes)   0%|▏                           |  ETA: 15:03:43
+Sampling (4 processes)   1%|▎                           |  ETA: 17:10:44
+Sampling (4 processes)   2%|▍                           |  ETA: 1 days, 17:10:55
+Sampling (4 processes)   2%|▌                           |  ETA: 1 days, 22:07:07
+Sampling (4 processes)   2%|▊                           |  ETA: 3 days, 0:45:19
+Worker 4 terminated.
+Worker 2 terminated.
+UNHANDLED TASK ERROR: EOFError: read end of file
+Stacktrace:
+ [1] (::Base.var"#wait_locked#834")(s::Sockets.TCPSocket, buf::IOBuffer, nb::Int64)
+   @ Base ./stream.jl:979
+ [2] unsafe_read(s::Sockets.TCPSocket, p::Ptr{UInt8}, nb::UInt64)
+   @ Base ./stream.jl:987
+ [3] unsafe_read
+   @ ./io.jl:890 [inlined]
+ [4] unsafe_read(s::Sockets.TCPSocket, p::Base.RefValue{NTuple{4, Int64}}, n::Int64)
+   @ Base ./io.jl:889
+ [5] read!
+   @ ./io.jl:894 [inlined]
+ [6] deserialize_hdr_raw
+   @ /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/messages.jl:167 [inlined]
+ [7] message_handler_loop(r_stream::Sockets.TCPSocket, w_stream::Sockets.TCPSocket, incoming::Bool)
+   @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:172
+ [8] process_tcp_streams(r_stream::Sockets.TCPSocket, w_stream::Sockets.TCPSocket, incoming::Bool)
+   @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:133
+ [9] (::Distributed.var"#103#104"{Sockets.TCPSocket, Sockets.TCPSocket, Bool})()
+   @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:121
+UNHANDLED TASK ERROR: IOError: read: connection reset by peer (ECONNRESET)
+Stacktrace:
+  [1] wait_readnb(x::Sockets.TCPSocket, nb::Int64)
+    @ Base ./stream.jl:410
+  [2] (::Base.var"#wait_locked#834")(s::Sockets.TCPSocket, buf::IOBuffer, nb::Int64)
+    @ Base ./stream.jl:981
+  [3] unsafe_read(s::Sockets.TCPSocket, p::Ptr{UInt8}, nb::UInt64)
+    @ Base ./stream.jl:987
+  [4] unsafe_read
+    @ ./io.jl:890 [inlined]
+  [5] unsafe_read(s::Sockets.TCPSocket, p::Base.RefValue{NTuple{4, Int64}}, n::Int64)
+    @ Base ./io.jl:889
+  [6] read!
+    @ ./io.jl:894 [inlined]
+  [7] deserialize_hdr_raw
+    @ /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/messages.jl:167 [inlined]
+  [8] message_handler_loop(r_stream::Sockets.TCPSocket, w_stream::Sockets.TCPSocket, incoming::Bool)
+    @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:172
+  [9] process_tcp_streams(r_stream::Sockets.TCPSocket, w_stream::Sockets.TCPSocket, incoming::Bool)
+    @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:133
+ [10] (::Distributed.var"#103#104"{Sockets.TCPSocket, Sockets.TCPSocket, Bool})()
+    @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:121
+Worker 5 terminated.
+Worker 3 terminated.
+Sampling (4 processes) 100%|████████████████████████████| Time: 1:58:36
+UNHANDLED TASK ERROR: IOError: read: connection reset by peer (ECONNRESET)
+Stacktrace:
+  [1] wait_readnb(x::Sockets.TCPSocket, nb::Int64)
+    @ Base ./stream.jl:410
+  [2] (::Base.var"#wait_locked#834")(s::Sockets.TCPSocket, buf::IOBuffer, nb::Int64)
+    @ Base ./stream.jl:981
+  [3] unsafe_read(s::Sockets.TCPSocket, p::Ptr{UInt8}, nb::UInt64)
+    @ Base ./stream.jl:987
+  [4] unsafe_read
+    @ ./io.jl:890 [inlined]
+  [5] unsafe_read(s::Sockets.TCPSocket, p::Base.RefValue{NTuple{4, Int64}}, n::Int64)
+    @ Base ./io.jl:889
+  [6] read!
+    @ ./io.jl:894 [inlined]
+  [7] deserialize_hdr_raw
+    @ /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/messages.jl:167 [inlined]
+  [8] message_handler_loop(r_stream::Sockets.TCPSocket, w_stream::Sockets.TCPSocket, incoming::Bool)
+    @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:172
+  [9] process_tcp_streams(r_stream::Sockets.TCPSocket, w_stream::Sockets.TCPSocket, incoming::Bool)
+    @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:133
+ [10] (::Distributed.var"#103#104"{Sockets.TCPSocket, Sockets.TCPSocket, Bool})()
+    @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:121
+UNHANDLED TASK ERROR: IOError: read: connection reset by peer (ECONNRESET)
+Stacktrace:
+  [1] wait_readnb(x::Sockets.TCPSocket, nb::Int64)
+    @ Base ./stream.jl:410
+  [2] (::Base.var"#wait_locked#834")(s::Sockets.TCPSocket, buf::IOBuffer, nb::Int64)
+    @ Base ./stream.jl:981
+  [3] unsafe_read(s::Sockets.TCPSocket, p::Ptr{UInt8}, nb::UInt64)
+    @ Base ./stream.jl:987
+  [4] unsafe_read
+    @ ./io.jl:890 [inlined]
+  [5] unsafe_read(s::Sockets.TCPSocket, p::Base.RefValue{NTuple{4, Int64}}, n::Int64)
+    @ Base ./io.jl:889
+  [6] read!
+    @ ./io.jl:894 [inlined]
+  [7] deserialize_hdr_raw
+    @ /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/messages.jl:167 [inlined]
+  [8] message_handler_loop(r_stream::Sockets.TCPSocket, w_stream::Sockets.TCPSocket, incoming::Bool)
+    @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:172
+  [9] process_tcp_streams(r_stream::Sockets.TCPSocket, w_stream::Sockets.TCPSocket, incoming::Bool)
+    @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:133
+ [10] (::Distributed.var"#103#104"{Sockets.TCPSocket, Sockets.TCPSocket, Bool})()
+    @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/process_messages.jl:121
+┌ Warning: rmprocs: process 1 not removed
+└ @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/cluster.jl:1049
+ERROR: LoadError: TaskFailedException
+
+    nested task error: ProcessExitedException(2)
+    Stacktrace:
+      [1] try_yieldto(undo::typeof(Base.ensure_rescheduled))
+        @ Base ./task.jl:958
+      [2] wait()
+        @ Base ./task.jl:1022
+      [3] wait(c::Base.GenericCondition{ReentrantLock}; first::Bool)
+        @ Base ./condition.jl:130
+      [4] wait
+        @ ./condition.jl:125 [inlined]
+      [5] take_buffered(c::Channel{Any})
+        @ Base ./channels.jl:493
+      [6] take!(c::Channel{Any})
+        @ Base ./channels.jl:487
+      [7] take!(::Distributed.RemoteValue)
+        @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/remotecall.jl:726
+      [8] remotecall_fetch(::Function, ::Distributed.Worker, ::Tuple{Distributed.var"#231#232"{AbstractMCMC.var"#sample_chain#77"{Random.TaskLocalRNG, DynamicPPL.Model{PathoSpread.var"#bayesian_model#78"{Vector{Float64}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Bool, Int64, Float64, OrderedDict{String, Any}, Vector{Float64}, PathoSpread.var"#bayesian_model#70#79"{InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, Float64, Float64, Int64, Int64}, Vector{Vector{Int64}}, Vector{Int64}, Int64, Vector{Any}}, (:data, :prob), (:ode_priors, :priors, :alg, :timepointss, :seedd, :u0, :bayesian_seed, :seed_value, :N_samples, :nonmissing, :row_nonmiss), (), Tuple{Vector{Float64}, ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}}, Tuple{Vector{Any}, OrderedDict{String, Any}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Vector{Float64}, Int64, Vector{Float64}, Bool, Float64, Int64, Vector{Int64}, Vector{Vector{Int64}}}, DynamicPPL.DefaultContext}, DynamicPPL.Sampler{NUTS{AutoReverseDiff{false}, (), AdvancedHMC.DiagEuclideanMetric}}, Int64}}, RemoteChannel{Channel{Any}}}, ::Vararg{Any}; kwargs::@Kwargs{})
+        @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/remotecall.jl:461
+      [9] remotecall_fetch(::Function, ::Distributed.Worker, ::Tuple{Distributed.var"#231#232"{AbstractMCMC.var"#sample_chain#77"{Random.TaskLocalRNG, DynamicPPL.Model{PathoSpread.var"#bayesian_model#78"{Vector{Float64}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Bool, Int64, Float64, OrderedDict{String, Any}, Vector{Float64}, PathoSpread.var"#bayesian_model#70#79"{InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, Float64, Float64, Int64, Int64}, Vector{Vector{Int64}}, Vector{Int64}, Int64, Vector{Any}}, (:data, :prob), (:ode_priors, :priors, :alg, :timepointss, :seedd, :u0, :bayesian_seed, :seed_value, :N_samples, :nonmissing, :row_nonmiss), (), Tuple{Vector{Float64}, ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}}, Tuple{Vector{Any}, OrderedDict{String, Any}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Vector{Float64}, Int64, Vector{Float64}, Bool, Float64, Int64, Vector{Int64}, Vector{Vector{Int64}}}, DynamicPPL.DefaultContext}, DynamicPPL.Sampler{NUTS{AutoReverseDiff{false}, (), AdvancedHMC.DiagEuclideanMetric}}, Int64}}, RemoteChannel{Channel{Any}}}, ::Vararg{Any})
+        @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/remotecall.jl:454
+     [10] remotecall_fetch(::Function, ::Int64, ::Tuple{Distributed.var"#231#232"{AbstractMCMC.var"#sample_chain#77"{Random.TaskLocalRNG, DynamicPPL.Model{PathoSpread.var"#bayesian_model#78"{Vector{Float64}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Bool, Int64, Float64, OrderedDict{String, Any}, Vector{Float64}, PathoSpread.var"#bayesian_model#70#79"{InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, Float64, Float64, Int64, Int64}, Vector{Vector{Int64}}, Vector{Int64}, Int64, Vector{Any}}, (:data, :prob), (:ode_priors, :priors, :alg, :timepointss, :seedd, :u0, :bayesian_seed, :seed_value, :N_samples, :nonmissing, :row_nonmiss), (), Tuple{Vector{Float64}, ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}}, Tuple{Vector{Any}, OrderedDict{String, Any}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Vector{Float64}, Int64, Vector{Float64}, Bool, Float64, Int64, Vector{Int64}, Vector{Vector{Int64}}}, DynamicPPL.DefaultContext}, DynamicPPL.Sampler{NUTS{AutoReverseDiff{false}, (), AdvancedHMC.DiagEuclideanMetric}}, Int64}}, RemoteChannel{Channel{Any}}}, ::Vararg{Any}; kwargs::@Kwargs{})
+        @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/remotecall.jl:492
+     [11] remotecall_pool(rc_f::Function, f::Function, pool::CachingPool, args::Tuple{UInt64, Nothing, Nothing, AbstractMCMC.ChannelProgress{RemoteChannel{Channel{Bool}}}, Int64}; kwargs::@Kwargs{})
+        @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/workerpool.jl:366
+     [12] remotecall_pool
+        @ /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/workerpool.jl:360 [inlined]
+     [13] remotecall_fetch
+        @ /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/workerpool.jl:232 [inlined]
+     [14] #208
+        @ /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/workerpool.jl:288 [inlined]
+     [15] (::Base.var"#1160#1165"{Distributed.var"#208#210"{Distributed.var"#208#209#211"{CachingPool, Distributed.var"#231#232"{AbstractMCMC.var"#sample_chain#77"{Random.TaskLocalRNG, DynamicPPL.Model{PathoSpread.var"#bayesian_model#78"{Vector{Float64}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Bool, Int64, Float64, OrderedDict{String, Any}, Vector{Float64}, PathoSpread.var"#bayesian_model#70#79"{InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, Float64, Float64, Int64, Int64}, Vector{Vector{Int64}}, Vector{Int64}, Int64, Vector{Any}}, (:data, :prob), (:ode_priors, :priors, :alg, :timepointss, :seedd, :u0, :bayesian_seed, :seed_value, :N_samples, :nonmissing, :row_nonmiss), (), Tuple{Vector{Float64}, ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}}, Tuple{Vector{Any}, OrderedDict{String, Any}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Vector{Float64}, Int64, Vector{Float64}, Bool, Float64, Int64, Vector{Int64}, Vector{Vector{Int64}}}, DynamicPPL.DefaultContext}, DynamicPPL.Sampler{NUTS{AutoReverseDiff{false}, (), AdvancedHMC.DiagEuclideanMetric}}, Int64}}}}})(r::Base.RefValue{Any}, args::Tuple{Tuple{UInt64, Nothing, Nothing, AbstractMCMC.ChannelProgress{RemoteChannel{Channel{Bool}}}, Int64}})
+        @ Base ./asyncmap.jl:94
+     [16] (::Base.var"#1176#1177"{Base.var"#1160#1165"{Distributed.var"#208#210"{Distributed.var"#208#209#211"{CachingPool, Distributed.var"#231#232"{AbstractMCMC.var"#sample_chain#77"{Random.TaskLocalRNG, DynamicPPL.Model{PathoSpread.var"#bayesian_model#78"{Vector{Float64}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Bool, Int64, Float64, OrderedDict{String, Any}, Vector{Float64}, PathoSpread.var"#bayesian_model#70#79"{InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, Float64, Float64, Int64, Int64}, Vector{Vector{Int64}}, Vector{Int64}, Int64, Vector{Any}}, (:data, :prob), (:ode_priors, :priors, :alg, :timepointss, :seedd, :u0, :bayesian_seed, :seed_value, :N_samples, :nonmissing, :row_nonmiss), (), Tuple{Vector{Float64}, ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}}, Tuple{Vector{Any}, OrderedDict{String, Any}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Vector{Float64}, Int64, Vector{Float64}, Bool, Float64, Int64, Vector{Int64}, Vector{Vector{Int64}}}, DynamicPPL.DefaultContext}, DynamicPPL.Sampler{NUTS{AutoReverseDiff{false}, (), AdvancedHMC.DiagEuclideanMetric}}, Int64}}}}}, Channel{Any}, Nothing})()
+        @ Base ./asyncmap.jl:228
+    Stacktrace:
+      [1] (::Base.var"#1170#1172")(x::Task)
+        @ Base ./asyncmap.jl:171
+      [2] foreach(f::Base.var"#1170#1172", itr::Vector{Any})
+        @ Base ./abstractarray.jl:3187
+      [3] maptwice(wrapped_f::Function, chnl::Channel{Any}, worker_tasks::Vector{Any}, c::Base.Iterators.Zip{Tuple{Vector{UInt64}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}, Vector{AbstractMCMC.ChannelProgress{RemoteChannel{Channel{Bool}}}}, UnitRange{Int64}}})
+        @ Base ./asyncmap.jl:171
+      [4] wrap_n_exec_twice
+        @ ./asyncmap.jl:147 [inlined]
+      [5] #async_usemap#1155
+        @ ./asyncmap.jl:97 [inlined]
+      [6] async_usemap
+        @ ./asyncmap.jl:78 [inlined]
+      [7] #asyncmap#1154
+        @ ./asyncmap.jl:75 [inlined]
+      [8] asyncmap
+        @ ./asyncmap.jl:74 [inlined]
+      [9] pmap(f::Function, p::CachingPool, c::Base.Iterators.Zip{Tuple{Vector{UInt64}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}, Vector{AbstractMCMC.ChannelProgress{RemoteChannel{Channel{Bool}}}}, UnitRange{Int64}}}; distributed::Bool, batch_size::Int64, on_error::Nothing, retry_delays::Vector{Any}, retry_check::Nothing)
+        @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/pmap.jl:126
+     [10] pmap(f::Function, p::CachingPool, c::Base.Iterators.Zip{Tuple{Vector{UInt64}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}, Vector{AbstractMCMC.ChannelProgress{RemoteChannel{Channel{Bool}}}}, UnitRange{Int64}}})
+        @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/pmap.jl:99
+     [11] pmap(::Function, ::CachingPool, ::Vector{UInt64}, ::FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}, ::Vararg{Any}; kwargs::@Kwargs{})
+        @ Distributed /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/pmap.jl:155
+     [12] pmap
+        @ /gpfs/fs001/cbica/software/centos7/x86_64/julia/1.11.6/share/julia/stdlib/v1.11/Distributed/src/pmap.jl:155 [inlined]
+     [13] (::AbstractMCMC.var"#65#76"{Random.TaskLocalRNG, DynamicPPL.Model{PathoSpread.var"#bayesian_model#78"{Vector{Float64}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Bool, Int64, Float64, OrderedDict{String, Any}, Vector{Float64}, PathoSpread.var"#bayesian_model#70#79"{InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, Float64, Float64, Int64, Int64}, Vector{Vector{Int64}}, Vector{Int64}, Int64, Vector{Any}}, (:data, :prob), (:ode_priors, :priors, :alg, :timepointss, :seedd, :u0, :bayesian_seed, :seed_value, :N_samples, :nonmissing, :row_nonmiss), (), Tuple{Vector{Float64}, ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}}, Tuple{Vector{Any}, OrderedDict{String, Any}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Vector{Float64}, Int64, Vector{Float64}, Bool, Float64, Int64, Vector{Int64}, Vector{Vector{Int64}}}, DynamicPPL.DefaultContext}, DynamicPPL.Sampler{NUTS{AutoReverseDiff{false}, (), AdvancedHMC.DiagEuclideanMetric}}, Int64, Int64, CachingPool, Vector{UInt64}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}})()
+        @ AbstractMCMC ~/.julia/packages/AbstractMCMC/1gucv/src/sample.jl:721
+Stacktrace:
+  [1] sync_end(c::Channel{Any})
+    @ Base ./task.jl:466
+  [2] macro expansion
+    @ ./task.jl:499 [inlined]
+  [3] macro expansion
+    @ ~/.julia/packages/AbstractMCMC/1gucv/src/sample.jl:676 [inlined]
+  [4] (::AbstractMCMC.var"#60#71"{String, Random.TaskLocalRNG, DynamicPPL.Model{PathoSpread.var"#bayesian_model#78"{Vector{Float64}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Bool, Int64, Float64, OrderedDict{String, Any}, Vector{Float64}, PathoSpread.var"#bayesian_model#70#79"{InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, Float64, Float64, Int64, Int64}, Vector{Vector{Int64}}, Vector{Int64}, Int64, Vector{Any}}, (:data, :prob), (:ode_priors, :priors, :alg, :timepointss, :seedd, :u0, :bayesian_seed, :seed_value, :N_samples, :nonmissing, :row_nonmiss), (), Tuple{Vector{Float64}, ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}}, Tuple{Vector{Any}, OrderedDict{String, Any}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Vector{Float64}, Int64, Vector{Float64}, Bool, Float64, Int64, Vector{Int64}, Vector{Vector{Int64}}}, DynamicPPL.DefaultContext}, DynamicPPL.Sampler{NUTS{AutoReverseDiff{false}, (), AdvancedHMC.DiagEuclideanMetric}}, Int64, Int64, CachingPool, Vector{UInt64}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}})()
+    @ AbstractMCMC ~/.julia/packages/AbstractMCMC/1gucv/src/logging.jl:134
+  [5] with_logstate(f::AbstractMCMC.var"#60#71"{String, Random.TaskLocalRNG, DynamicPPL.Model{PathoSpread.var"#bayesian_model#78"{Vector{Float64}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Bool, Int64, Float64, OrderedDict{String, Any}, Vector{Float64}, PathoSpread.var"#bayesian_model#70#79"{InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, Float64, Float64, Int64, Int64}, Vector{Vector{Int64}}, Vector{Int64}, Int64, Vector{Any}}, (:data, :prob), (:ode_priors, :priors, :alg, :timepointss, :seedd, :u0, :bayesian_seed, :seed_value, :N_samples, :nonmissing, :row_nonmiss), (), Tuple{Vector{Float64}, ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}}, Tuple{Vector{Any}, OrderedDict{String, Any}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Vector{Float64}, Int64, Vector{Float64}, Bool, Float64, Int64, Vector{Int64}, Vector{Vector{Int64}}}, DynamicPPL.DefaultContext}, DynamicPPL.Sampler{NUTS{AutoReverseDiff{false}, (), AdvancedHMC.DiagEuclideanMetric}}, Int64, Int64, CachingPool, Vector{UInt64}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}, FillArrays.Fill{Nothing, 1, Tuple{Base.OneTo{Int64}}}}, logstate::Base.CoreLogging.LogState)
+    @ Base.CoreLogging ./logging/logging.jl:524
+  [6] with_logger(f::Function, logger::LoggingExtras.TeeLogger{Tuple{LoggingExtras.EarlyFilteredLogger{TerminalLoggers.TerminalLogger, AbstractMCMC.var"#1#3"{Module}}, LoggingExtras.EarlyFilteredLogger{Base.CoreLogging.ConsoleLogger, AbstractMCMC.var"#2#4"{Module}}}})
+    @ Base.CoreLogging ./logging/logging.jl:635
+  [7] with_progresslogger(f::Function, _module::Module, logger::Base.CoreLogging.ConsoleLogger)
+    @ AbstractMCMC ~/.julia/packages/AbstractMCMC/1gucv/src/logging.jl:157
+  [8] macro expansion
+    @ ~/.julia/packages/AbstractMCMC/1gucv/src/logging.jl:133 [inlined]
+  [9] mcmcsample(rng::Random.TaskLocalRNG, model::DynamicPPL.Model{PathoSpread.var"#bayesian_model#78"{Vector{Float64}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Bool, Int64, Float64, OrderedDict{String, Any}, Vector{Float64}, PathoSpread.var"#bayesian_model#70#79"{InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, Float64, Float64, Int64, Int64}, Vector{Vector{Int64}}, Vector{Int64}, Int64, Vector{Any}}, (:data, :prob), (:ode_priors, :priors, :alg, :timepointss, :seedd, :u0, :bayesian_seed, :seed_value, :N_samples, :nonmissing, :row_nonmiss), (), Tuple{Vector{Float64}, ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}}, Tuple{Vector{Any}, OrderedDict{String, Any}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Vector{Float64}, Int64, Vector{Float64}, Bool, Float64, Int64, Vector{Int64}, Vector{Vector{Int64}}}, DynamicPPL.DefaultContext}, sampler::DynamicPPL.Sampler{NUTS{AutoReverseDiff{false}, (), AdvancedHMC.DiagEuclideanMetric}}, ::MCMCDistributed, N::Int64, nchains::Int64; progress::Bool, progressname::String, initial_params::Nothing, initial_state::Nothing, kwargs::@Kwargs{chain_type::UnionAll})
+    @ AbstractMCMC ~/.julia/packages/AbstractMCMC/1gucv/src/sample.jl:657
+ [10] sample(rng::Random.TaskLocalRNG, model::DynamicPPL.Model{PathoSpread.var"#bayesian_model#78"{Vector{Float64}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Bool, Int64, Float64, OrderedDict{String, Any}, Vector{Float64}, PathoSpread.var"#bayesian_model#70#79"{InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, Float64, Float64, Int64, Int64}, Vector{Vector{Int64}}, Vector{Int64}, Int64, Vector{Any}}, (:data, :prob), (:ode_priors, :priors, :alg, :timepointss, :seedd, :u0, :bayesian_seed, :seed_value, :N_samples, :nonmissing, :row_nonmiss), (), Tuple{Vector{Float64}, ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}}, Tuple{Vector{Any}, OrderedDict{String, Any}, Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, Vector{Float64}, Int64, Vector{Float64}, Bool, Float64, Int64, Vector{Int64}, Vector{Vector{Int64}}}, DynamicPPL.DefaultContext}, sampler::DynamicPPL.Sampler{NUTS{AutoReverseDiff{false}, (), AdvancedHMC.DiagEuclideanMetric}}, ensemble::MCMCDistributed, N::Int64, n_chains::Int64; chain_type::Type, progress::Bool, kwargs::@Kwargs{})
+    @ Turing.Inference ~/.julia/packages/Turing/GSvwQ/src/mcmc/Inference.jl:364
+ [11] sample
+    @ ~/.julia/packages/Turing/GSvwQ/src/mcmc/Inference.jl:353 [inlined]
+ [12] #sample#10
+    @ ~/.julia/packages/Turing/GSvwQ/src/mcmc/Inference.jl:348 [inlined]
+ [13] sample
+    @ ~/.julia/packages/Turing/GSvwQ/src/mcmc/Inference.jl:337 [inlined]
+ [14] #sample#9
+    @ ~/.julia/packages/Turing/GSvwQ/src/mcmc/Inference.jl:332 [inlined]
+ [15] infer(prob::ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, true, SciMLBase.NullParameters, ODEFunction{true, SciMLBase.AutoSpecialize, PathoSpread.var"#247#248"{typeof(PathoSpread.DIFFGA)}, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, @Kwargs{}, SciMLBase.StandardODEProblem}, priors::OrderedDict{String, Any}, data::Array{Union{Missing, Float64}, 3}, timepoints::Vector{Float64}, L::Tuple{LinearAlgebra.Transpose{Float64, Matrix{Float64}}, Int64}; u0::Vector{Float64}, n_chains::Int64, alg::Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, sensealg::InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}, adtype::AutoReverseDiff{false}, factors::Nothing, bayesian_seed::Bool, seed::Int64, seed_value::Float64, sol_idxs::Vector{Int64}, abstol::Float64, reltol::Float64, target_acceptance::Float64, benchmark::Bool, benchmark_ad::Vector{Symbol}, test_typestable::Bool, labels::Vector{String}, ode_name::String)
+    @ PathoSpread /gpfs/fs001/cbica/home/alexanderc/synuclein_spread/src/helpers.jl:388
+ [16] main(parsed::Dict{String, Any})
+    @ Main /gpfs/fs001/cbica/home/alexanderc/synuclein_spread/scripts/infer_this_main.jl:228
+ [17] top-level scope
+    @ /gpfs/fs001/cbica/home/alexanderc/synuclein_spread/scripts/infer_this_main.jl:298
+in expression starting at /gpfs/fs001/cbica/home/alexanderc/synuclein_spread/scripts/infer_this_main.jl:273
