@@ -9,7 +9,7 @@ mkdir -p "$LOG_DIR"
 # Define base (model + args) jobs
 # --------------------------------------------------
 declare -A BASE_JOBS
-JOBS["DIFFGA_TEST"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1 --out_file=simulations/DIFFGA_TEST.jls"
+BASE_JOBS["DIFFGA_TEST"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
 
 # --------------------------------------------------
 # For each base job, submit 4 independent chains
