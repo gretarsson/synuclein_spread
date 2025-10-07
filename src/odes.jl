@@ -99,6 +99,57 @@ function DIFFGAM_bidirectional(du,u,p,t;L=L,factors=(1.,1.))
     du[(N+1):(2*N)] .=  θ .* (ydelta .- y) .* x
 end
 # BILATERAL
+function DIFFG_bilateral(du, u, p, t; L, factors = (1.,1.), region_group::Vector{Int})
+    # Laplacian & sizes
+    Lmat, N = L
+    M       = maximum(region_group)  # number of hemisphere-groups
+
+    # Apply scaling factors
+    p = factors .* p
+
+    # Global params
+    ρ = p[1]
+    α = p[2]
+
+    # Group-level βs (one per bilateral group)
+    βg = @view p[3 : 2 + M]
+    β  = βg[region_group]  # expand to N regions
+
+    # ODE
+    du .= -ρ * Lmat * u .+ α .* u .* (β .- u)
+
+    return nothing
+end
+function DIFFGA_bilateral(du, u, p, t; L, factors = (1.,1.), region_group::Vector{Int})
+    # Unpack Laplacian & sizes
+    Lmat, N = L
+    M       = maximum(region_group)
+
+    # Apply scaling
+    p = factors .* p
+
+    # Global params
+    ρ = p[1]
+    α = p[2]
+
+    # Group-level βs and d's (shared bilaterally)
+    βg = @view p[3        : 2 + M]
+    dg = @view p[3 + M    : 2*M + 2]
+
+    # Expand to region-level parameters
+    β = βg[region_group]
+    d = dg[region_group]
+
+    # Split state vector
+    x = @view u[1    :  N]
+    y = @view u[N+1  : 2*N]
+
+    # ODEs
+    du[1:N]     .= -ρ * Lmat * x .+ α .* x .* (β .- y .- x)
+    du[N+1:2*N] .= d .* x
+
+    return nothing
+end
 function DIFFGAM_bilateral(du, u, p, t; L, factors = (1.,1.), region_group::Vector{Int})
     # unpack Laplacian & sizes
     Lmat, N = L
@@ -139,7 +190,7 @@ const odes = Dict("DIFF" => DIFF,
             "DIFFG_bidirectional" => DIFFG_bidirectional,
             "DIFFGA_bidirectional" => DIFFGA_bidirectional,
             "DIFFGAM_bidirectional" => DIFFGAM_bidirectional,
-            #"DIFFG_bilateral" => DIFFG_bilateral,
-            #"DIFFGA_bilateral" => DIFFGA_bilateral,
+            "DIFFG_bilateral" => DIFFG_bilateral,
+            "DIFFGA_bilateral" => DIFFGA_bilateral,
             "DIFFGAM_bilateral" => DIFFGAM_bilateral,
             )

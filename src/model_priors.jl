@@ -106,25 +106,44 @@ function get_priors(ode::String, K::Int)
           "rhoAntero" => truncated(Normal(0,0.1), lower=0),
         )
 
-
     # BILATERAL
+    elseif ode === "DIFFG_bilateral"
+      return OrderedDict{String,Any}(
+        # global parameters
+        "rho"      => truncated(Normal(0,0.1), lower=0),
+        "alpha"    => truncated(Normal(0,0.1), lower=0),
+
+        # bilateral group-level β’s (shared across hemispheres)
+        [ "beta[$i]"  => Normal(0,1) for i in 1:K ]...,
+      )
+    elseif ode === "DIFFGA_bilateral"
+      return OrderedDict{String,Any}(
+        # global parameters
+        "rho"      => truncated(Normal(0,0.1), lower=0),
+        "alpha"    => truncated(Normal(0,0.1), lower=0),
+  
+        # bilateral group-level β’s
+        [ "beta[$i]"  => Normal(0,1) for i in 1:K ]...,
+  
+        # bilateral group-level γ’s (growth / downstream factors)
+        [ "gamma[$i]" => truncated(Normal(0,0.1), lower=0) for i in 1:K ]...,
+      )
     elseif ode === "DIFFGAM_bilateral"
-        return OrderedDict{String,Any}(
-          # fixed‑size
-          "rho"      => truncated(Normal(0,0.1), lower=0),
-          "alpha"    => truncated(Normal(0,0.1), lower=0),
-
-          # regional λ₀’s
-          [ "lambda0[$i]"   => truncated(Normal(0,1), lower=0) for i in 1:K ]...,
-
-          # regional λ∞’s
-          [ "lambdaInf[$i]" => truncated(Normal(0,1), lower=0) for i in 1:K ]...,
-
-          # more fixed‑size
-          "theta"      => truncated(Normal(0,0.1), lower=0),
-          "lambdaCrit" => truncated(Normal(0,1),   lower=0),
-        )
-
+      return OrderedDict{String,Any}(
+        # global parameters
+        "rho"      => truncated(Normal(0,0.1), lower=0),
+        "alpha"    => truncated(Normal(0,0.1), lower=0),
+  
+        # bilateral group-level y0’s
+        [ "y0[$i]"     => Normal(0,1) for i in 1:K ]...,
+  
+        # bilateral group-level ydelta’s
+        [ "ydelta[$i]" => Normal(0,1) for i in 1:K ]...,
+  
+        # global coupling
+        "theta"      => truncated(Normal(0,0.1), lower=0),
+      )
+  
 
     else
         error("No priors defined for ODE: $ode")
