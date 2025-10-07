@@ -2649,6 +2649,198 @@ end
 
 
 
+"""
+predicted_observed_marked(
+    inference;
+    save_path::Union{String,Nothing}="",
+    plotscale = log10,
+    # overrides (useful for T-1 / T-2 / T-3 comparisons)
+    data_override::Union{Nothing,AbstractArray}=nothing,          # (R,T) or (R,T,K)
+    timepoints_override::Union{Nothing,AbstractVector}=nothing,   # length T
+    train_timepoints::Union{Nothing,AbstractVector}=nothing,      # if nothing, uses inference["timepoints"]
+    mark_heldout::Bool=true,
+    skip_first_timepoint::Bool=true
+)
+
+Creates:
+  • One global predicted-vs-observed scatter (all regions × selected times)
+  • One panel per timepoint
+
+Training points are blue circles; held-out points are red triangles (if `mark_heldout=true`).
+"""
+function predicted_observed_marked(inference;
+    save_path::Union{String,Nothing}="",
+    plotscale = log10,
+    data_override::Union{Nothing,AbstractArray}=nothing,
+    timepoints_override::Union{Nothing,AbstractVector}=nothing,
+    train_timepoints::Union{Nothing,AbstractVector}=nothing,
+    mark_heldout::Bool=true,
+    skip_first_timepoint::Bool=true
+)
+    # --- Unpack / choose data+time grid ---
+    chain       = inference["chain"]
+    data        = data_override       === nothing ? inference["data"]       : data_override
+    timepoints  = timepoints_override === nothing ? inference["timepoints"] : timepoints_override
+    seed        = inference["seed_idx"]
+    Ltuple      = inference["L"]
+    labels      = inference["labels"]
+    sol_idxs    = inference["sol_idxs"]
+    ks          = collect(keys(inference["priors"]))
+    N_pars      = findall(x->x=="σ",ks)[1] - 1
+    factors     = [1.0 for _ in 1:N_pars]
+    ode         = odes[inference["ode"]]
+    R           = size(data,1)
+
+    @assert length(timepoints) == size(data,2) "timepoints length must match data's 2nd dim"
+
+    # --- Posterior mode solve at observed timepoints (to match original) ---
+    n_pars = length(chain.info[1])
+    _, argmax = findmax(chain[:lp])
+    mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
+    p = mode_pars[1:N_pars]
+
+    u0 = copy(inference["u0"])
+    if get(inference, "bayesian_seed", false)
+        u0[seed] = chain["seed"][argmax]
+    else
+        u0[seed] = inference["seed_value"]
+    end
+
+    prob = make_ode_problem(ode;
+        labels     = labels,
+        Ltuple     = Ltuple,
+        factors    = factors,
+        u0         = u0,
+        timepoints = timepoints,
+    )
+    sol = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
+    pred = Array(sol[sol_idxs, :])   # (R,T)
+
+    # --- Observed summary (use mean over replicates if 3D) ---
+    obs =
+        ndims(data) == 3 ? mean3(data) :
+        ndims(data) == 2 ? data         :
+        error("data must be (R,T) or (R,T,K)")
+
+    # --- Train vs held-out membership by exact time values ---
+    train_tp = train_timepoints === nothing ? inference["timepoints"] : train_timepoints
+    train_set = Set(Float64.(train_tp))
+    is_train_time = t -> (Float64(t) in train_set)
+
+    # --- Which time columns to include? (skip the first if desired) ---
+    first_col = skip_first_timepoint ? 2 : 1
+    cols = first_col:size(obs,2)
+    if isempty(cols)
+        @warn "No columns to plot (after skipping first timepoint)."
+        return nothing
+    end
+
+    # --- Helper to prepare x,y with proper missing/finite handling and log-safety ---
+    function prep_xy(x_raw, y_raw)
+        @assert length(x_raw) == length(y_raw)
+        # Build mask BEFORE converting to Float64
+        mask = .!ismissing.(x_raw)
+        # y may already be Float64; still guard against NaN/Inf
+        y_tmp = Float64.(y_raw)
+        mask .&= isfinite.(y_tmp)
+        # Filter and convert x
+        x = Float64.(x_raw[mask])
+        y = y_tmp[mask]
+        if isempty(x); return Float64[], Float64[]; end
+
+        if plotscale === log10
+            # shift nonpositive values up by the smallest positive among remaining data
+            pos_pool = vcat(x[x .> 0], y[y .> 0])
+            if isempty(pos_pool)
+                return Float64[], Float64[]
+            end
+            eps_shift = minimum(pos_pool)
+            x = ifelse.(x .> 0, x, x .+ eps_shift)
+            y = ifelse.(y .> 0, y, y .+ eps_shift)
+        end
+        return x, y
+    end
+
+    # --- Colors/markers ---
+    train_color   = RGBf(0/255,71/255,171/255)    # blue
+    heldout_color = RGBf(200/255, 60/255, 50/255) # red
+
+    # === Global scatter (all chosen timepoints pooled) ===
+    x_train = Float64[]; y_train = Float64[]
+    x_hold  = Float64[]; y_hold  = Float64[]
+    for j in cols
+        xj, yj = prep_xy(view(obs, :, j), view(pred, :, j))
+        if isempty(xj); continue; end
+        if mark_heldout && !is_train_time(timepoints[j])
+            append!(x_hold, xj); append!(y_hold, yj)
+        else
+            append!(x_train, xj); append!(y_train, yj)
+        end
+    end
+
+    # axis ticks for log10
+    use_log = (plotscale === log10)
+    xticks = use_log ? ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e0],
+                        [L"$10^{-6}$",L"$10^{-5}$",L"$10^{-4}$",L"$10^{-3}$",L"$10^{-2}$",L"$10^{-1}$",L"$10^{0}$"]) : Makie.automatic
+
+    f = Figure()
+    ax = Axis(f[1,1];
+        title="Predicted vs Observed (pooled)",
+        xlabel="Observed", ylabel="Predicted",
+        xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=xticks)
+
+    if !isempty(x_train)
+        CairoMakie.scatter!(ax, x_train, y_train; color=(train_color,0.55))
+    end
+    if mark_heldout && !isempty(x_hold)
+        CairoMakie.scatter!(ax, x_hold, y_hold; color=(heldout_color,0.7), marker=:utriangle)
+    end
+
+    allx = vcat(x_train, x_hold); ally = vcat(y_train, y_hold)
+    if !isempty(allx)
+        mn = min(minimum(allx), minimum(ally))
+        mx = max(maximum(allx), maximum(ally))
+        lines!(ax, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
+    end
+
+    if !isempty(save_path)
+        try; mkpath(save_path); catch; end
+        save(joinpath(save_path,"predicted_observed_marked_all.pdf"), f)
+    end
+
+    # === Per-timepoint panels ===
+    figs = Any[f]
+    for j in cols
+        xj, yj = prep_xy(view(obs, :, j), view(pred, :, j))
+        isempty(xj) && continue
+
+        f_t = Figure()
+        ax_t = Axis(f_t[1,1];
+            title = @sprintf("t = %.3f%s", timepoints[j], (is_train_time(timepoints[j]) ? " (train)" : " (held-out)")),
+            xlabel="Observed", ylabel="Predicted",
+            xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=xticks)
+
+        if mark_heldout && !is_train_time(timepoints[j])
+            CairoMakie.scatter!(ax_t, xj, yj; color=(heldout_color,0.7), marker=:utriangle)
+        else
+            CairoMakie.scatter!(ax_t, xj, yj; color=(train_color,0.55))
+        end
+
+        mn = min(minimum(xj), minimum(yj))
+        mx = max(maximum(xj), maximum(yj))
+        lines!(ax_t, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
+
+        if !isempty(save_path)
+            save(joinpath(save_path, "predicted_observed_marked_t$(j).pdf"), f_t)
+        end
+        push!(figs, f_t)
+    end
+
+    return figs
+end
+
+
+
 
 #=
 master plotting function (plot everything relevant to inference)
@@ -2711,6 +2903,42 @@ function plot_inference(inference, save_path;
             mark_heldout = false
         )
     end
+
+    # --- Predicted vs Observed (training vs held-out, if available) ---
+    if use_override
+        # Full series available → color held-out (red triangles) vs train (blue circles)
+        predicted_observed_marked(
+            inference;
+            save_path            = joinpath(save_path, "predicted_observed_marked_full_log10"),
+            data_override        = full_data,
+            timepoints_override  = full_timepoints,
+            train_timepoints     = inference["timepoints"],
+            mark_heldout         = true,
+            skip_first_timepoint = true
+        )
+        # Full series available → color held-out (red triangles) vs train (blue circles)
+        predicted_observed_marked(
+            inference;
+            save_path            = joinpath(save_path, "predicted_observed_marked_full_id"),
+            data_override        = full_data,
+            timepoints_override  = full_timepoints,
+            train_timepoints     = inference["timepoints"],
+            mark_heldout         = true,
+            skip_first_timepoint = true,
+            plotscale=identity
+        )
+    else
+        # No full series → plot fitted range only (all blue)
+        predicted_observed_marked(
+            inference;
+            save_path            = joinpath(save_path, "predicted_observed_marked"),
+            mark_heldout         = false,
+            skip_first_timepoint = true
+        )
+    end
+
+
+
 
     plot_two_local_params_scatter(inference;
         save_path=save_path*"/two_param_scatter",
@@ -2795,6 +3023,10 @@ function plot_inference(inference, save_path;
 
     predicted_observed(inference; save_path=save_path*"/predicted_observed_log10", plotscale=log10);
     predicted_observed(inference; save_path=save_path*"/predicted_observed_id",  plotscale=identity);
+
+
+
+
 
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     plot_posteriors(inference, save_path=save_path*"/posteriors");

@@ -19,16 +19,24 @@ simulations = [
     #"simulations/DIFFGA_RETRO",
     #"simulations/DIFFGA_BIDIR",
     ##
-    "simulations/DIFFGAM_EUCL",
-    "simulations/DIFFGAM_ANTERO",
-    "simulations/DIFFGAM_RETRO",
-    "simulations/DIFFGAM_BIDIR",
+    #"simulations/DIFFGAM_EUCL",
+    #"simulations/DIFFGAM_ANTERO",
+    #"simulations/DIFFGAM_RETRO",
+    #"simulations/DIFFGAM_BIDIR",
     #
     #"simulations/DIFF_RETRO",
     #"simulations/DIFFG_RETRO",
     #"simulations/DIFFGA_RETRO",
     #"simulations/DIFFGAM_RETRO",
-
+    # NULL MODELS
+    #"simulations/DIFFGA_shuffle_2",
+    #"simulations/DIFFGA_shuffle_8",
+    #"simulations/DIFFGA_shuffle_12",
+    #"simulations/DIFFGA_RETRO",
+    # HELD OUT 
+    "simulations/DIFF_RETRO_T-1",
+    "simulations/DIFFGA_RETRO_T-1",
+    "simulations/DIFFGAM_RETRO_T-1",
 ]
 model_names = [
     #"DIFF euclidean", 
@@ -46,19 +54,28 @@ model_names = [
     #"DIFFGA retrograde", 
     #"DIFFGA bidirectional", 
     ##
-    "DIFFGAM euclidean", 
-    "DIFFGAM anterograde", 
-    "DIFFGAM retrograde", 
-    "DIFFGAM bidirectional", 
+    #"DIFFGAM euclidean", 
+    #"DIFFGAM anterograde", 
+    #"DIFFGAM retrograde", 
+    #"DIFFGAM bidirectional", 
     #
     #"DIFF retrograde", 
     #"DIFFG retrograde", 
     #"DIFFGA retrograde", 
     #"DIFFGAM retrograde", 
+    #
+    #"DIFFGA shuffle_2",
+    #"DIFFGA shuffle_8",
+    #"DIFFGA shuffle_12",
+    #"DIFFGA RETRO",
+    #
+    "DIFF T-1",
+    "DIFFGA T-1",
+    "DIFFGAM T-1",
 ]
 inferences = []
 for simulation in simulations
-    push!(inferences, load_inference(simulation * ".jl"))
+    push!(inferences, load_inference(simulation * ".jls"))
 end
 
 # Compute WAIC, AIC, BIC, MSE, and Frobenius covariance norm for models
@@ -280,4 +297,4 @@ Makie.xlims!(ax, xmin-0.1*pad, xmax + pad)
 
 # save figure
 fig
-save("figures/model_comparison/DIFFGAM_delta_waic_vs_best.pdf", fig)
+save("figures/model_comparison/heldout_DIFFGA_delta_waic_vs_best.pdf", fig)

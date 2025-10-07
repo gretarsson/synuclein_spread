@@ -2789,35 +2789,23 @@ function nonzero_regions(data; eps::Real=0.05)
 end
 
 # --- Predictive accuracy on held-out timepoints: log score & CRPS -----------------------------
-"""
-    compute_heldout_scores(inference;
-        data_full, timepoints_full, S=400, rng=Random.default_rng())
-
-Returns a NamedTuple with:
-- elpd_mean :: Float64   (mean per-point log predictive density)
-- crps_mean :: Float64   (mean per-point CRPS, in the same 0–100 units as data)
-- n_points  :: Int
-- elpd_i    :: Vector{Float64}   (per held-out point)
-- crps_i    :: Vector{Float64}   (per held-out point)
-"""
 function compute_heldout_scores(inference::Dict;
     data_full,
     timepoints_full::AbstractVector{<:Real},
     S::Int=400,
     rng = Random.default_rng()
 )
-    # --- helpers ---------------------------------------------------------------
     logmeanexp(v::AbstractVector{<:Real}) = (m = maximum(v); m + log(mean(exp.(v .- m))))
-    # fast (1/S^2) * sum_{i,j} |x_i - x_j| using sorted samples
-    function mean_abs_pairwise(xs::Vector{Float64})
-        S = length(xs)
-        xs_sorted = sort(xs)
-        # 2 * sum_{i<j} (x_j - x_i) = 2 * sum_{i=1}^S (2i - S - 1) * x_(i)
-        pair_sum = 2.0 * sum(((2i - S - 1) * xs_sorted[i]) for i in 1:S)
-        return pair_sum / (S^2)
-    end
-    # ---------------------------------------------------------------------------
 
+    # Analytic CRPS for Normal(μ,σ)
+    function crps_normal(y::Float64, μ::Float64, σ::Float64)
+        z = (y - μ)/σ
+        Φz = cdf(Normal(), z)
+        ϕz = pdf(Normal(), z)
+        return σ * (z*(2Φz - 1) + 2ϕz - 1/√π)
+    end
+
+    # --- unpack ---
     chain      = inference["chain"]
     priors     = inference["priors"]
     time_train = inference["timepoints"]
@@ -2831,16 +2819,12 @@ function compute_heldout_scores(inference::Dict;
     bayes_seed = inference["bayesian_seed"]
     seed_idx   = inference["seed_idx"]
     seed_value = inference["seed_value"]
+    ode_fn     = odes[inference["ode"]]
 
-    # ODE function from your global dictionary
-    ode_fn = odes[inference["ode"]]
-
-    # indices in the full grid that are NOT in the training grid
+    # --- held-out indices (same as before) ---
     heldout_t = [j for (j,t) in enumerate(timepoints_full)
-                if !any(isapprox(t, τ; atol=1e-8, rtol=1e-8) for τ in time_train)]
+                 if !any(isapprox(t, τ; atol=1e-8, rtol=1e-8) for τ in time_train)]
 
-
-    # build list of held-out (r, t, y) points (each replicate counts as a separate point)
     rs, ts, ys = Int[], Int[], Float64[]
     if K == 1
         for r in 1:R, tj in heldout_t
@@ -2860,91 +2844,92 @@ function compute_heldout_scores(inference::Dict;
     n_points = length(ys)
     @assert n_points > 0 "No held-out points found."
 
-    # figure out σ indexing (global or regional)
+    # === INSERT #1: robust parameter slicing & r->U row mapping ===
     pnames_sym = chain.name_map.parameters
     sigma_cols = findall(n -> occursin("σ[", String(n)) || n == :σ, pnames_sym)
+    @assert !isempty(sigma_cols) "No σ parameter found in chain."
+    sort!(sigma_cols)                      # respect θ-order
     regional_sigma = length(sigma_cols) > 1
+    N_pars = sigma_cols[1] - 1             # p = θ[1:N_pars] is safe
 
-    # index of first non-σ parameter count
-    ks = collect(keys(priors))
-    N_pars = findfirst(x -> x == "σ", ks) - 1
+    # map ORIGINAL region id -> row in U = sol[sol_idxs, :]
+    r_to_u = Dict(r0 => u for (u, r0) in enumerate(sol_idxs))
+    # === end INSERT #1 ===
 
-    # set up ODE Problem at full time grid
-    function rhs(du,u,p,t)
-        ode_fn(du, u, p, t; L=Ltuple, factors=factors)
-    end
+    # ODE problem on full grid
+    rhs(du,u,p,t) = ode_fn(du,u,p,t; L=Ltuple, factors=factors)
     tspan = (timepoints_full[1], timepoints_full[end])
     prob  = ODEProblem(rhs, u0_base, tspan; alg=Tsit5())
 
-    # sample S posterior draws
-    draws = sample(chain, S; replace=false)
-    drawsA = Array(draws)  # (S, n_pars_total, 1)
+    # sample posterior draws
+    draws  = sample(chain, S; replace=false)
+    drawsA = Array(draws)
 
     # storage
-    # for ELPD we keep log-lik per draw; for CRPS we keep one predictive sample per draw
-    ll = Array{Float64}(undef, S, n_points)
-    x  = Array{Float64}(undef, S, n_points)
+    ll  = Array{Float64}(undef, S, n_points)
+    μs  = Array{Float64}(undef, S, n_points)
+    σs  = Array{Float64}(undef, S, n_points)
 
     for s in 1:S
         θ = vec(drawsA[s, :, 1])
         p = θ[1:N_pars]
 
-        # initial conditions with/without Bayesian seed
+        # initial condition (seed)
         u0 = copy(u0_base)
         if bayes_seed
-            # find "seed" column safely
             seed_col = findfirst(n -> n == :seed || String(n) == "seed", pnames_sym)
-            @assert seed_col !== nothing "Could not find :seed in chain names."
             u0[seed_idx] = θ[seed_col]
         else
             u0[seed_idx] = seed_value
         end
 
-        # extract σ (global or per-region)
+        # σ (you said global now; keep regional path future-proofed)
         if regional_sigma
-            # σ[1], σ[2], ...
-            sigma_for_region = r -> θ[sigma_cols[r]]
+            sigma_for_region_orig = r0 -> θ[sigma_cols[r0]]
         else
-            σ = θ[sigma_cols[1]]
-            sigma_for_region = r -> σ
+            σglobal = θ[sigma_cols[1]]
+            sigma_for_region_orig = _ -> σglobal
         end
 
-        # solve the ODE at the full grid
-        sol = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints_full, abstol=1e-9, reltol=1e-6)
-        U   = Array(sol[sol_idxs, :])  # R × Tfull
+        # solve
+        sol = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints_full,
+                    abstol=1e-9, reltol=1e-6)
+        U = Array(sol[sol_idxs, :])   # rows correspond to sol_idxs ordering
 
-        # fill per-point arrays for this draw
+        # === INSERT #2: use mapped row index urow instead of raw r ===
         @inbounds for i in 1:n_points
-            r = rs[i]; t = ts[i]; y = ys[i]
-            μ = U[r, t]
-            σi = sigma_for_region(r)
-
+            r0 = rs[i]               # original region id
+            urow = r_to_u[r0]        # row in U
+            t  = ts[i]
+            y  = ys[i]
+            μ  = U[urow, t]
+            σi = sigma_for_region_orig(r0)   # global σ uses same value for all r0
             ll[s, i] = logpdf(Normal(μ, σi), y)
-            x[s,  i] = μ + randn(rng) * σi
+            μs[s, i] = μ
+            σs[s, i] = σi
         end
+        # === end INSERT #2 ===
     end
 
-    # ELPD per point (mixture over draws)
+    # held-out ELPD (mixture over draws)
     elpd_i = [logmeanexp(ll[:, i]) for i in 1:n_points]
+    elpd_total = sum(elpd_i)
+    elpd_mean  = mean(elpd_i)
 
-    # CRPS per point via sample identity:
-    # CRPS ≈ mean(|X - y|) - 0.5 * E|X - X'|, with E|X - X'| ≈ (1/S^2)∑_{i,j} |x_i - x_j|
-    crps_i = Vector{Float64}(undef, n_points)
-    for i in 1:n_points
-        xi = view(x, :, i)
-        term1 = mean(abs.(xi .- ys[i]))
-        term2 = 0.5 * mean_abs_pairwise(Vector{Float64}(xi))
-        crps_i[i] = term1 - term2
-    end
+    # CRPS (you’re focusing on ELPD; leave as-is or replace with sample-based later)
+    crps_i = [mean(crps_normal(ys[i], μs[s,i], σs[s,i]) for s in 1:S) for i in 1:n_points]
+    crps_mean = mean(crps_i)
 
     return (
-        elpd_mean = mean(elpd_i),
-        crps_mean = mean(crps_i),
+        elpd_mean = elpd_mean,
+        elpd_total = elpd_total,
+        crps_mean = crps_mean,
         n_points  = n_points,
         elpd_i    = elpd_i,
         crps_i    = crps_i,
     )
 end
+
 
 
 
