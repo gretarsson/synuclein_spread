@@ -9,7 +9,7 @@ mkdir -p "$LOG_DIR"
 # Define base (model + args) jobs
 # --------------------------------------------------
 declare -A BASE_JOBS
-BASE_JOBS["DIFFGAM_BILATERAL"]="DIFFGAM data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
+BASE_JOBS["DIFFGA_TEST"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
 
 # --------------------------------------------------
 # For each base job, submit 4 independent chains
@@ -26,10 +26,10 @@ for JOBNAME in "${!BASE_JOBS[@]}"; do
 #SBATCH --job-name=$FULL_JOBNAME
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=2
 #SBATCH --mem=32G
-#SBATCH --partition=all
-#SBATCH --time=48:00:00
+#SBATCH --partition=long
+#SBATCH --time=21-00:00:00
 #SBATCH --chdir=$PROJECT_DIR
 #SBATCH --output=$LOG_DIR/${FULL_JOBNAME}-%j.out
 #SBATCH --error=$LOG_DIR/${FULL_JOBNAME}-%j.err
@@ -55,4 +55,5 @@ EOF
 done
 
 echo "All jobs submitted. Use 'squeue -u \$USER' to monitor."
+
 
