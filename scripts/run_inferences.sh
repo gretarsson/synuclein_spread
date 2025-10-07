@@ -28,7 +28,7 @@ for JOBNAME in "${!BASE_JOBS[@]}"; do
 #SBATCH --job-name=$FULL_JOBNAME
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=1        # <= match single-threaded Julia
 #SBATCH --mem=32G
 #SBATCH --partition=all
 #SBATCH --time=2-00:00:00
@@ -42,10 +42,18 @@ set -euo pipefail
 module purge
 module load julia
 
+# ---------- added fixes ----------
+# Lift CPU-time cap if allowed
+ulimit -t unlimited || true
+
+# Force single-threaded math
+export JULIA_NUM_THREADS=1
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
-export JULIA_NUM_THREADS=1
+# (Optional) confirm:
+echo "[CPU limit (s)] \$(ulimit -t)"
+# ---------------------------------
 
 trap 'echo "[trap] SIGUSR1 received; attempting clean exit"; pkill -USR1 -P $$ || true' USR1
 
