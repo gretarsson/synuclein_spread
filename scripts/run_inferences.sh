@@ -30,8 +30,8 @@ for JOBNAME in "${!BASE_JOBS[@]}"; do
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=32G
-#SBATCH --partition=long
-#SBATCH --time=21-00:00:00
+#SBATCH --partition=all
+#SBATCH --time=2-00:00:00
 #SBATCH --chdir=$PROJECT_DIR
 #SBATCH --output=$LOG_DIR/${FULL_JOBNAME}-%j.out
 #SBATCH --error=$LOG_DIR/${FULL_JOBNAME}-%j.err

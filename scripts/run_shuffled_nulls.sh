@@ -5,7 +5,7 @@ set -euo pipefail
 # Launch parallel randomized null inference runs for all models
 # ============================================================
 
-MODELS=("DIFF" "DIFFG" "DIFFGA" "DIFFGAM")
+MODELS=("DIFFGA")
 N_NULLS=100        # number of random shuffles per model
 
 for MODEL in "${MODELS[@]}"; do
@@ -19,8 +19,8 @@ for MODEL in "${MODELS[@]}"; do
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=32G
-#SBATCH --partition=long
-#SBATCH --time=21-00:00:00
+#SBATCH --partition=all
+#SBATCH --time=2-00:00:00
 #SBATCH --chdir=/cbica/home/alexanderc/synuclein_spread
 #SBATCH --output=logs/nulls/%x_%A_%a.out
 #SBATCH --error=logs/nulls/%x_%A_%a.err
