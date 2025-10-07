@@ -100,6 +100,10 @@ function build_parser()
             arg_type = String
             default  = "iCP"
             help     = "The label of the seeded region"
+        "--seed_index"
+            arg_type = Int
+            default  = 0
+            help     = "Index of the seeded region (1-based). Overrides --seed_label if > 0"
         "--infer_seed"
             arg_type = Bool
             default  = true
@@ -204,7 +208,13 @@ function main(parsed)
     end
 
     # SET SEED AND INITIAL CONDITIONS
-    seed = findfirst(==(seed_label), labels);  
+    #seed = findfirst(==(seed_label), labels);  # OLD
+    if parsed["seed_index"] > 0  # NEW
+        seed = parsed["seed_index"]
+    else
+        seed = findfirst(==(seed_label), labels)
+    end
+    
 
     # SET PRIORS (variance and seed have to be last, in that order)
     region_group = build_region_groups(labels)  # prepare bilateral parameters
