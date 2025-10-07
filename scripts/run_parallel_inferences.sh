@@ -9,9 +9,6 @@ mkdir -p "$LOG_DIR"
 # Define base (model + args) jobs
 # --------------------------------------------------
 declare -A BASE_JOBS
-BASE_JOBS["DIFF_T1"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --holdout_last=1"
-BASE_JOBS["DIFF_T2"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --holdout_last=2"
-BASE_JOBS["DIFF_T3"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --holdout_last=3"
 BASE_JOBS["DIFFG_T1"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --holdout_last=1"
 BASE_JOBS["DIFFG_T2"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --holdout_last=2"
 BASE_JOBS["DIFFG_T3"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --holdout_last=3"
@@ -31,7 +28,7 @@ for JOBNAME in "${!BASE_JOBS[@]}"; do
 #SBATCH --job-name=$FULL_JOBNAME
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=2
 #SBATCH --mem=32G
 #SBATCH --partition=all
 #SBATCH --time=48:00:00
