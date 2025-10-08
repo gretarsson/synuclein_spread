@@ -6,54 +6,21 @@ using CairoMakie, Colors, Printf
 # SETTINGS
 # ───────────────────────────────────────────────────────────────
 mode = :seed   # or :seed
-sim_true = "simulations/DIFFGA_RETRO"
+sim_true = "simulations/DIFFGA_RETRO.jls"
 out_pdf  = "figures/model_comparison/nulls/DIFFGA_$(String(mode))_WAIC_box.pdf"
 
-sim_paths = mode == :shuffle ? [
-    "simulations/DIFFGA_shuffle_2",
-    "simulations/DIFFGA_shuffle_8",
-    "simulations/DIFFGA_shuffle_12",
-    "simulations/DIFFGA_shuffle_13",
-    "simulations/DIFFGA_shuffle_16",
-    "simulations/DIFFGA_shuffle_18",
-    "simulations/DIFFGA_shuffle_20",
-    "simulations/DIFFGA_shuffle_21",
-    "simulations/DIFFGA_shuffle_24",
-    "simulations/DIFFGA_shuffle_27",
-    "simulations/DIFFGA_shuffle_31",
-    "simulations/DIFFGA_shuffle_34",
-    "simulations/DIFFGA_shuffle_35",
-    "simulations/DIFFGA_shuffle_36",
-    "simulations/DIFFGA_shuffle_39",
-    "simulations/DIFFGA_shuffle_40",
-    "simulations/DIFFGA_shuffle_41",
-    "simulations/DIFFGA_shuffle_42",
-    "simulations/DIFFGA_shuffle_46",
-    "simulations/DIFFGA_shuffle_47",
-    "simulations/DIFFGA_shuffle_57",
-    "simulations/DIFFGA_shuffle_61",
-    "simulations/DIFFGA_shuffle_66",
-    "simulations/DIFFGA_shuffle_68",
-    "simulations/DIFFGA_shuffle_88",
-    "simulations/DIFFGA_shuffle_89",
-    "simulations/DIFFGA_shuffle_92",
-    "simulations/DIFFGA_shuffle_97",
-    "simulations/DIFFGA_shuffle_99",
-] : [
-    "simulations/DIFFGA_seed_4",
-    "simulations/DIFFGA_seed_5",
-    "simulations/DIFFGA_seed_6",
-    "simulations/DIFFGA_seed_26",
-    "simulations/DIFFGA_seed_67",
-    "simulations/DIFFGA_seed_71",
-    "simulations/DIFFGA_seed_80",
-    "simulations/DIFFGA_seed_81",
-    "simulations/DIFFGA_seed_88",
-    "simulations/DIFFGA_seed_95",
-    "simulations/DIFFGA_seed_98",
-    "simulations/DIFFGA_seed_104",
-    "simulations/DIFFGA_seed_105",
-]
+# Automatically collect all relevant simulation files
+all_files = readdir("simulations"; join=true)
+
+if mode == :shuffle
+    sim_paths = filter(f -> occursin(r"DIFFGA_shuffle_\d+$", splitext(basename(f))[1]), all_files)
+elseif mode == :seed
+    sim_paths = filter(f -> occursin(r"DIFFGA_seed_\d+$", splitext(basename(f))[1]), all_files)
+else
+    error("Unknown mode: $mode. Must be :shuffle or :seed.")
+end
+
+println("Found $(length(sim_paths)) $(String(mode)) models.")
 
 # ───────────────────────────────────────────────────────────────
 # LOAD WAIC VALUES
@@ -61,7 +28,7 @@ sim_paths = mode == :shuffle ? [
 function get_waic_values(sim_paths; S=300)
     vals = Float64[]
     for sp in sim_paths
-        inf = load_inference(sp * ".jls")
+        inf = load_inference(sp)
         waic, _, _, _, _, _ = compute_waic(inf; S=S)
         if isfinite(waic)
             push!(vals, waic)
@@ -73,7 +40,7 @@ function get_waic_values(sim_paths; S=300)
 end
 
 waic_nulls = get_waic_values(sim_paths; S=300)
-true_inf   = load_inference(sim_true * ".jls")
+true_inf   = load_inference(sim_true)
 true_waic, _, _, _, _, _ = compute_waic(true_inf; S=300)
 
 println(@sprintf("Mean shuffle WAIC = %.2f ± %.2f", mean(waic_nulls), std(waic_nulls)))
@@ -132,13 +99,78 @@ text!(ax, 1.0, true_waic;
       fontsize = 24,
       color = :black)
 
-# Optional top label
-#text!(ax, 1.0, maximum(waic_nulls)*1.02;
-#      text = @sprintf("Empirical p = %.3f", pval),
-#      align = (:center,:bottom), fontsize=18, color=:black)
-
 
 # --- Save ---
 mkpath(dirname(out_pdf))
 save(out_pdf, fig)
 fig
+
+
+# ───────────────────────────────────────────────────────────────
+# ADDITIONAL ANALYSIS: Distance from true seed vs ΔWAIC
+# ───────────────────────────────────────────────────────────────
+if mode == :seed
+    using Graphs, LinearAlgebra, DelimitedFiles
+    using SimpleWeightedGraphs
+
+    println("\nComputing seed distance vs ΔWAIC relationship...")
+
+    # Load reference Laplacian / adjacency matrix
+    # (Adjust this line according to your connectivity file)
+    W_labels = readdlm("data/W_labeled_filtered.csv", ',')  # e.g., your PathoSpread helper
+    W = Array{Float64}(W_labels[2:end, 2:end]) 
+    W ./= maximum(W[W .> 0])
+
+    # take reciprocal of weights (larger weights means closer distance)
+    W = 1.0 ./ (W .+ eps())
+
+    g = SimpleWeightedDiGraph(W)
+
+    # Identify seed indices directly from inference files
+    ref_idx = true_inf["seed_idx"]  # reference model’s seed index
+
+    seed_indices = []
+    for sp in sim_paths
+        inf = load_inference(sp)
+        if haskey(inf, "seed_idx")
+            push!(seed_indices, inf["seed_idx"])
+        else
+            @warn "Missing seed_idx in $sp — skipping"
+        end
+    end
+
+    # Ensure they're integers
+    seed_indices = Int.(seed_indices)
+
+    # Compute all-pairs shortest paths (using edge weights as distances)
+    D = floyd_warshall_shortest_paths(g).dists
+
+    # Compute distance to true seed for each null model
+    dist_to_ref = [D[ref_idx, s] for s in seed_indices]
+
+    # Compute ΔWAIC relative to true model
+    delta_waic = waic_nulls .- true_waic
+
+    # ─── Plot relationship ─────────────────────────────────────
+    out_pdf2 = replace(out_pdf, "_WAIC_box.pdf" => "_seed_distance_vs_WAIC.pdf")
+    fig2 = Figure(size=(700,500));
+    ax2 = Axis(fig2[1,1];
+        xlabel = "Shortest-path distance to true seed",
+        ylabel = "ΔWAIC (seed − true)",
+        titlesize = 28, xlabelsize = 24, ylabelsize = 24,
+        yticklabelsize = 18, xticklabelsize = 18);
+
+    scatter!(ax2, dist_to_ref, delta_waic;
+             color = RGBf(0.2, 0.2, 0.2), markersize = 12, alpha = 0.8)
+
+    # Correlation
+    #ρ = cor(dist_to_ref, delta_waic, method = :spearman)
+    #text!(ax2, maximum(dist_to_ref)*0.7, minimum(delta_waic);
+    #      text = @sprintf("Spearman ρ = %.2f", ρ),
+    #      fontsize = 20, color = :black)
+
+    mkpath(dirname(out_pdf2))
+    save(out_pdf2, fig2)
+    println("Saved seed-distance vs ΔWAIC figure → $out_pdf2")
+end
+fig2
