@@ -28,15 +28,56 @@ simulations = [
     #"simulations/DIFFG_RETRO",
     #"simulations/DIFFGA_RETRO",
     #"simulations/DIFFGAM_RETRO",
-    # NULL MODELS
-    #"simulations/DIFFGA_shuffle_2",
-    #"simulations/DIFFGA_shuffle_8",
-    #"simulations/DIFFGA_shuffle_12",
+    # SHUFFLE NULLS
+    "simulations/DIFFGA_shuffle_2",
+    "simulations/DIFFGA_shuffle_8",
+    "simulations/DIFFGA_shuffle_12",
+    "simulations/DIFFGA_shuffle_13",
+    "simulations/DIFFGA_shuffle_16",
+    "simulations/DIFFGA_shuffle_18",
+    "simulations/DIFFGA_shuffle_20",
+    "simulations/DIFFGA_shuffle_21",
+    "simulations/DIFFGA_shuffle_24",
+    "simulations/DIFFGA_shuffle_27",
+    "simulations/DIFFGA_shuffle_31",
+    "simulations/DIFFGA_shuffle_34",
+    "simulations/DIFFGA_shuffle_35",
+    "simulations/DIFFGA_shuffle_36",
+    "simulations/DIFFGA_shuffle_39",
+    "simulations/DIFFGA_shuffle_40",
+    "simulations/DIFFGA_shuffle_41",
+    "simulations/DIFFGA_shuffle_42",
+    "simulations/DIFFGA_shuffle_46",
+    "simulations/DIFFGA_shuffle_47",
+    "simulations/DIFFGA_shuffle_57",
+    "simulations/DIFFGA_shuffle_61",
+    "simulations/DIFFGA_shuffle_66",
+    "simulations/DIFFGA_shuffle_68",
+    "simulations/DIFFGA_shuffle_88",
+    "simulations/DIFFGA_shuffle_89",
+    "simulations/DIFFGA_shuffle_92",
+    "simulations/DIFFGA_shuffle_97",
+    "simulations/DIFFGA_shuffle_99",
+    "simulations/DIFFGA_RETRO",
+    # SEED NULLS 
+    #"simulations/DIFFGA_seed_4",
+    #"simulations/DIFFGA_seed_5",
+    #"simulations/DIFFGA_seed_6",
+    #"simulations/DIFFGA_seed_26",
+    #"simulations/DIFFGA_seed_67",
+    #"simulations/DIFFGA_seed_71",
+    #"simulations/DIFFGA_seed_80",
+    #"simulations/DIFFGA_seed_81",
+    #"simulations/DIFFGA_seed_88",
+    #"simulations/DIFFGA_seed_95",
+    #"simulations/DIFFGA_seed_98",
+    #"simulations/DIFFGA_seed_104",
+    #"simulations/DIFFGA_seed_105",
     #"simulations/DIFFGA_RETRO",
     # HELD OUT 
-    "simulations/DIFF_RETRO_T-1",
-    "simulations/DIFFGA_RETRO_T-1",
-    "simulations/DIFFGAM_RETRO_T-1",
+    #"simulations/DIFF_RETRO_T-1",
+    #"simulations/DIFFGA_RETRO_T-1",
+    #"simulations/DIFFGAM_RETRO_T-1",
 ]
 model_names = [
     #"DIFF euclidean", 
@@ -64,14 +105,55 @@ model_names = [
     #"DIFFGA retrograde", 
     #"DIFFGAM retrograde", 
     #
-    #"DIFFGA shuffle_2",
-    #"DIFFGA shuffle_8",
-    #"DIFFGA shuffle_12",
+    "DIFFGA_shuffle_2",
+    "DIFFGA_shuffle_8",
+    "DIFFGA_shuffle_12",
+    "DIFFGA_shuffle_13",
+    "DIFFGA_shuffle_16",
+    "DIFFGA_shuffle_18",
+    "DIFFGA_shuffle_20",
+    "DIFFGA_shuffle_21",
+    "DIFFGA_shuffle_24",
+    "DIFFGA_shuffle_27",
+    "DIFFGA_shuffle_31",
+    "DIFFGA_shuffle_34",
+    "DIFFGA_shuffle_35",
+    "DIFFGA_shuffle_36",
+    "DIFFGA_shuffle_39",
+    "DIFFGA_shuffle_40",
+    "DIFFGA_shuffle_41",
+    "DIFFGA_shuffle_42",
+    "DIFFGA_shuffle_46",
+    "DIFFGA_shuffle_47",
+    "DIFFGA_shuffle_57",
+    "DIFFGA_shuffle_61",
+    "DIFFGA_shuffle_66",
+    "DIFFGA_shuffle_68",
+    "DIFFGA_shuffle_88",
+    "DIFFGA_shuffle_89",
+    "DIFFGA_shuffle_92",
+    "DIFFGA_shuffle_97",
+    "DIFFGA_shuffle_99",
+    "DIFFGA RETRO",
+    #
+    #"DIFFGA_seed_4",
+    #"DIFFGA_seed_5",
+    #"DIFFGA_seed_6",
+    #"DIFFGA_seed_26",
+    #"DIFFGA_seed_67",
+    #"DIFFGA_seed_71",
+    #"DIFFGA_seed_80",
+    #"DIFFGA_seed_81",
+    #"DIFFGA_seed_88",
+    #"DIFFGA_seed_95",
+    #"DIFFGA_seed_98",
+    #"DIFFGA_seed_104",
+    #"DIFFGA_seed_105",
     #"DIFFGA RETRO",
     #
-    "DIFF T-1",
-    "DIFFGA T-1",
-    "DIFFGAM T-1",
+    #"DIFF T-1",
+    #"DIFFGA T-1",
+    #"DIFFGAM T-1",
 ]
 inferences = []
 for simulation in simulations
@@ -178,6 +260,18 @@ pretty_table(
 
 # PAIRED WAIC COMPARISON
 # ─── Paired ΔWAIC ± SE(Δ) vs the best model ───────────────────────────────────
+# 1. FILTER OUT INVALID WAICs BEFORE ANYTHING ELSE
+valid_mask = .!([isnan(w) || isinf(w) for w in waic_vals])
+if !all(valid_mask)
+    @warn "Ignoring models with Inf/NaN WAIC" model_names[.!valid_mask]
+end
+
+# Keep only valid models and their WAIC_i lists
+waic_vals   = waic_vals[valid_mask]
+waic_i_list = waic_i_list[valid_mask]
+model_names = model_names[valid_mask]
+
+# 2. CONTINUE WITH YOUR EXISTING CODE
 best_ix = argmin(waic_vals)
 ref_waic_i = waic_i_list[best_ix]
 n = length(ref_waic_i)
@@ -191,12 +285,21 @@ for j in eachindex(waic_i_list)
         push!(se_delta_waic, 0.0)
     else
         d_i = waic_i_list[j] .- ref_waic_i
+        mask = .!(isnan.(d_i) .| isinf.(d_i))
+        if count(mask) == 0
+            @warn "Model $(model_names[j]) has all invalid ΔWAIC_i; skipping"
+            push!(delta_waic_paired, NaN)
+            push!(se_delta_waic, NaN)
+            continue
+        end
+        d_i = d_i[mask]
         Δ   = sum(d_i)
-        SEΔ = sqrt(n * var(d_i))
+        SEΔ = sqrt(length(d_i) * var(d_i))
         push!(delta_waic_paired, Δ)
         push!(se_delta_waic, SEΔ)
     end
 end
+
 
 # Build with simple column names, then set pretty headers in pretty_table
 df_pairs = DataFrame(
@@ -204,6 +307,7 @@ df_pairs = DataFrame(
     ΔWAIC_vs_best = round.(delta_waic_paired, digits=1),
     SE_ΔWAIC      = round.(se_delta_waic, digits=1),
 )
+
 
 pretty_table(
     df_pairs;
@@ -297,4 +401,4 @@ Makie.xlims!(ax, xmin-0.1*pad, xmax + pad)
 
 # save figure
 fig
-save("figures/model_comparison/heldout_DIFFGA_delta_waic_vs_best.pdf", fig)
+save("figures/model_comparison/SHUFFLE_NULLS_DIFFGA_delta_waic_vs_best.pdf", fig)

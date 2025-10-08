@@ -9,16 +9,18 @@ const eps = 0.3   # threshold for PathoSpread.nonzero_regions
 # ------------------------------------------------------------------
 # 0) Load your inferences (same as in your WAIC script)
 # ------------------------------------------------------------------
-Tmins = [1,2,3]
+Tmins = [2,3]
 for Tmin in Tmins
     display("Plotting for Tmin = $Tmin")
     simulations = [
         "simulations/DIFF_RETRO_T-$(Tmin)",
+        "simulations/DIFFG_T-$(Tmin)",
         "simulations/DIFFGA_RETRO_T-$(Tmin)",
         "simulations/DIFFGAM_RETRO_T-$(Tmin)",
     ]
     model_names = [
         "DIFF T-$(Tmin)",
+        "DIFFG T-$(Tmin)",
         "DIFFGA T-$(Tmin)",
         "DIFFGAM T-$(Tmin)",
     ]
@@ -221,7 +223,7 @@ for Tmin in Tmins
         xlabelsize=24, xticklabelsize=24, yticklabelsize=26,
         yticks=(1:length(model_names), model_names));
     delta_plot!(ax1, ΔELPD, SEΔELPD, classes_elpd; colorsym=color_for_elpd)
-    save("figures/model_comparison/heldout_delta_elpd_vs_best_T-$(Tmin).pdf", fig1)
+    save("figures/model_comparison/heldout/heldout_delta_elpd_vs_best_T-$(Tmin).pdf", fig1)
 
     fig2 = Figure(resolution=(1100, 350 + 44length(model_names)), figure_padding = (20,20,20,20));
     ax2  = Axis(fig2[1,1];
@@ -230,7 +232,7 @@ for Tmin in Tmins
         xlabelsize=24, xticklabelsize=24, yticklabelsize=26,
         yticks=(1:length(model_names), model_names));
     delta_plot!(ax2, ΔCRPS, SEΔCRPS, classes_crps; colorsym=color_for_crps);
-    save("figures/model_comparison/heldout_delta_crps_vs_best_T-$(Tmin).pdf", fig2)
+    #save("figures/model_comparison/heldout/heldout_delta_crps_vs_best_T-$(Tmin).pdf", fig2)
 
     println("Balanced table/plots done (cells = $n_cells; raw n = $npts).")
 
@@ -305,7 +307,7 @@ for Tmin in Tmins
         xlabelsize=24, xticklabelsize=24, yticklabelsize=26,
         yticks=(1:length(model_names), model_names));
     delta_plot!(ax1nz, ΔELPD_nz, SEΔELPD_nz, classes_elpd_nz; colorsym=color_for_elpd)
-    save("figures/model_comparison/heldout_delta_elpd_vs_best_T-$(Tmin)_nonzero_eps$(eps).pdf", fig1nz)
+    #save("figures/model_comparison/heldout/heldout_delta_elpd_vs_best_T-$(Tmin)_nonzero_eps$(eps).pdf", fig1nz)
 
     fig2nz = Figure(resolution=(1100, 350 + 44length(model_names)), figure_padding = (20,20,20,20));
     ax2nz  = Axis(fig2nz[1,1];
@@ -314,7 +316,7 @@ for Tmin in Tmins
         xlabelsize=24, xticklabelsize=24, yticklabelsize=26,
         yticks=(1:length(model_names), model_names));
     delta_plot!(ax2nz, ΔCRPS_nz, SEΔCRPS_nz, classes_crps_nz; colorsym=color_for_crps)
-    save("figures/model_comparison/heldout_delta_crps_vs_best_T-$(Tmin)_nonzero_eps$(eps).pdf", fig2nz)
+    #save("figures/model_comparison/heldout/heldout_delta_crps_vs_best_T-$(Tmin)_nonzero_eps$(eps).pdf", fig2nz)
 
     println("Nonzero-only table/plots done (eps=$(eps); cells = $n_cells_nz).")
 
