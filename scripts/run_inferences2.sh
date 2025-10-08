@@ -42,6 +42,10 @@ set -euo pipefail
 module purge
 module load julia
 
+# ---------- added fixes ----------
+# Lift CPU-time cap if allowed
+ulimit -t unlimited || true
+
 export OMP_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
 export MKL_NUM_THREADS=1
