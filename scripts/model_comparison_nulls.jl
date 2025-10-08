@@ -163,12 +163,6 @@ if mode == :seed
     scatter!(ax2, dist_to_ref, delta_waic;
              color = RGBf(0.2, 0.2, 0.2), markersize = 12, alpha = 0.8)
 
-    # Correlation
-    #ρ = cor(dist_to_ref, delta_waic, method = :spearman)
-    #text!(ax2, maximum(dist_to_ref)*0.7, minimum(delta_waic);
-    #      text = @sprintf("Spearman ρ = %.2f", ρ),
-    #      fontsize = 20, color = :black)
-
     mkpath(dirname(out_pdf2))
     save(out_pdf2, fig2)
     println("Saved seed-distance vs ΔWAIC figure → $out_pdf2")
