@@ -9,7 +9,7 @@ const eps = 0.3   # threshold for PathoSpread.nonzero_regions
 # ------------------------------------------------------------------
 # 0) Load your inferences (same as in your WAIC script)
 # ------------------------------------------------------------------
-Tmins = [2,3]
+Tmins = [1,2,3]
 for Tmin in Tmins
     display("Plotting for Tmin = $Tmin")
     simulations = [

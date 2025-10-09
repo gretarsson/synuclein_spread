@@ -3,9 +3,9 @@ using MCMCChains
 using Serialization
 
 # --- SETTINGS ---
-base     = "simulations/DIFFG_T2"
+base     = "simulations/DIFFG_T1"
 nchains  = 4
-outfile  = "simulations/DIFFG_T-2.jls"
+outfile  = "simulations/DIFFG_T-1.jls"
 
 # --- LOAD ALL CHAINS ---
 inference_list = Dict[]
