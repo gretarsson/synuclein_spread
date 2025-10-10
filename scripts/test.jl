@@ -8,58 +8,151 @@ df = CSV.read(w_file, DataFrame)
 labels = String.(names(df)[2:end])
 W = Matrix{Float64}(df[:, 2:end])
 W[diagind(W)] .= 0.0
-N = size(W, 1)
 
-# --- Shuffle weights ---
-Wshuf = PathoSpread.shuffle_weights(W)
 
-# --- Strength measures ---
-in_strength(W)  = vec(sum(W, dims=1))
-out_strength(W) = vec(sum(W, dims=2))
-tot_strength(W) = in_strength(W) .+ out_strength(W)
+# Compute the degree (sum of connections) for each node
+outdegree = sum(W, dims=2)[:]   # sum across rows → outgoing connections
+indegree  = sum(W, dims=1)[:]   # sum across columns → incoming connections
 
-instr0 = in_strength(W);   outstr0 = out_strength(W);   totstr0 = tot_strength(W)
-instr1 = in_strength(Wshuf); outstr1 = out_strength(Wshuf); totstr1 = tot_strength(Wshuf)
+# Nodes with zero in both in/out degrees
+isolated_idx = findall((outdegree .+ indegree) .== 0)
 
-println("Mean in-strength (orig/shuf):  ", mean(instr0), " / ", mean(instr1))
-println("Mean out-strength (orig/shuf): ", mean(outstr0), " / ", mean(outstr1))
-println("Mean total strength (orig/shuf): ", mean(totstr0), " / ", mean(totstr1))
-println("Mean (orig / shuf): ", mean(W), " / ", mean(Wshuf))
-println("Std  (orig / shuf): ", std(W),  " / ", std(Wshuf))
-sum_diag = sum(diag(W))
+println("Number of isolated nodes: ", length(isolated_idx))
+println("Isolated node indices: ", isolated_idx)
+println("Isolated node labels: ", labels[isolated_idx])
 
-# -------------------------------------------------------------------------
-# Figure 1: Original network
-# -------------------------------------------------------------------------
-f1 = Figure(resolution=(1350,400));
-ax1a = Axis(f1[1,1], title="Original — In-strength", xlabel="Strength", ylabel="Density")
-ax1b = Axis(f1[1,2], title="Original — Out-strength", xlabel="Strength", ylabel="Density")
-ax1c = Axis(f1[1,3], title="Original — Total strength", xlabel="Strength", ylabel="Density")
+outdegree = sum(W, dims=2)[:]   # sum across each row
+no_out_idx = findall(outdegree .== 0)
 
-hist!(ax1a, instr0; normalization=:pdf, bins=50, color=:dodgerblue)
-hist!(ax1b, outstr0; normalization=:pdf, bins=50, color=:dodgerblue)
-hist!(ax1c, totstr0; normalization=:pdf, bins=50, color=:dodgerblue)
+println("Number of nodes with no outgoing edges: ", length(no_out_idx))
+println("Indices: ", no_out_idx)
+println("Labels: ", labels[no_out_idx])
 
-display(f1)
-# save("original_strengths.png", f1)
 
-# -------------------------------------------------------------------------
-# Figure 2: Shuffled network
-# -------------------------------------------------------------------------
-f2 = Figure(resolution=(1350,400))
-ax2a = Axis(f2[1,1], title="Shuffled — In-strength", xlabel="Strength", ylabel="Density")
-ax2b = Axis(f2[1,2], title="Shuffled — Out-strength", xlabel="Strength", ylabel="Density")
-ax2c = Axis(f2[1,3], title="Shuffled — Total strength", xlabel="Strength", ylabel="Density")
+indegree = sum(W, dims=1)[:]   # sum across columns
+no_in_idx = findall(indegree .== 0)
 
-hist!(ax2a, instr1; normalization=:pdf, bins=50, color=:crimson)
-hist!(ax2b, outstr1; normalization=:pdf, bins=50, color=:crimson)
-hist!(ax2c, totstr1; normalization=:pdf, bins=50, color=:crimson)
-
-display(f2)
-# save("shuffled_strengths.png", f2)
+println("Number of nodes with no incoming edges: ", length(no_in_idx))
+println("Indices: ", no_in_idx)
+println("Labels: ", labels[no_in_idx])
 
 
 
-sum_orig = sum(W)
-sum_shuf = sum(Wshuf)
-println("Total weight (orig/shuf): ", sum_orig, " / ", sum_shuf)
+
+# Your suspect seed indices
+suspect = [105, 201, 131, 156, 122, 167, 139, 185, 141, 159, 126, 100,
+           182, 194, 54, 95, 172, 197, 81, 104, 149, 169, 180, 80, 124,
+           171, 98, 191, 166, 195, 190, 130, 174, 161, 183, 88, 160, 103,
+           57, 168, 125, 67, 140, 121, 128]
+
+# Compare outdegree statistics
+println("\n--- Outdegree analysis for suspect seeds ---")
+println("Mean outdegree (suspects): ", mean(outdegree[suspect]))
+println("Mean outdegree (others):   ", mean(outdegree[setdiff(1:length(outdegree), suspect)]))
+println("Min suspect outdegree:     ", minimum(outdegree[suspect]))
+println("Max suspect outdegree:     ", maximum(outdegree[suspect]))
+
+# Sort by outdegree for inspection
+sorted = sortperm(outdegree[suspect])
+println("\nLowest outdegree suspects:")
+for i in sorted[1:10]
+    idx = suspect[i]
+    println("  seed ", idx, " → outdegree=", round(outdegree[idx], digits=4))
+end
+
+# Compare indegree statistics
+println("\n--- Indegree analysis for suspect seeds ---")
+println("Mean indegree (suspects): ", mean(indegree[suspect]))
+println("Mean indegree (others):   ", mean(indegree[setdiff(1:length(indegree), suspect)]))
+println("Min suspect indegree:     ", minimum(indegree[suspect]))
+println("Max suspect indegree:     ", maximum(indegree[suspect]))
+
+# Sort by indegree for inspection
+sorted_in = sortperm(indegree[suspect])
+println("\nLowest indegree suspects:")
+for i in sorted_in[1:10]
+    idx = suspect[i]
+    println("  seed ", idx, " → indegree=", round(indegree[idx], digits=4))
+end
+
+
+using Graphs, SimpleWeightedGraphs, Statistics
+
+# --- Build graph ---
+g = SimpleWeightedDiGraph(W)
+
+# --- Centrality measures ---
+deg_centrality = degree_centrality(g)
+betweenness_centrality = betweenness_centrality(g)
+eig_centrality = eigenvector_centrality(g)
+
+# --- Compare suspects vs others ---
+others = setdiff(1:length(labels), suspect)
+
+function compare_metric(name, metric)
+    println("\n--- $(name) ---")
+    println("Mean (suspects): ", round(mean(metric[suspect]), digits=4))
+    println("Mean (others):   ", round(mean(metric[others]), digits=4))
+    println("Min suspect: ", round(minimum(metric[suspect]), digits=4))
+    println("Max suspect: ", round(maximum(metric[suspect]), digits=4))
+end
+
+compare_metric("Degree centrality", deg_centrality)
+#compare_metric("Betweenness centrality", betweenness_centrality)
+compare_metric("Eigenvector centrality", eig_centrality)
+
+# --- Sort and inspect lowest suspects ---
+sorted_low = sortperm(deg_centrality[suspect])
+println("\nLowest-degree suspects:")
+for i in sorted_low[1:10]
+    idx = suspect[i]
+    println("  $(labels[idx]) → degree=", round(deg_centrality[idx], digits=4))
+end
+
+
+
+using Graphs, SimpleWeightedGraphs
+using CairoMakie
+using NetworkLayout
+
+# --- Build graph ---
+g = SimpleWeightedDiGraph(W)
+
+# --- Compute layout ---
+A = Matrix(adjacency_matrix(g))
+coords = NetworkLayout.spring(A)  # Vector of Point{2, Float64}
+
+# Unpack coordinates
+xs = [p[1] for p in coords]
+ys = [p[2] for p in coords]
+
+# --- Define node colors ---
+node_colors = fill(RGBf(0.7, 0.7, 0.7), nv(g))  # default grey
+
+for i in suspect
+    node_colors[i] = RGBf(0.8, 0.1, 0.1)  # red
+end
+
+true_seed = 74  # replace with your actual true seed index
+node_colors[true_seed] = RGBf(0.0, 0.2, 0.8)  # blue
+
+# --- Plot ---
+fig = Figure(resolution=(800, 800))
+ax = Axis(fig[1, 1], title="Network connectivity: true (blue), suspects (red)")
+
+# Draw edges
+for e in edges(g)
+    src_idx = Graphs.src(e)
+    dst_idx = Graphs.dst(e)
+    lines!(ax, [xs[src_idx], xs[dst_idx]], [ys[src_idx], ys[dst_idx]],
+           color=:gray80, linewidth=0.5)
+end
+
+# Draw nodes
+scatter!(ax, xs, ys, color=node_colors, markersize=10)
+
+hidedecorations!(ax)
+hidespines!(ax)
+
+save("figures/network_suspects_vs_true.pdf", fig)
+fig

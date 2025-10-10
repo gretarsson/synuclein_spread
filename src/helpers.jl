@@ -962,9 +962,22 @@ function compute_waic(inference; S=10)
     n = length(vec_data)
 
     # define ODE problem
-    tspan = (0, timepoints[end])
-    rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-    prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+    # OLD
+    #tspan = (0, timepoints[end])
+    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+    # NEW
+    # --- Define ODE Problem using same factory as inference ---
+    #     (this ensures correct setup for bilateral/bidirectional models)
+    prob = make_ode_problem(
+        odes[inference["ode"]];
+        labels     = inference["labels"],
+        Ltuple     = inference["L"],
+        factors    = inference["factors"],
+        u0         = inference["u0"],
+        timepoints = inference["timepoints"]
+    )
+
 
     # sample from posterior and store ODE solutions for each sample
     posterior_samples = sample(chain, S; replace=false)
@@ -2081,23 +2094,45 @@ Sets up and solves the ODE problem using the mode parameters `p` and initial con
 from the `inference` dictionary. Assumes that a global dictionary `odes` exists that maps
 ODE names to their functions. Returns the ODE solution array (subset according to `sol_idxs`).
 """
+# OLD DOESN't WORK WITH BILATERAL
+#function simulate_ode(inference::Dict, p, u0)
+#    timepoints = inference["timepoints"]
+#    tspan = (0.0, timepoints[end])
+#    # Retrieve the ODE function from a global dictionary `odes`
+#    ode_function = odes[inference["ode"]]
+#    L = inference["L"]
+#    # Use a factor of 1 for each parameter (you can adjust this if needed)
+#    factors = ones(length(p))
+#    # Define the ODE right-hand side
+#    function rhs(du, u, p, t)
+#        ode_function(du, u, p, t; L = L, factors = factors)
+#    end
+#    prob = ODEProblem(rhs, u0, tspan; alg = Tsit5())
+#    sol = solve(prob, Tsit5(); p = p, u0 = u0, saveat = timepoints, abstol = 1e-9, reltol = 1e-6)
+#    sol = Array(sol[inference["sol_idxs"], :])
+#    return sol
+#end
 function simulate_ode(inference::Dict, p, u0)
     timepoints = inference["timepoints"]
-    tspan = (0.0, timepoints[end])
-    # Retrieve the ODE function from a global dictionary `odes`
     ode_function = odes[inference["ode"]]
     L = inference["L"]
-    # Use a factor of 1 for each parameter (you can adjust this if needed)
     factors = ones(length(p))
-    # Define the ODE right-hand side
-    function rhs(du, u, p, t)
-        ode_function(du, u, p, t; L = L, factors = factors)
-    end
-    prob = ODEProblem(rhs, u0, tspan; alg = Tsit5())
-    sol = solve(prob, Tsit5(); p = p, u0 = u0, saveat = timepoints, abstol = 1e-9, reltol = 1e-6)
+
+    # Build the ODEProblem using the unified factory (handles region_group internally)
+    prob = make_ode_problem(
+        ode_function;
+        labels     = inference["labels"],
+        Ltuple     = L,
+        factors    = factors,
+        u0         = u0,
+        timepoints = timepoints
+    )
+
+    sol = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
     sol = Array(sol[inference["sol_idxs"], :])
     return sol
 end
+
 
 """
     posterior_pred_mode(inference::Dict)

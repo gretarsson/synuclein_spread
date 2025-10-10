@@ -166,5 +166,85 @@ if mode == :seed
     mkpath(dirname(out_pdf2))
     save(out_pdf2, fig2)
     println("Saved seed-distance vs ΔWAIC figure → $out_pdf2")
+
+    # --- IDENTIFY NEARLY IDENTICAL WAIC VALUES ---
+    tol = 1e2  # tolerance for considering two WAICs equal (tune as needed)
+
+    # Pair each seed index with its WAIC
+    pairs = collect(zip(seed_indices, waic_nulls))
+
+    # Sort by WAIC to make clusters easier to see
+    sort!(pairs, by = x -> x[2])
+
+    println("\nChecking for nearly identical WAICs (tolerance = $(tol)):")
+
+    duplicate_groups = Vector{Vector{Int}}()
+    current_group = [first(pairs)[1]]
+    prev_waic = first(pairs)[2]
+
+    for (seed, w) in pairs[2:end]
+        if abs(w - prev_waic) < tol
+            push!(current_group, seed)
+        else
+            if length(current_group) > 1
+                push!(duplicate_groups, copy(current_group))
+            end
+            current_group = [seed]
+            prev_waic = w
+        end
+    end
+    if length(current_group) > 1
+        push!(duplicate_groups, current_group)
+    end
+
+    if isempty(duplicate_groups)
+        println("No near-identical WAIC groups found.")
+    else
+        println("Found $(length(duplicate_groups)) near-identical WAIC groups:")
+        for (i, grp) in enumerate(duplicate_groups)
+            wval = pairs[findfirst(x -> x[1] == grp[1], pairs)][2]
+            println("  Group $i: seeds = $(grp)  → WAIC ≈ $(round(wval, digits=3))")
+        end
+    end
+
+    # ────────────────────────────────────────────────
+    # Compute pathology strength per region
+    # ────────────────────────────────────────────────
+    data_file = "data/total_path.csv"
+    w_file = "data/W_labeled_filtered.csv"
+
+    data, timepoints = process_pathology(data_file; W_csv=w_file)
+    # data has dimensions: (subjects, timepoints, regions)
+    println(size(data))
+
+    # Compute max pathology per region (across all subjects/timepoints)
+    max_path = [
+        maximum(skipmissing(data[i, :, :])) for i in 1:size(data, 1)
+    ]
+    
+
+    # Extract max_path for each seed
+    seed_max_path = max_path[seed_indices]
+
+    # ────────────────────────────────────────────────
+    # Plot 2: ΔWAIC vs. max pathology in seeded region
+    # ────────────────────────────────────────────────
+    out_pdf3 = replace(out_pdf, "_WAIC_box.pdf" => "_seed_maxpath_vs_WAIC.pdf")
+    fig3 = Figure(size=(700,500))
+    ax3 = Axis(fig3[1,1];
+        xlabel = "Max pathology in seeded region",
+        ylabel = "ΔWAIC (seed − true)",
+        titlesize = 28, xlabelsize = 24, ylabelsize = 24,
+        yticklabelsize = 18, xticklabelsize = 18)
+    scatter!(ax3, seed_max_path, delta_waic;
+             color = RGBf(0.2, 0.2, 0.2), markersize = 12, alpha = 0.8)
+    mkpath(dirname(out_pdf3))
+    save(out_pdf3, fig3)
+    println("Saved seed-maxpath vs ΔWAIC figure → $out_pdf3")
+
+    # --- Optional: print correlation coefficient ---
+    println("\nCorrelation between ΔWAIC and max pathology: ",
+        round(cor(seed_max_path, delta_waic), digits=3))
+
 end
 fig2
