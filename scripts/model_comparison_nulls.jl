@@ -2,6 +2,8 @@ using PathoSpread
 using Serialization, Statistics
 using CairoMakie, Colors, Printf
 
+
+using MCMCChains, Statistics
 # ───────────────────────────────────────────────────────────────
 # SETTINGS
 # ───────────────────────────────────────────────────────────────
@@ -21,6 +23,50 @@ else
 end
 
 println("Found $(length(sim_paths)) $(String(mode)) models.")
+
+# ───────────────────────────────────────────────────────────────
+# FILTER OUT NON-CONVERGED INFERENCES (robust version)
+# ───────────────────────────────────────────────────────────────
+using MCMCChains, Statistics
+
+function is_converged(inf; rhat_thresh=1.05, ess_thresh=200, frac_ok=0.95)
+    ch = inf["chain"]
+    diag = MCMCChains.ess_rhat(ch)  # returns ChainDataFrame
+
+    # Access via NamedTuple `nt` field
+    rhat_vals = collect(skipmissing(diag.nt.rhat))
+    ess_vals  = collect(skipmissing(diag.nt.ess))
+
+    good = [(rhat_vals[i] < rhat_thresh) && (ess_vals[i] > ess_thresh)
+             for i in eachindex(rhat_vals)]
+
+    return mean(good) ≥ frac_ok
+end
+
+println("\nChecking convergence for $(length(sim_paths)) inferences...")
+keep_paths = String[]
+
+for sp in sim_paths
+    inf = load_inference(sp)
+    diag = MCMCChains.ess_rhat(inf["chain"])
+
+    rhat_vals = collect(skipmissing(diag.nt.rhat))
+    ess_vals  = collect(skipmissing(diag.nt.ess))
+    max_rhat = maximum(rhat_vals)
+    min_ess  = minimum(ess_vals)
+
+    if is_converged(inf)
+        push!(keep_paths, sp)
+    else
+        @warn "Discarding non-converged chain" file=basename(sp) max_rhat=max_rhat min_ess=min_ess
+    end
+end
+
+println("→ Keeping $(length(keep_paths)) of $(length(sim_paths)) after convergence filtering.")
+sim_paths = keep_paths
+
+
+
 
 # ───────────────────────────────────────────────────────────────
 # LOAD WAIC VALUES
