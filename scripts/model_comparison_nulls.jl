@@ -1,8 +1,10 @@
 #!/usr/bin/env julia
 using PathoSpread, Serialization, Statistics, CairoMakie, Colors, Printf, MCMCChains, Serialization, StatsBase
+using Random
+Random.seed!(12345)
 
 
-mode = :shuffle
+mode = :seed
 sim_true = "simulations/DIFFGA_seed_74.jls"
 waic_cache_file = "results/waic_cache/DIFFGA_$(String(mode))_waic_all.jls"
 waic_cache_dir  = "results/waic_cache"
@@ -22,8 +24,6 @@ end
 
 # Remove the corresponding file (e.g., DIFFGA_seed_74.jls)
 sim_paths = filter(f -> !occursin(r"DIFFGA_seed_74", f), sim_paths)
-
-
 
 # Make sure cache and file list align by basename
 names_paths = basename.(sim_paths)
@@ -111,17 +111,20 @@ keep = falses(length(sim_paths))
     conv = is_converged_param(inf; param_index=1, rhat_thresh=1.4, ess_thresh=100)
 
     # (2) prior update
-    updated = check_prior_update(inf; param_index=1, delta_thresh=0.1, shrink_thresh=0.90)
-    keep[i] = conv && updated
-    if mode == :shuffle  # don't bother with this for shuffle
-        keep[i] = true
+    if mode == :seed
+        updated = check_prior_update(inf; param_index=1, delta_thresh=0.2, shrink_thresh=0.90)
+    else
+        updated = true
     end
+
+    keep[i] = conv && updated
+    #if mode == :shuffle  # don't bother with this for shuffle
+    #    keep[i] = true
+    #end
 end
 
 sim_paths = sim_paths[keep]
 waic_nulls = [waic_dict[basename(sp)] for sp in sim_paths if isfinite(waic_dict[basename(sp)])]
-
-
 println("→ Using $(length(waic_nulls)) converged WAICs out of $(length(waic_dict)) cached values.")
 
 
@@ -130,24 +133,6 @@ true_inf = load_inference(sim_true)
 true_waic, _, _, _, _, _ = compute_waic(true_inf; S=1000)
 
 
-# check what Seeds are lowest and highest
-# Pair seed IDs with WAIC values
-seed_ids = [parse(Int, match(r"seed_(\d+)$", splitext(basename(f))[1]).captures[1]) for f in sim_paths]
-
-# Sort by WAIC for easy inspection
-sorted_pairs = sort(collect(zip(seed_ids, waic_nulls)), by = x -> x[2])
-
-println("\n─── WAIC extremes ───")
-println("True WAIC:")
-println(true_waic)
-println("Lowest WAICs:")
-for (sid, w) in first(sorted_pairs, min(5, length(sorted_pairs)))
-    println("  seed = $(sid), WAIC = $(round(w, digits=2))")
-end
-println("Highest WAICs:")
-for (sid, w) in last(sorted_pairs, min(5, length(sorted_pairs)))
-    println("  seed = $(sid), WAIC = $(round(w, digits=2))")
-end
 
 # ───────────────────────────────────────────────────────────────
 # PLOT
@@ -172,13 +157,13 @@ boxplot!(ax, group, waic_nulls;
 
 # --- Scatter individual null points ---
 scatter!(ax, 1 .+ 0.1 .* (rand(length(waic_nulls)) .- 0.5),
-         waic_nulls; color=:black, alpha=0.7, markersize=25)
+         waic_nulls; color=:black, alpha=0.7, markersize=30)
 
 # --- True model ---
 #scatter!(ax, [1.0], [true_waic];
 #         color=c_true, marker=:star5, markersize=36)
 scatter!(ax, [1.0], [true_waic];
-         color=c_true, markersize=25)
+         color=c_true, markersize=30)
 
 # --- Adjust limits (automatic zoom) ---
 #Makie.autolimits!(ax)
@@ -213,30 +198,32 @@ fig
 # ───────────────────────────────────────────────
 # Save a clipped version (1–99 percentile y-range)
 # ───────────────────────────────────────────────
-# Sort WAIC values
-sorted = sort(waic_nulls)
+if mode == :seed
+    # Sort WAIC values
+    sorted = sort(waic_nulls)
 
-# Drop only the top 2%
-n = length(sorted)
-cut = max(1, round(Int, 0.05 * n))  # number of points to drop from top
+    # Drop only the top 2%
+    n = length(sorted)
+    cut = max(1, round(Int, 0.05 * n))  # number of points to drop from top
 
-hi = sorted[end - cut]               # empirical 98% cutoff
-lo = minimum(sorted)                 # keep full lower range
+    hi = sorted[end - cut]               # empirical 98% cutoff
+    lo = minimum(sorted)                 # keep full lower range
 
-# Add small padding (e.g. 5%)
-span = hi - lo
-pad = 0.05 * span
-lo_padded = lo - pad
-hi_padded = hi + pad
+    # Add small padding (e.g. 5%)
+    span = hi - lo
+    pad = 0.05 * span
+    lo_padded = lo - pad
+    hi_padded = hi + pad
 
-println("Clipping WAIC plot to [$(round(lo_padded,digits=1)), $(round(hi_padded,digits=1))] (with 5% padding)")
+    println("Clipping WAIC plot to [$(round(lo_padded,digits=1)), $(round(hi_padded,digits=1))] (with 5% padding)")
 
-# Apply and save clipped version
-Makie.ylims!(ax, lo_padded, hi_padded)
-out_pdf_clipped = replace(out_pdf, ".pdf" => "_clipped.pdf")
-save(out_pdf_clipped, fig)
-println("Saved clipped WAIC plot → $out_pdf_clipped")
-fig
+    # Apply and save clipped version
+    Makie.ylims!(ax, lo_padded, hi_padded)
+    out_pdf_clipped = replace(out_pdf, ".pdf" => "_clipped.pdf")
+    save(out_pdf_clipped, fig)
+    println("Saved clipped WAIC plot → $out_pdf_clipped")
+    fig
+end
 
 # ───────────────────────────────────────────────────────────────
 # ADDITIONAL ANALYSIS: Distance from true seed vs ΔWAIC
@@ -379,4 +366,24 @@ if mode == :seed
         round(cor(seed_max_path, delta_waic), digits=3))
 
 end
-fig2
+
+# check what Seeds are lowest and highest
+if mode == :seed
+    # Pair seed IDs with WAIC values
+    seed_ids = [parse(Int, match(r"seed_(\d+)$", splitext(basename(f))[1]).captures[1]) for f in sim_paths]
+
+    # Sort by WAIC for easy inspection
+    sorted_pairs = sort(collect(zip(seed_ids, waic_nulls)), by = x -> x[2])
+
+    println("\n─── WAIC extremes ───")
+    println("True WAIC:")
+    println(true_waic)
+    println("Lowest WAICs:")
+    for (sid, w) in first(sorted_pairs, min(5, length(sorted_pairs)))
+        println("  seed = $(sid), WAIC = $(round(w, digits=2))")
+    end
+    println("Highest WAICs:")
+    for (sid, w) in last(sorted_pairs, min(5, length(sorted_pairs)))
+        println("  seed = $(sid), WAIC = $(round(w, digits=2))")
+    end
+end
