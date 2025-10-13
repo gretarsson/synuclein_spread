@@ -9,8 +9,6 @@ mkdir -p "$LOG_DIR"
 # Define base (model + args) jobs
 # --------------------------------------------------
 declare -A BASE_JOBS
-BASE_JOBS["DIFFG_BILATERAL"]="DIFFG_bilateral data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
-BASE_JOBS["DIFFGA_BILATERAL"]="DIFFGA_bilateral data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
 BASE_JOBS["DIFFGAM_BILATERAL"]="DIFFGAM_bilateral data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
 
 # --------------------------------------------------
@@ -30,8 +28,8 @@ for JOBNAME in "${!BASE_JOBS[@]}"; do
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=32G
-#SBATCH --partition=all
-#SBATCH --time=2-00:00:00
+#SBATCH --partition=long
+#SBATCH --time=14-00:00:00
 #SBATCH --chdir=$PROJECT_DIR
 #SBATCH --output=$LOG_DIR/${FULL_JOBNAME}-%j.out
 #SBATCH --error=$LOG_DIR/${FULL_JOBNAME}-%j.err
