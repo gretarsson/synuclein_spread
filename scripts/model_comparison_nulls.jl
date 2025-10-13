@@ -1,96 +1,153 @@
-using PathoSpread
-using Serialization, Statistics
-using CairoMakie, Colors, Printf
+#!/usr/bin/env julia
+using PathoSpread, Serialization, Statistics, CairoMakie, Colors, Printf, MCMCChains, Serialization, StatsBase
 
 
-using MCMCChains, Statistics
-# ───────────────────────────────────────────────────────────────
-# SETTINGS
-# ───────────────────────────────────────────────────────────────
-mode = :seed   # or :seed
-sim_true = "simulations/DIFFGA_RETRO.jls"
-out_pdf  = "figures/model_comparison/nulls/DIFFGA_$(String(mode))_WAIC_box.pdf"
+mode = :shuffle
+sim_true = "simulations/DIFFGA_seed_74.jls"
+waic_cache_file = "results/waic_cache/DIFFGA_$(String(mode))_waic_all.jls"
+waic_cache_dir  = "results/waic_cache"
+out_pdf = "figures/model_comparison/nulls/DIFFGA_$(String(mode))_WAIC_box.pdf"
 
-# Automatically collect all relevant simulation files
+# Load WAICs
+waic_all = deserialize(waic_cache_file)
+
+# Rebuild list of paths
 all_files = readdir("simulations"; join=true)
-
-if mode == :shuffle
-    sim_paths = filter(f -> occursin(r"DIFFGA_shuffle_\d+$", splitext(basename(f))[1]), all_files)
-elseif mode == :seed
-    sim_paths = filter(f -> occursin(r"DIFFGA_seed_\d+$", splitext(basename(f))[1]), all_files)
+sim_paths = if mode == :seed
+    filter(f -> occursin(r"DIFFGA_seed_\d+$", splitext(basename(f))[1]), all_files)
 else
-    error("Unknown mode: $mode. Must be :shuffle or :seed.")
+    filter(f -> occursin(r"DIFFGA_shuffle_\d+$", splitext(basename(f))[1]), all_files)
 end
 
-println("Found $(length(sim_paths)) $(String(mode)) models.")
 
-# ───────────────────────────────────────────────────────────────
-# FILTER OUT NON-CONVERGED INFERENCES (robust version)
-# ───────────────────────────────────────────────────────────────
-using MCMCChains, Statistics
+# Remove the corresponding file (e.g., DIFFGA_seed_74.jls)
+sim_paths = filter(f -> !occursin(r"DIFFGA_seed_74", f), sim_paths)
 
-function is_converged(inf; rhat_thresh=1.05, ess_thresh=200, frac_ok=0.95)
+
+
+# Make sure cache and file list align by basename
+names_paths = basename.(sim_paths)
+cache_len = length(waic_all)
+
+if cache_len != length(names_paths)
+    @warn "Length mismatch: $(cache_len) cached WAICs vs $(length(names_paths)) sim_paths."
+end
+
+function is_converged_param(inf;
+    param_index::Int = 1,
+    rhat_thresh::Real = 1.4,
+    ess_thresh::Real = 50.)
+
     ch = inf["chain"]
-    diag = MCMCChains.ess_rhat(ch)  # returns ChainDataFrame
+    diag = MCMCChains.ess_rhat(ch)
 
-    # Access via NamedTuple `nt` field
+    # Extract diagnostics
     rhat_vals = collect(skipmissing(diag.nt.rhat))
-    ess_vals  = collect(skipmissing(diag.nt.ess))
+    ess_bulk  = hasproperty(diag.nt, :ess_bulk) ?
+                    collect(skipmissing(diag.nt.ess_bulk)) :
+                    collect(skipmissing(diag.nt.ess))
+    ess_tail  = hasproperty(diag.nt, :ess_tail) ?
+                    collect(skipmissing(diag.nt.ess_tail)) :
+                    ess_bulk
 
-    good = [(rhat_vals[i] < rhat_thresh) && (ess_vals[i] > ess_thresh)
-             for i in eachindex(rhat_vals)]
+    # Handle invalid index
+    if param_index > length(rhat_vals)
+        error("Parameter index $(param_index) exceeds available parameters ($(length(rhat_vals)))")
+    end
 
-    return mean(good) ≥ frac_ok
+    return (rhat_vals[param_index] < rhat_thresh) &&
+           (ess_bulk[param_index] > ess_thresh) &&
+           (ess_tail[param_index] > ess_thresh)
+end
+"""
+check_prior_update(inf; param_index=1, delta_thresh=0.3, shrink_thresh=0.95)
+
+Returns `true` if the specified parameter shows meaningful update from its prior.
+Uses normalized mean/median shift and posterior shrinkage.
+"""
+function check_prior_update(inf; param_index=1, delta_thresh=1., shrink_thresh=0.95)
+    ch = inf["chain"]
+    arr = Array(ch)
+    post_med = vec(mapslices(median, arr; dims=1))
+    post_sd  = vec(mapslices(std, arr; dims=1))
+
+    pri = inf["priors"]
+    priors_vec = collect(values(pri))  # assumes priors stored in consistent order
+
+    # Fallback if priors_vec too short
+    if param_index > length(priors_vec)
+        @warn "Parameter index $param_index exceeds number of priors ($(length(priors_vec)))"
+        return false
+    end
+
+    prior_dist = priors_vec[param_index]
+
+    μ₀ = mean(prior_dist)
+    σ₀ = std(prior_dist)
+    μp = post_med[param_index]
+    σp = post_sd[param_index]
+
+    Δ = abs(μp - μ₀) / σ₀
+    shrink = σp / σ₀
+
+    return (Δ > delta_thresh) && (shrink < shrink_thresh)
 end
 
-println("\nChecking convergence for $(length(sim_paths)) inferences...")
-keep_paths = String[]
+# Build dictionary {basename => WAIC}
+# This assumes your caching script saved values in same order as sim_paths at the time.
+waic_dict = Dict(names_paths[i] => waic_all[i] for i in 1:min(length(names_paths), length(waic_all)))
 
-for sp in sim_paths
+# Filter only those with a cached WAIC
+sim_paths = filter(sp -> haskey(waic_dict, basename(sp)), sim_paths)
+
+# Now perform convergence filtering
+using Base.Threads
+
+keep = falses(length(sim_paths))
+@threads for i in eachindex(sim_paths)
+    sp = sim_paths[i]
     inf = load_inference(sp)
-    diag = MCMCChains.ess_rhat(inf["chain"])
+    # (1) convergence (as you prefer, e.g., is_converged or is_converged_param)
+    conv = is_converged_param(inf; param_index=1, rhat_thresh=1.4, ess_thresh=100)
 
-    rhat_vals = collect(skipmissing(diag.nt.rhat))
-    ess_vals  = collect(skipmissing(diag.nt.ess))
-    max_rhat = maximum(rhat_vals)
-    min_ess  = minimum(ess_vals)
-
-    if is_converged(inf)
-        push!(keep_paths, sp)
-    else
-        @warn "Discarding non-converged chain" file=basename(sp) max_rhat=max_rhat min_ess=min_ess
+    # (2) prior update
+    updated = check_prior_update(inf; param_index=1, delta_thresh=0.1, shrink_thresh=0.90)
+    keep[i] = conv && updated
+    if mode == :shuffle  # don't bother with this for shuffle
+        keep[i] = true
     end
 end
 
-println("→ Keeping $(length(keep_paths)) of $(length(sim_paths)) after convergence filtering.")
-sim_paths = keep_paths
+sim_paths = sim_paths[keep]
+waic_nulls = [waic_dict[basename(sp)] for sp in sim_paths if isfinite(waic_dict[basename(sp)])]
 
 
+println("→ Using $(length(waic_nulls)) converged WAICs out of $(length(waic_dict)) cached values.")
 
 
-# ───────────────────────────────────────────────────────────────
-# LOAD WAIC VALUES
-# ───────────────────────────────────────────────────────────────
-function get_waic_values(sim_paths; S=300)
-    vals = Float64[]
-    for sp in sim_paths
-        inf = load_inference(sp)
-        waic, _, _, _, _, _ = compute_waic(inf; S=S)
-        if isfinite(waic)
-            push!(vals, waic)
-        else
-            @warn "Skipping non-finite WAIC for $sp"
-        end
-    end
-    return vals
+# Load true model WAIC
+true_inf = load_inference(sim_true)
+true_waic, _, _, _, _, _ = compute_waic(true_inf; S=1000)
+
+
+# check what Seeds are lowest and highest
+# Pair seed IDs with WAIC values
+seed_ids = [parse(Int, match(r"seed_(\d+)$", splitext(basename(f))[1]).captures[1]) for f in sim_paths]
+
+# Sort by WAIC for easy inspection
+sorted_pairs = sort(collect(zip(seed_ids, waic_nulls)), by = x -> x[2])
+
+println("\n─── WAIC extremes ───")
+println("True WAIC:")
+println(true_waic)
+println("Lowest WAICs:")
+for (sid, w) in first(sorted_pairs, min(5, length(sorted_pairs)))
+    println("  seed = $(sid), WAIC = $(round(w, digits=2))")
 end
-
-waic_nulls = get_waic_values(sim_paths; S=300)
-true_inf   = load_inference(sim_true)
-true_waic, _, _, _, _, _ = compute_waic(true_inf; S=300)
-
-println(@sprintf("Mean shuffle WAIC = %.2f ± %.2f", mean(waic_nulls), std(waic_nulls)))
-println(@sprintf("True model WAIC   = %.2f", true_waic))
+println("Highest WAICs:")
+for (sid, w) in last(sorted_pairs, min(5, length(sorted_pairs)))
+    println("  seed = $(sid), WAIC = $(round(w, digits=2))")
+end
 
 # ───────────────────────────────────────────────────────────────
 # PLOT
@@ -115,11 +172,13 @@ boxplot!(ax, group, waic_nulls;
 
 # --- Scatter individual null points ---
 scatter!(ax, 1 .+ 0.1 .* (rand(length(waic_nulls)) .- 0.5),
-         waic_nulls; color=:black, alpha=0.7, markersize=18)
+         waic_nulls; color=:black, alpha=0.7, markersize=25)
 
 # --- True model ---
+#scatter!(ax, [1.0], [true_waic];
+#         color=c_true, marker=:star5, markersize=36)
 scatter!(ax, [1.0], [true_waic];
-         color=c_true, marker=:star5, markersize=36)
+         color=c_true, markersize=25)
 
 # --- Adjust limits (automatic zoom) ---
 #Makie.autolimits!(ax)
@@ -138,12 +197,12 @@ else
 end
 
 # --- Annotation (above the star, multiline, centered) ---
-text!(ax, 1.0, true_waic;
-      text = label_text,
-      align = (:left, :bottom),
-      offset = (20, 0),          # 20px above the star
-      fontsize = 24,
-      color = :black)
+#text!(ax, 1.0, true_waic;
+#      text = label_text,
+#      align = (:left, :bottom),
+#      offset = (20, 0),          # 20px above the star
+#      fontsize = 24,
+#      color = :black)
 
 
 # --- Save ---
@@ -151,6 +210,33 @@ mkpath(dirname(out_pdf))
 save(out_pdf, fig)
 fig
 
+# ───────────────────────────────────────────────
+# Save a clipped version (1–99 percentile y-range)
+# ───────────────────────────────────────────────
+# Sort WAIC values
+sorted = sort(waic_nulls)
+
+# Drop only the top 2%
+n = length(sorted)
+cut = max(1, round(Int, 0.05 * n))  # number of points to drop from top
+
+hi = sorted[end - cut]               # empirical 98% cutoff
+lo = minimum(sorted)                 # keep full lower range
+
+# Add small padding (e.g. 5%)
+span = hi - lo
+pad = 0.05 * span
+lo_padded = lo - pad
+hi_padded = hi + pad
+
+println("Clipping WAIC plot to [$(round(lo_padded,digits=1)), $(round(hi_padded,digits=1))] (with 5% padding)")
+
+# Apply and save clipped version
+Makie.ylims!(ax, lo_padded, hi_padded)
+out_pdf_clipped = replace(out_pdf, ".pdf" => "_clipped.pdf")
+save(out_pdf_clipped, fig)
+println("Saved clipped WAIC plot → $out_pdf_clipped")
+fig
 
 # ───────────────────────────────────────────────────────────────
 # ADDITIONAL ANALYSIS: Distance from true seed vs ΔWAIC
