@@ -156,3 +156,52 @@ hidespines!(ax)
 
 save("figures/network_suspects_vs_true.pdf", fig)
 fig
+
+
+
+# ---
+using PathoSpread, Printf
+
+# Pick the seed you want to check
+seed_to_check = 42
+
+# Locate the inference file
+f = filter(f -> occursin("DIFFGA_seed_$(seed_to_check).jls", f), readdir("simulations"; join=true))
+if isempty(f)
+    error("No file found for seed $(seed_to_check)")
+end
+f = first(f)
+
+# Load inference and compute WAIC
+inf = load_inference(f)
+waic, se_waic, waic_i, lppd, p_waic, n = compute_waic(inf; S=300)
+waic
+
+@printf "\nSeed %d:\n", seed_to_check
+@printf "  WAIC        = %.2f\n", waic
+@printf "  SE(WAIC)    = %.2f\n", se_waic
+@printf "  LPPD        = %.2f\n", lppd
+@printf "  p_WAIC      = %.2f\n", p_waic
+@printf "  n (data pts)= %d\n", n
+
+
+
+using PathoSpread, MCMCChains
+
+# Pick one of your inference files
+inf = load_inference("simulations/DIFFGA_seed_42.jls")  # or whichever
+ch = inf["chain"]
+
+diag = MCMCChains.ess_rhat(ch)
+
+println("Type of diag: ", typeof(diag))
+println("\nFieldnames / properties:")
+println(fieldnames(typeof(diag)))
+
+println("\nKeys if NamedTuple:")
+if diag isa NamedTuple
+    println(keys(diag))
+end
+
+println("\nFirst few entries:")
+show(diag; allcols=true, allrows=false)
