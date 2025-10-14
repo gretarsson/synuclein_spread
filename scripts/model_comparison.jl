@@ -19,10 +19,10 @@ simulations = [
     #"simulations/DIFFGA_RETRO",
     #"simulations/DIFFGA_BIDIR",
     ##
-    #"simulations/DIFFGAM_EUCL",
-    #"simulations/DIFFGAM_ANTERO",
-    #"simulations/DIFFGAM_RETRO",
-    #"simulations/DIFFGAM_BIDIR",
+    "simulations/DIFFGAM_EUCL",
+    "simulations/DIFFGAM_ANTERO",
+    "simulations/DIFFGAM_RETRO",
+    "simulations/DIFFGAM_BIDIR",
     #
     #"simulations/DIFF_RETRO",
     #"simulations/DIFFG_RETRO",
@@ -34,8 +34,8 @@ simulations = [
     #"simulations/DIFFGAM_RETRO_T-1",
     #
     # BILATERALS
-    "simulations/DIFFG_RETRO",
-    "simulations/DIFFG_BILATERAL",
+    #"simulations/DIFFG_RETRO",
+    #"simulations/DIFFG_BILATERAL",
     #
     #"simulations/DIFFGA_RETRO",
     #"simulations/DIFFGA_BILATERAL",
@@ -56,10 +56,10 @@ model_names = [
     #"DIFFGA retrograde", 
     #"DIFFGA bidirectional", 
     ##
-    #"DIFFGAM euclidean", 
-    #"DIFFGAM anterograde", 
-    #"DIFFGAM retrograde", 
-    #"DIFFGAM bidirectional", 
+    "DIFFGAM euclidean", 
+    "DIFFGAM anterograde", 
+    "DIFFGAM retrograde", 
+    "DIFFGAM bidirectional", 
     #
     #"DIFF retrograde", 
     #"DIFFG retrograde", 
@@ -71,8 +71,8 @@ model_names = [
     #"DIFFGAM T-1",
     #
     # BILATERALS
-    "simulations/DIFFG_RETRO",
-    "simulations/DIFFG_BILATERAL",
+    #"simulations/DIFFG_RETRO",
+    #"simulations/DIFFG_BILATERAL",
     #
     #"simulations/DIFFGA_RETRO",
     #"simulations/DIFFGA_BILATERAL",
@@ -323,4 +323,4 @@ Makie.xlims!(ax, xmin-0.1*pad, xmax + pad)
 
 # save figure
 fig
-save("figures/model_comparison/BILATERAL_DIFFG_delta_waic_vs_best.pdf", fig)
+save("figures/model_comparison/DIFFGAM_delta_waic_vs_best.pdf", fig)
