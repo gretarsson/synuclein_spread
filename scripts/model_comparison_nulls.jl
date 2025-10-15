@@ -4,7 +4,7 @@ using Random
 Random.seed!(12345)
 
 
-mode = :seed
+mode = :shuffle
 sim_true = "simulations/DIFFGA_seed_74.jls"
 waic_cache_file = "results/waic_cache/DIFFGA_$(String(mode))_waic_all.jls"
 waic_cache_dir  = "results/waic_cache"
