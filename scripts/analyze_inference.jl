@@ -10,7 +10,7 @@ simulation = "DIFFGAM_BIDIR";
 inference_obj = load_inference("simulations/"*simulation*".jls")
 
 # look at chains
-display(inference_obj["chain"][:,:,[1,2,3,4]])
+#display(inference_obj["chain"][:,:,[1,2,3,4]])
 #inference_obj["chain"] = inference_obj["chain"][:,:,[1,2,3]]
 #save_inference("simulations/" * simulation * ".jl", inference_obj)
 

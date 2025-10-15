@@ -2649,25 +2649,6 @@ end
 
 
 
-"""
-predicted_observed_marked(
-    inference;
-    save_path::Union{String,Nothing}="",
-    plotscale = log10,
-    # overrides (useful for T-1 / T-2 / T-3 comparisons)
-    data_override::Union{Nothing,AbstractArray}=nothing,          # (R,T) or (R,T,K)
-    timepoints_override::Union{Nothing,AbstractVector}=nothing,   # length T
-    train_timepoints::Union{Nothing,AbstractVector}=nothing,      # if nothing, uses inference["timepoints"]
-    mark_heldout::Bool=true,
-    skip_first_timepoint::Bool=true
-)
-
-Creates:
-  • One global predicted-vs-observed scatter (all regions × selected times)
-  • One panel per timepoint
-
-Training points are blue circles; held-out points are red triangles (if `mark_heldout=true`).
-"""
 function predicted_observed_marked(inference;
     save_path::Union{String,Nothing}="",
     plotscale = log10,
@@ -2675,7 +2656,8 @@ function predicted_observed_marked(inference;
     timepoints_override::Union{Nothing,AbstractVector}=nothing,
     train_timepoints::Union{Nothing,AbstractVector}=nothing,
     mark_heldout::Bool=true,
-    skip_first_timepoint::Bool=true
+    skip_first_timepoint::Bool=true,
+    show_r2::Bool=true,   # NEW keyword: toggle R² label on global plot
 )
     # --- Unpack / choose data+time grid ---
     chain       = inference["chain"]
@@ -2693,7 +2675,7 @@ function predicted_observed_marked(inference;
 
     @assert length(timepoints) == size(data,2) "timepoints length must match data's 2nd dim"
 
-    # --- Posterior mode solve at observed timepoints (to match original) ---
+    # --- Posterior mode solve at observed timepoints ---
     n_pars = length(chain.info[1])
     _, argmax = findmax(chain[:lp])
     mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
@@ -2716,49 +2698,49 @@ function predicted_observed_marked(inference;
     sol = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
     pred = Array(sol[sol_idxs, :])   # (R,T)
 
-    # --- Observed summary (use mean over replicates if 3D) ---
+    # --- Observed summary (mean over replicates if 3D) ---
     obs =
         ndims(data) == 3 ? mean3(data) :
         ndims(data) == 2 ? data         :
         error("data must be (R,T) or (R,T,K)")
 
-    # --- Train vs held-out membership by exact time values ---
+    # --- Train vs held-out membership ---
     train_tp = train_timepoints === nothing ? inference["timepoints"] : train_timepoints
     train_set = Set(Float64.(train_tp))
     is_train_time = t -> (Float64(t) in train_set)
 
-    # --- Which time columns to include? (skip the first if desired) ---
+    # --- Columns to plot ---
     first_col = skip_first_timepoint ? 2 : 1
     cols = first_col:size(obs,2)
-    if isempty(cols)
-        @warn "No columns to plot (after skipping first timepoint)."
-        return nothing
-    end
+    isempty(cols) && return nothing
 
-    # --- Helper to prepare x,y with proper missing/finite handling and log-safety ---
+    # --- Helper to prepare x,y safely ---
     function prep_xy(x_raw, y_raw)
-        @assert length(x_raw) == length(y_raw)
-        # Build mask BEFORE converting to Float64
         mask = .!ismissing.(x_raw)
-        # y may already be Float64; still guard against NaN/Inf
         y_tmp = Float64.(y_raw)
         mask .&= isfinite.(y_tmp)
-        # Filter and convert x
         x = Float64.(x_raw[mask])
         y = y_tmp[mask]
         if isempty(x); return Float64[], Float64[]; end
-
         if plotscale === log10
-            # shift nonpositive values up by the smallest positive among remaining data
             pos_pool = vcat(x[x .> 0], y[y .> 0])
-            if isempty(pos_pool)
-                return Float64[], Float64[]
-            end
+            isempty(pos_pool) && return Float64[], Float64[]
             eps_shift = minimum(pos_pool)
             x = ifelse.(x .> 0, x, x .+ eps_shift)
             y = ifelse.(y .> 0, y, y .+ eps_shift)
         end
         return x, y
+    end
+
+    # --- R² helper ---
+    function r2_score(y_obs::AbstractVector, y_pred::AbstractVector)
+        if isempty(y_obs) || isempty(y_pred)
+            return NaN
+        end
+        μ = mean(y_obs)
+        ss_res = sum((y_obs .- y_pred).^2)
+        ss_tot = sum((y_obs .- μ).^2)
+        return ss_tot == 0 ? NaN : 1 - ss_res/ss_tot
     end
 
     # --- Colors/markers ---
@@ -2770,7 +2752,7 @@ function predicted_observed_marked(inference;
     x_hold  = Float64[]; y_hold  = Float64[]
     for j in cols
         xj, yj = prep_xy(view(obs, :, j), view(pred, :, j))
-        if isempty(xj); continue; end
+        isempty(xj) && continue
         if mark_heldout && !is_train_time(timepoints[j])
             append!(x_hold, xj); append!(y_hold, yj)
         else
@@ -2778,7 +2760,12 @@ function predicted_observed_marked(inference;
         end
     end
 
-    # axis ticks for log10
+    # Compute R² (all pooled points)
+    allx = vcat(x_train, x_hold)
+    ally = vcat(y_train, y_hold)
+    r2_global = r2_score(allx, ally)
+
+    # Axis ticks for log10
     use_log = (plotscale === log10)
     xticks = use_log ? ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e0],
                         [L"$10^{-6}$",L"$10^{-5}$",L"$10^{-4}$",L"$10^{-3}$",L"$10^{-2}$",L"$10^{-1}$",L"$10^{0}$"]) : Makie.automatic
@@ -2796,11 +2783,16 @@ function predicted_observed_marked(inference;
         CairoMakie.scatter!(ax, x_hold, y_hold; color=(heldout_color,0.7), marker=:utriangle)
     end
 
-    allx = vcat(x_train, x_hold); ally = vcat(y_train, y_hold)
     if !isempty(allx)
         mn = min(minimum(allx), minimum(ally))
         mx = max(maximum(allx), maximum(ally))
         lines!(ax, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
+    end
+
+    # Add R² label (optional)
+    if show_r2 && isfinite(r2_global)
+        text!(ax, 0.05, 0.95, text=@sprintf("R² = %.3f", r2_global),
+              align=(:left,:top), space=:relative, color=:black, fontsize=16)
     end
 
     if !isempty(save_path)
@@ -2808,7 +2800,7 @@ function predicted_observed_marked(inference;
         save(joinpath(save_path,"predicted_observed_marked_all.pdf"), f)
     end
 
-    # === Per-timepoint panels ===
+    # === Per-timepoint panels (unchanged) ===
     figs = Any[f]
     for j in cols
         xj, yj = prep_xy(view(obs, :, j), view(pred, :, j))
@@ -2837,6 +2829,155 @@ function predicted_observed_marked(inference;
     end
 
     return figs
+end
+
+
+function plot_ppc_coverage_heldout(
+    inference;
+    save_path::Union{Nothing,String}=nothing,
+    full_data::AbstractArray,
+    full_timepoints::AbstractVector,
+    levels::AbstractVector{<:Real} = [0.50, 0.80, 0.95],
+    N_samples::Int = 400,
+    clamp_floor::Union{Nothing,Float64} = 0.0,
+    truncate_at_zero::Bool = true,
+    aggregation::Symbol = :all,   # :all (default) or :mean
+)
+    # --- Identify held-out indices ---
+    fit_tp   = Float64.(inference["timepoints"])
+    full_tp  = Float64.(full_timepoints)
+    @assert all(fit_tp .== full_tp[1:length(fit_tp)]) "Training timepoints must be prefix of full_timepoints"
+    held_idx = (length(fit_tp)+1):length(full_tp)
+    isempty(held_idx) && error("No held-out timepoints detected.")
+
+    # --- Unpack inference ---
+    data       = full_data
+    chain      = inference["chain"]
+    seed       = inference["seed_idx"]
+    sol_idxs   = inference["sol_idxs"]
+    Ltuple     = inference["L"]
+    labels     = inference["labels"]
+    ks         = collect(keys(inference["priors"]))
+    N_pars     = findall(x->x=="σ", ks)[1] - 1
+    factors    = get(inference, "factors", [1.0 for _ in 1:N_pars])
+    ode        = odes[inference["ode"]]
+    R          = size(data, 1)
+    T_full     = length(full_tp)
+
+    # --- Build ODE problem on full grid ---
+    prob = make_ode_problem(ode;
+        labels     = labels,
+        Ltuple     = Ltuple,
+        factors    = factors,
+        u0         = inference["u0"],
+        timepoints = full_tp,
+    )
+
+    # --- Posterior samples ---
+    posterior_samples = sample(chain, min(N_samples, length(chain[:lp])); replace=false)
+    S = size(posterior_samples, 1)
+
+    # --- Parameter indices ---
+    par_names    = chain.name_map.parameters
+    sigma_ch_idx = findfirst(==(Symbol("σ")), par_names)
+    seed_ch_idx  = get(inference, "bayesian_seed", false) ? findfirst(==(Symbol("seed")), par_names) : nothing
+
+    # --- Solve trajectories ---
+    traj = Array{Float64}(undef, R, T_full, S)
+    u0_template = fill!(similar(inference["u0"]), 0.0)
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        p    = sample_vec[1:N_pars]
+        u0_s = copy(u0_template)
+        if seed_ch_idx === nothing
+            u0_s[seed] = inference["seed_value"]
+        else
+            u0_s[seed] = sample_vec[seed_ch_idx]
+        end
+        sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=full_tp, abstol=1e-9, reltol=1e-6)
+        traj[:, :, s] = Array(sol[sol_idxs, :])
+    end
+
+    # --- Predictive draws with noise ---
+    ypred = similar(traj)
+    for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
+        σ_s = sample_vec[sigma_ch_idx]
+        ypred[:, :, s] = traj[:, :, s] .+ (σ_s .* randn(R, T_full))
+    end
+    if truncate_at_zero
+        floor = isnothing(clamp_floor) ? 0.0 : clamp_floor
+        ypred .= clamp.(ypred, floor, Inf)
+    end
+
+    # --- Slice held-out region ---
+    # --- Slice held-out region ---
+    held_pred = view(ypred, :, held_idx, :)
+
+    # Define observed held-out block from full data
+    if ndims(data) == 3
+        held_obs = view(data, :, held_idx, :)
+    else
+        held_obs = reshape(data[:, held_idx], R, length(held_idx), 1)
+    end
+
+    # --- Optionally aggregate across replicates ---
+    if aggregation == :mean && ndims(held_obs) == 3
+        # Mean across replicates (3rd dim), skipping missing values
+        held_obs = mapslices(x -> mean(skipmissing(x)), held_obs; dims=3)
+        held_obs = reshape(held_obs, R, length(held_idx), 1)
+    elseif aggregation != :all
+        error("aggregation must be :all or :mean (got $aggregation)")
+    end
+
+
+    # --- Compute coverage ---
+    levels = collect(levels)
+    cover_fracs = Float64[]
+    nominal = Float64[]
+
+    for α in levels
+        lo = (1 - α)/2
+        hi = 1 - lo
+        inside = 0
+        total  = 0
+        @inbounds for r in axes(held_obs,1), t in axes(held_obs,2), k in axes(held_obs,3)
+            y = held_obs[r,t,k]
+            if y !== missing
+                val = Float64(y)
+                loq = quantile(view(held_pred, r,t,:), lo)
+                hiq = quantile(view(held_pred, r,t,:), hi)
+                total += 1
+                if loq <= val <= hiq
+                    inside += 1
+                end
+            end
+        end
+        push!(nominal, α)
+        push!(cover_fracs, total == 0 ? NaN : inside / total)
+    end
+
+    # --- Plot ---
+    f = Figure()
+    ax = Axis(f[1,1];
+        title  = aggregation == :mean ?
+                 "Posterior predictive coverage (held-out means)" :
+                 "Posterior predictive coverage (held-out all points)",
+        xlabel = "Nominal level",
+        ylabel = "Empirical coverage",
+    )
+    xs = 1:length(levels)
+    CairoMakie.barplot!(ax, xs, cover_fracs; color=RGBAf(0.85,0.3,0.3,0.8))
+    CairoMakie.lines!(ax, xs, nominal; color=:black, linestyle=:dash)
+
+    ax.xticks = (xs, string.(round.(100 .* nominal; digits=0)) .* "%")
+    Makie.ylims!(ax, 0, 1.02)
+
+    if save_path !== nothing
+        try; mkdir(save_path); catch; end
+        suffix = aggregation == :mean ? "_means" : "_all"
+        CairoMakie.save(joinpath(save_path, "ppc_coverage_levels_heldout$(suffix).pdf"), f)
+    end
+
+    return f, (; levels=nominal, coverage=cover_fracs)
 end
 
 
@@ -2933,7 +3074,9 @@ function plot_inference(inference, save_path;
             inference;
             save_path            = joinpath(save_path, "predicted_observed_marked"),
             mark_heldout         = false,
-            skip_first_timepoint = true
+            skip_first_timepoint = true,
+            show_r2 = true,
+            plotscale=identity
         )
     end
 
@@ -2964,6 +3107,34 @@ function plot_inference(inference, save_path;
         truncate_at_zero = true,
         clamp_floor = 0.0
     )
+
+    if use_override
+        # --- Coverage for held-out data only ---
+        # MEAN
+        plot_ppc_coverage_heldout(
+            inference;
+            save_path = joinpath(save_path, "coverage"),
+            full_data = full_data,
+            full_timepoints = full_timepoints,
+            levels = [0.50, 0.80, 0.95],
+            N_samples = 400,
+            truncate_at_zero = true,
+            clamp_floor = 0.0,
+            aggregation = :mean
+        )
+        # ALL
+        plot_ppc_coverage_heldout(
+            inference;
+            save_path = joinpath(save_path, "coverage"),
+            full_data = full_data,
+            full_timepoints = full_timepoints,
+            levels = [0.50, 0.80, 0.95],
+            N_samples = 400,
+            truncate_at_zero = true,
+            clamp_floor = 0.0,
+            aggregation = :all
+        )
+    end
 
     plot_ppc_coverage_by_region(inference;
         save_path=save_path*"/coverage",
