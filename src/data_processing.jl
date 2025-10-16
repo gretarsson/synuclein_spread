@@ -19,16 +19,34 @@ function process_pathology(path_csv::String; W_csv::Union{Nothing,String}=nothin
 
     ### 3) determine region ordering
     region_order = path_regions
+    # OLD
+    #if W_csv !== nothing
+    #    cdf = CSV.read(W_csv, DataFrame)
+    #    conn_regions = names(cdf)[2:end]
+    #    missing_regions = setdiff(conn_regions, path_regions)
+    #    if !isempty(missing_regions)
+    #        error("These regions appear in the connectome but not in the pathology CSV:\n",
+    #              join(missing_regions, ", "))
+    #    end
+    #    region_order = conn_regions
+    #end
+    # NEW (handles regions missing in pathology data, fills them with missing rows)
     if W_csv !== nothing
         cdf = CSV.read(W_csv, DataFrame)
         conn_regions = names(cdf)[2:end]
         missing_regions = setdiff(conn_regions, path_regions)
+    
         if !isempty(missing_regions)
-            error("These regions appear in the connectome but not in the pathology CSV:\n",
-                  join(missing_regions, ", "))
+            @warn "These regions appear in the connectome but not in the pathology CSV — filling with missing:" join(missing_regions, ", ")
+            for r in missing_regions
+                df[!, Symbol(r)] = Vector{Union{Missing, Float64}}(fill(missing, nrow(df)))
+            end
         end
+    
         region_order = conn_regions
     end
+    
+
 
     ### 4) assemble timepoints & sample counts
     mpis      = sort(unique(df[!, time_col]))

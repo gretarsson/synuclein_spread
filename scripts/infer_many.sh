@@ -2,7 +2,7 @@
 set -euo pipefail  # exit on first error
 
 # DIFFG test
-julia --project=. scripts/infer_this_main.jl DIFFGAM_bilateral data/W_labeled_filtered.csv  data/total_path.csv --retrograde=true --n_chains=1 --out_file=simulations/DIFFGAM_bilateral.jls 
+julia --project=. scripts/infer_this_main.jl DIFFGA data/W_labeled_filtered.csv  data/hippocampal/hippocampal_syn_only.csv --retrograde=true --n_chains=1 --seed_idx= --out_file=simulations/DIFFGA_hippo.jls 
 
 # run inference for all models with retrograde transport
 #julia --project=. scripts/infer_this_main.jl DIFF  data/W_labeled_filtered.csv  data/total_path.csv --retrograde=true --n_chains=4 --out_file=DIFF_RETRO.jls
