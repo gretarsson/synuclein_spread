@@ -96,14 +96,10 @@ function build_parser()
             arg_type = Bool
             default = true
             help = "If true then retrograde transport is used, if false anterograde transport is used"
-        "--seed_label"
-            arg_type = String
-            default  = "iCP"
-            help     = "The label of the seeded region"
-        "--seed_index"
-            arg_type = Int
-            default  = 0
-            help     = "Index of the seeded region (1-based). Overrides --seed_label if > 0"
+        "--seed_indices"
+            arg_type = Any
+            default  = [74]  # default is iCP
+            help     = "Indices of seeded regions. Pass as Int or Vector{Int} (e.g., --seed_indices [12,13,14])"
         "--infer_seed"
             arg_type = Bool
             default  = true
@@ -138,7 +134,7 @@ function main(parsed)
     data_file = parsed["data_file"]
     n_chains = parsed["n_chains"]
     retrograde = parsed["retrograde"]
-    seed_label = parsed["seed_label"]
+    seed_indices = parsed["seed_indices"]
     infer_seed = parsed["infer_seed"]
     target_acceptance = parsed["target_acceptance"]
     out_file = parsed["out_file"]
@@ -152,7 +148,6 @@ function main(parsed)
     println("→ Pathology data:   $data_file")
     println("→ Chains:    $n_chains")
     println("→ Retrograde:    $retrograde")
-    println("→ Seed label:    $seed_label")
     println("→ Infer seed:    $infer_seed")
     println("→ Hold out last timepoints: $holdout_last")
     println("→ Shuffle network weights: $shuffle")
@@ -162,6 +157,17 @@ function main(parsed)
         println("→ Test:     $test")
     end
     flush(stdout)
+
+    # VERIFY CORRECT SEED INDICES
+    seed_indices = parsed["seed_indices"]
+    if isa(seed_indices, Int)
+        seed_idxs = [seed_indices]
+    elseif isa(seed_arg, AbstractVector{<:Int})
+        seed_idxs = seed_indices
+    else
+        error("Invalid --seed_indices input. Must be an Int or Vector{Int}.")
+    end
+
 
     # -----------------------------------
     #=
@@ -195,6 +201,11 @@ function main(parsed)
             timepoints  = timepoints[1:(T - holdout_last)]
         end
     end 
+    # PRINT SEED LABELS FOR VERIFICATION
+    println("→ Seed indices: ", seed_indices)
+    println("→ Seed labels:  ", labels[seed_indices])
+    flush(stdout)
+
 
     # ADD EXTRA LAPLACIAN IF BIDIRECTIONAL TRANSPORT
     if bidirectional
@@ -206,15 +217,6 @@ function main(parsed)
             Ltuple = (La,N)
         end
     end
-
-    # SET SEED AND INITIAL CONDITIONS
-    #seed = findfirst(==(seed_label), labels);  # OLD
-    if parsed["seed_index"] > 0  # NEW
-        seed = parsed["seed_index"]
-    else
-        seed = findfirst(==(seed_label), labels)
-    end
-    
 
     # SET PRIORS (variance and seed have to be last, in that order)
     region_group = build_region_groups(labels)  # prepare bilateral parameters
@@ -243,7 +245,7 @@ function main(parsed)
                     u0=u0,
                     n_chains=n_chains,
                     bayesian_seed=infer_seed,
-                    seed=seed,
+                    seed=seed_indices,
                     alg=Tsit5(),  # from DifferentialEquations
                     abstol=1e-6,
                     reltol=1e-3,
