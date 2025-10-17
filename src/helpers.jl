@@ -222,7 +222,8 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
                adtype=AutoForwardDiff(), 
                factors::Union{Nothing,Vector{Float64}}=nothing,
                bayesian_seed::Bool=false,
-               seed::Int=1,
+               #seed::Int=1,  # old
+               seed::Vecotr{Int}=[1],
                seed_value::Float64=1.,
                sol_idxs::Vector{Int}=Vector{Int}(),
                abstol::Float64=1e-10, 
@@ -245,9 +246,15 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
     #end
 
     # verify that the seed index is well defined
-    if seed < 1 || seed > N
-        error("Invalid seed index: $seed. Must satisfy 1 ≤ seed ≤ $N (number of regions).")
+    # OLD
+    #if seed < 1 || seed > N
+    #    error("Invalid seed index: $seed. Must satisfy 1 ≤ seed ≤ $N (number of regions).")
+    #end
+    # NEW
+    if any(s -> s < 1 || s > N, seed)
+        error("Invalid seed indices $(seed). Must satisfy 1 ≤ s ≤ $N.")
     end
+    
 
     # find number of ode parameters by looking at prior dictionary
     ks = collect(keys(priors))
@@ -322,11 +329,23 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
         # priors
         p ~ arraydist([ode_priors[i] for i in 1:N_pars])
         σ ~ priors["σ"] 
+        # OLD
+        #if bayesian_seed
+        #    u00[seedd] ~ priors["seed"]  
+        #else
+        #    u00[seedd] = seed_value
+        #end
+        # NEW
         if bayesian_seed
-            u00[seedd] ~ priors["seed"]  
+            for s in seed
+                u00[s] ~ priors["seed"]
+            end
         else
-            u00[seedd] = seed_value
+            for s in seed
+                u00[s] = seed_value
+            end
         end
+
 
         # Simulate diffusion model 
         predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=6000)
@@ -408,7 +427,13 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
         end
     end
     # rename parameters
-    chain = replacenames(chain, "u00[$(seed)]" => "seed")
+    # OLD
+    #chain = replacenames(chain, "u00[$(seed)]" => "seed")
+    # NEW
+    for s in seed
+        chain = replacenames(chain, "u00[$s]" => "seed_$(labels[s])")
+    end
+
 
     # save chains and metadata to a dictionary
     inference = Dict("chain" => chain, 
