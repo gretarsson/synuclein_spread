@@ -161,12 +161,21 @@ function main(parsed)
     # VERIFY CORRECT SEED INDICES
     seed_indices = parsed["seed_indices"]
     if isa(seed_indices, Int)
-        seed_idxs = [seed_indices]
-    elseif isa(seed_arg, AbstractVector{<:Int})
-        seed_idxs = seed_indices
+        seed_indices = [seed_indices]
+    elseif isa(seed_indices, AbstractVector{<:Int})
+        # already fine
+    elseif isa(seed_indices, String)
+        # Parse Julia-style literal passed as string, e.g. "[53,54,56]"
+        if occursin(r"^\[.*\]$", seed_indices)
+            seed_indices = Meta.parse(seed_indices) |> eval
+            @assert all(isa.(seed_indices, Int)) "All elements in --seed_indices must be integers"
+        else
+            error("Invalid --seed_indices string format. Use e.g. --seed_indices='[53,54,56]'")
+        end
     else
         error("Invalid --seed_indices input. Must be an Int or Vector{Int}.")
     end
+    flush(stdout)
 
 
     # -----------------------------------

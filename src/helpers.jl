@@ -214,7 +214,7 @@ a dictionary containing the ODE functions
 # Run whole simulations in one place
 # the Priors dict must contain the ODE parameters in order first, and then σ. Other priors can then follow after, with seed always last.
 # ----------------------------------------------------------------------------------------------------------------------------------------
-function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::Vector{Float64}, L; 
+function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3}, timepoints::AbstractVector{<:Real}, L; 
                u0::Vector{Float64}=[],
                n_chains=1,
                alg=Tsit5(), 
@@ -223,7 +223,7 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
                factors::Union{Nothing,Vector{Float64}}=nothing,
                bayesian_seed::Bool=false,
                #seed::Int=1,  # old
-               seed::Vecotr{Int}=[1],
+               seed::Vector{Int}=[1],
                seed_value::Float64=1.,
                sol_idxs::Vector{Int}=Vector{Int}(),
                abstol::Float64=1e-10, 
@@ -320,7 +320,7 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
         final_data = row_data
     end
 
-    @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::Vector{Float64}, seedd=seed::Int, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
+    @model function bayesian_model(data, prob; ode_priors=priors_vec, priors=priors, alg=alg, timepointss=timepoints::AbstractVector{<:Real}, seedd=seed::Vector{Int}, u0=u0::Vector{Float64}, bayesian_seed=bayesian_seed::Bool, seed_value=seed_value,
                                     N_samples=N_samples,
                                     nonmissing=nonmissing::Vector{Int64},
                                     row_nonmiss=row_nonmiss::Vector{Vector{Int}}

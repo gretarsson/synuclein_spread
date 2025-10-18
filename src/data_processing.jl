@@ -11,7 +11,7 @@ re‑order regions by a connectome CSV, then return a NamedTuple with
 """
 function process_pathology(path_csv::String; W_csv::Union{Nothing,String}=nothing)
     ### 1) load pathology CSV, parse "NA" → missing
-    df = CSV.read(path_csv, DataFrame; missingstring=["NA"])
+    df = CSV.read(path_csv, DataFrame; missingstring=["NA",""])
 
     ### 2) identify columns
     time_col     = names(df)[2]
