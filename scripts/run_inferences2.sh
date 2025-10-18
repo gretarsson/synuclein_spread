@@ -9,7 +9,10 @@ mkdir -p "$LOG_DIR"
 # Define base (model + args) jobs
 # --------------------------------------------------
 declare -A BASE_JOBS
-BASE_JOBS["DIFFGAM_BILATERAL"]="DIFFGAM_bilateral data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
+BASE_JOBS["hippo_DIFF"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,54,56]' --retrograde=true --n_chains=1"
+BASE_JOBS["hippo_DIFFG"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,54,56]' --retrograde=true --n_chains=1"
+BASE_JOBS["hippo_DIFFGA"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,54,56]' --retrograde=true --n_chains=1"
+BASE_JOBS["hippo_DIFFGAM"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,54,56]' --retrograde=true --n_chains=1"
 
 # --------------------------------------------------
 # For each base job, submit 4 independent chains
