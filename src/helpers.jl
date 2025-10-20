@@ -1498,7 +1498,7 @@ function infer_clustering(ode, priors::OrderedDict, data::Array{Union{Missing,Fl
 
     # Define prob
     p = zeros(Float64, N_pars)
-    tspan = (timepoints[1],timepoints[end])
+    tspan = (0,timepoints[end])
     if string(ode) == "sis" || string(ode) == "sir"
         for i in 1:N
             W[i,i] = 0
@@ -2828,7 +2828,7 @@ function make_ode_problem(ode_fn; labels, Ltuple, factors, u0, timepoints)
     rhs = (du,u,p,t) -> ode_fn(du, u, p, t; kwargs...)
 
     # Time span
-    tspan = (timepoints[1], timepoints[end])
+    tspan = (0.0, timepoints[end])
 
     return ODEProblem(rhs, u0, tspan)
 end
@@ -2918,7 +2918,7 @@ function compute_heldout_scores(inference::Dict;
 
     # ODE problem on full grid
     rhs(du,u,p,t) = ode_fn(du,u,p,t; L=Ltuple, factors=factors)
-    tspan = (timepoints_full[1], timepoints_full[end])
+    tspan = (0, timepoints_full[end])
     prob  = ODEProblem(rhs, u0_base, tspan; alg=Tsit5())
 
     # sample posterior draws
