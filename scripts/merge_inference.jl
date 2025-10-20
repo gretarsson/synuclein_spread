@@ -3,9 +3,9 @@ using MCMCChains
 using Serialization
 
 # --- SETTINGS ---
-base     = "simulations/DIFFG_T1"
+base     = "simulations/hippo_DIFFGA"
 nchains  = 4
-outfile  = "simulations/DIFFG_T-1.jls"
+outfile  = "simulations/hippo_DIFFGA.jls"
 
 # --- LOAD ALL CHAINS ---
 inference_list = Dict[]
@@ -17,7 +17,7 @@ end
 
 # --- MERGE CHAINS ---
 merged = deepcopy(inference_list[1])
-merged["chains"] = chainscat([inf["chain"] for inf in inference_list]...)
+merged["chain"] = chainscat([inf["chain"] for inf in inference_list]...)
 
 # Optionally merge WAIC- or log-likelihood–related fields if they exist
 for key in ["waic_i", "log_likelihoods"]

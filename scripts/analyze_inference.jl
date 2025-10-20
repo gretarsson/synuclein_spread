@@ -4,14 +4,15 @@ here we create a folder of analysis plots of interence results
 using PathoSpread
 
 # simulation to analyze
-simulation = "DIFFGAM_BIDIR";
+simulation = "hippo_DIFFGA";
 
 # read file 
 inference_obj = load_inference("simulations/"*simulation*".jls")
 
 # look at chains
-#display(inference_obj["chain"][:,:,[1,2,3,4]])
-#inference_obj["chain"] = inference_obj["chain"][:,:,[1,2,3]]
+#display(inference_obj["chain"])
+#inference_obj["chain"]
+#inference_obj
 #save_inference("simulations/" * simulation * ".jl", inference_obj)
 
 # plot
@@ -21,3 +22,5 @@ plot_inference(inference_obj,"figures/"*simulation)
 # plot with training data
 #data_full, timepoints_full = PathoSpread.process_pathology("data/total_path.csv", W_csv="data/W_labeled_filtered.csv")
 #plot_inference(inference_obj,"figures/"*simulation; full_data=data_full, full_timepoints=timepoints_full)  
+#PathoSpread.plot_retrodiction(inference_obj; save_path="figures/"*simulation*"_retrodiction", N_samples=100)
+

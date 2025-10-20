@@ -227,27 +227,70 @@ end
 #=
 plot posteriors of each parameter from inference
  =#
-function plot_posteriors(inference; save_path="")
-    # try creating folder to save in
-    try
-        mkdir(save_path) 
-    catch
+# OLD
+#function plot_posteriors(inference; save_path="")
+#    # try creating folder to save in
+#    try
+#        mkdir(save_path) 
+#    catch
+#    end
+#    chain = inference["chain"]
+#    vars = collect(keys(inference["priors"]))
+#    master_fig = StatsPlots.plot(chain) 
+#    #posterior_figs = []
+#    for (i,var) in enumerate(vars)
+#        posterior_i = StatsPlots.plot(master_fig[i,2], title=var)
+#        if !isempty(save_path)
+#            savefig(posterior_i, save_path*"/posterior_$(var).png")
+#        end
+#        StatsPlots.closeall()
+#        #push!(posterior_figs,posterior_i)
+#    end
+#    #return posterior_figs
+#    return nothing
+#end
+#NEW
+function plot_posteriors(inference; save_path = "")
+    if !isempty(save_path)
+        try mkdir(save_path) catch; end
     end
-    chain = inference["chain"]
-    vars = collect(keys(inference["priors"]))
-    master_fig = StatsPlots.plot(chain) 
-    #posterior_figs = []
-    for (i,var) in enumerate(vars)
-        posterior_i = StatsPlots.plot(master_fig[i,2], title=var)
+
+    chain       = inference["chain"]
+    priors      = inference["priors"]
+    prior_keys  = collect(keys(priors))
+    chain_vars  = names(chain)
+    master_fig  = StatsPlots.plot(chain)
+
+    for (i, var) in enumerate(chain_vars)
+        var_str = String(var)
+        title = var_str  # default title
+
+        if startswith(var_str, "p[")
+            # positional correspondence with priors
+            idx = parse(Int, match(r"p\[(\d+)\]", var_str).captures[1])
+            if idx <= length(prior_keys)
+                title = prior_keys[idx]
+            end
+        elseif startswith(var_str, "seed_")
+            title = var_str  # keep informative region name
+        elseif haskey(priors, String(var))
+            title = String(var)
+        else
+            # Skip diagnostics and anything not a model parameter
+            continue
+        end
+
+        plot_i = StatsPlots.plot(master_fig[i, 2], title = title)
+
         if !isempty(save_path)
-            savefig(posterior_i, save_path*"/posterior_$(var).png")
+            savefig(plot_i, joinpath(save_path, "posterior_$(title).png"))
         end
         StatsPlots.closeall()
-        #push!(posterior_figs,posterior_i)
     end
-    #return posterior_figs
+
     return nothing
 end
+
 
 """
     plot_retrodiction(inference; save_path=nothing, N_samples=200,
@@ -350,11 +393,25 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=200,
     sigma_ch_idx = findfirst(==(Symbol("σ")), par_names)
     sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
     
-    seed_ch_idx = nothing
+    # OLD
+    #seed_ch_idx = nothing
+    #if get(inference, "bayesian_seed", false)
+    #    seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+    #    seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    #end
+    # NEW
     if get(inference, "bayesian_seed", false)
-        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
-        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+        # Find *all* seed parameters
+        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
+        isempty(seed_ch_idx) && error("No seed parameters found in chain.name_map.parameters")
+    
+        # Sort to preserve order in 'seed' (important if par_names is not lexicographically sorted)
+        seed_ch_idx = sort(seed_ch_idx)
+    else
+        seed_ch_idx = nothing
     end
+    display("seed_ch_idx = $(seed_ch_idx)")
+    display("seed = $(seed)")
     
 
     # Zero template u0 (only seed nonzero per draw)
@@ -365,9 +422,22 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=200,
         p    = sample_vec[1:N_pars]
         u0_s = copy(u0_template)
         if get(inference, "bayesian_seed", false)
-            u0_s[seed] = sample_vec[seed_ch_idx]
+            if isa(seed, Int)
+                # Single seed case (as before)
+                u0_s[seed] = sample_vec[seed_ch_idx[1]]
+            else
+                # Multiple seed regions — one seed parameter per index (same order guaranteed)
+                for (i, sidx) in enumerate(seed)
+                    u0_s[sidx] = sample_vec[seed_ch_idx[i]]
+                end
+            end
         else
-            u0_s[seed] = inference["seed_value"]
+            # Deterministic (non-Bayesian) seeding
+            if isa(seed, Int)
+                u0_s[seed] = inference["seed_value"]
+            else
+                u0_s[seed] .= inference["seed_value"]
+            end
         end
         sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
         traj[:, :, s] = Array(sol[sol_idxs, :])
@@ -1155,27 +1225,83 @@ end
 #=
 plot priors and posteriors together from inference result
  =#
-function plot_prior_and_posterior(inference; save_path="")
-    # try creating folder to save in
-    try
-        mkdir(save_path) 
-    catch
+#function plot_prior_and_posterior(inference; save_path="")
+#    # try creating folder to save in
+#    try
+#        mkdir(save_path) 
+#    catch
+#    end
+#    # rescale the priors
+#    chain = inference["chain"]
+#    priors = inference["priors"]
+#    vars = collect(keys(priors))
+#    master_fig = StatsPlots.plot(chain) 
+#    for (i,var) in enumerate(vars)
+#        plot_i = StatsPlots.plot(master_fig[i,2], title=var)
+#        StatsPlots.plot!(plot_i, priors[var])
+#        if !isempty(save_path)
+#            savefig(plot_i, save_path*"/prior_and_posterior_$(var).png")
+#        end
+#        StatsPlots.closeall()
+#    end
+#    return nothing
+#end
+# NEW
+function plot_prior_and_posterior(inference; save_path = "")
+    if !isempty(save_path)
+        try mkdir(save_path) catch; end
     end
-    # rescale the priors
-    chain = inference["chain"]
-    priors = inference["priors"]
-    vars = collect(keys(priors))
-    master_fig = StatsPlots.plot(chain) 
-    for (i,var) in enumerate(vars)
-        plot_i = StatsPlots.plot(master_fig[i,2], title=var)
-        StatsPlots.plot!(plot_i, priors[var])
+
+    chain   = inference["chain"]
+    priors  = inference["priors"]
+    prior_keys = collect(keys(priors))
+    chain_vars = names(chain)
+    master_fig = StatsPlots.plot(chain)
+
+    # Determine how many generic "p[i]" parameters exist
+    pvars = filter(v -> occursin("p[", String(v)), chain_vars)
+    n_generic = length(pvars)
+
+    for (i, var) in enumerate(chain_vars)
+        var_str = String(var)
+
+        # Figure out which prior to use
+        prior_key = nothing
+        if startswith(var_str, "p[")
+            # assume positional correspondence
+            idx = parse(Int, match(r"p\[(\d+)\]", var_str).captures[1])
+            if idx <= length(prior_keys)
+                prior_key = prior_keys[idx]
+            end
+            title = prior_key
+        elseif startswith(var_str, "seed_")
+            display("Matching prior for variable $(var_str) to :seed")
+            prior_key = "seed"
+            title = var_str
+        elseif haskey(priors, String(var))
+            prior_key = String(var)
+            title = prior_key
+        end
+
+        # Skip parameters without priors
+        if prior_key === nothing || !haskey(priors, prior_key)
+            continue
+        end
+
+        prior_dist = priors[prior_key]
+        plot_i = StatsPlots.plot(master_fig[i, 2], title = title)
+        StatsPlots.plot!(plot_i, prior_dist)
+
         if !isempty(save_path)
-            savefig(plot_i, save_path*"/prior_and_posterior_$(var).png")
+            savefig(plot_i, joinpath(save_path, "prior_and_posterior_$(title).png"))
         end
         StatsPlots.closeall()
     end
+
     return nothing
 end
+
+
 
 
 function plot_ppc_coverages(inference;
@@ -1234,11 +1360,25 @@ function plot_ppc_coverages(inference;
     par_names    = chain.name_map.parameters
     sigma_ch_idx = findfirst(==(Symbol("σ")), par_names)
     sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
-    seed_ch_idx = nothing
+    # OLD
+    #seed_ch_idx = nothing
+    #if get(inference, "bayesian_seed", false)
+    #    seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+    #    seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    #end
+    # NEW
+    seed_ch_idx = Int[]
     if get(inference, "bayesian_seed", false)
-        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
-        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+        par_names = names(chain, :parameters)
+
+        # Find all parameters whose names start with "seed"
+        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
+        isempty(seed_ch_idx) && error("Could not find any seed parameters in chain.name_map.parameters")
+
+        # Sort to preserve consistent ordering (same as in priors)
+        seed_ch_idx = sort(seed_ch_idx)
     end
+
 
     # Solve trajectories per draw
     traj = Array{Float64}(undef, N, T, S)   # process trajectories
@@ -1246,10 +1386,23 @@ function plot_ppc_coverages(inference;
     for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
         p    = sample_vec[1:N_pars]
         u0_s = copy(u0_template)
-        if seed_ch_idx === nothing
-            u0_s[seed] = inference["seed_value"]
+        if seed_ch_idx === nothing || isempty(seed_ch_idx)
+            # No inferred seed(s) — use fixed initialization
+            if isa(seed, Int)
+                u0_s[seed] = inference["seed_value"]
+            else
+                u0_s[seed] .= inference["seed_value"]
+            end
         else
-            u0_s[seed] = sample_vec[seed_ch_idx]
+            # Inferred seed(s)
+            if isa(seed, Int)
+                u0_s[seed] = sample_vec[seed_ch_idx[1]]
+            else
+                # Multiple seeds: assign each sample to its corresponding region
+                for (i, sidx) in enumerate(seed)
+                    u0_s[sidx] = sample_vec[seed_ch_idx[i]]
+                end
+            end
         end
         sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
         traj[:, :, s] = Array(sol[sol_idxs, :])
@@ -1425,22 +1578,57 @@ function plot_ppc_coverage_by_region(inference;
     par_names    = chain.name_map.parameters
     sigma_ch_idx = findfirst(==(Symbol("σ")), par_names)
     sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
-    seed_ch_idx = nothing
+    # OLD
+    #seed_ch_idx = nothing
+    #if get(inference, "bayesian_seed", false)
+    #    seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+    #    seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    #end
+    # NEW
+    seed_ch_idx = Int[]
     if get(inference, "bayesian_seed", false)
-        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
-        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+        par_names = names(chain, :parameters)
+
+        # Find all parameters whose names start with "seed"
+        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
+        isempty(seed_ch_idx) && error("Could not find any seed parameters in chain.name_map.parameters")
+
+        # Sort to preserve consistent ordering (same as in priors)
+        seed_ch_idx = sort(seed_ch_idx)
     end
+
 
     # Simulate process trajectories for each draw at observed timepoints
     traj = Array{Float64}(undef, R, T, S)
     u0_template = fill!(similar(inference["u0"]), 0.0)
     for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
         p    = sample_vec[1:N_pars]
+        #OLD
+        #u0_s = copy(u0_template)
+        #if seed_ch_idx === nothing
+        #    u0_s[seed] = inference["seed_value"]
+        #else
+        #    u0_s[seed] = sample_vec[seed_ch_idx]
+        #end
+        # NEW
         u0_s = copy(u0_template)
-        if seed_ch_idx === nothing
-            u0_s[seed] = inference["seed_value"]
+        if seed_ch_idx === nothing || isempty(seed_ch_idx)
+            # No inferred seed(s) — use fixed initialization
+            if isa(seed, Int)
+                u0_s[seed] = inference["seed_value"]
+            else
+                u0_s[seed] .= inference["seed_value"]
+            end
         else
-            u0_s[seed] = sample_vec[seed_ch_idx]
+            # Inferred seed(s)
+            if isa(seed, Int)
+                u0_s[seed] = sample_vec[seed_ch_idx[1]]
+            else
+                # Multiple seeds: assign each sample to its corresponding region
+                for (i, sidx) in enumerate(seed)
+                    u0_s[sidx] = sample_vec[seed_ch_idx[i]]
+                end
+            end
         end
         sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
         traj[:, :, s] = Array(sol[sol_idxs, :])
@@ -1911,11 +2099,23 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
     par_names     = chain.name_map.parameters
     sigma_ch_idx  = findfirst(==(Symbol("σ")), par_names)
     sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
+    # OLD
+    #seed_ch_idx = nothing
+    #if get(inference, "bayesian_seed", false)
+    #    seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+    #    seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    #end
+    # NEW
     seed_ch_idx = nothing
     if get(inference, "bayesian_seed", false)
-        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
-        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+        # Find all parameters starting with "seed"
+        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
+        isempty(seed_ch_idx) && error("Could not find any seed parameters in chain.name_map.parameters")
+
+        # Sort by order of appearance to match 'seed' ordering in inference["seed_idx"]
+        seed_ch_idx = sort(seed_ch_idx)
     end
+
 
     # Zero template u0 (only seed nonzero per draw)
     u0_template = fill!(similar(inference["u0"]), 0.0)
@@ -1925,9 +2125,23 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         p    = sample_vec[1:N_pars]
         u0_s = copy(u0_template)
         if get(inference, "bayesian_seed", false)
-            u0_s[seed] = sample_vec[seed_ch_idx]
+            if isa(seed, Int)
+                # Single seed region
+                u0_s[seed] = sample_vec[seed_ch_idx[1]]
+            else
+                # Multiple seed regions — one parameter per seed, same order guaranteed
+                for (i, sidx) in enumerate(seed)
+                    u0_s[sidx] = sample_vec[seed_ch_idx[i]]
+                end
+            end
         else
-            u0_s[seed] = inference["seed_value"]
+            # Fixed (non-Bayesian) seeding
+            if isa(seed, Int)
+                u0_s[seed] = inference["seed_value"]
+            else
+                # Same constant value for all seed sites
+                u0_s[seed] .= inference["seed_value"]
+            end
         end
         sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
         traj[:, :, s] = Array(sol[sol_idxs, :])
@@ -2232,22 +2446,57 @@ function plot_calibration_cross2(inference;
     sigma_ch_idx = findfirst(==(Symbol("σ")), par_names)
     sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
 
-    seed_ch_idx = nothing
+    # OLD
+    #seed_ch_idx = nothing
+    #if get(inference, "bayesian_seed", false)
+    #    seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
+    #    seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+    #end
+    # NEW
+    seed_ch_idx = Int[]
     if get(inference, "bayesian_seed", false)
-        seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
-        seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
+        par_names = names(chain, :parameters)
+
+        # Find all parameters whose names start with "seed"
+        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
+        isempty(seed_ch_idx) && error("Could not find any seed parameters in chain.name_map.parameters")
+
+        # Sort to preserve consistent ordering (same as in priors)
+        seed_ch_idx = sort(seed_ch_idx)
     end
+
 
     traj = Array{Float64}(undef, R, T, S)   # process
     u0_template = fill!(similar(inference["u0"]), 0.0)
 
     for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
         p    = sample_vec[1:N_pars]
+        # OLD
+        #u0_s = copy(u0_template)
+        #if seed_ch_idx === nothing
+        #    u0_s[seed] = inference["seed_value"]
+        #else
+        #    u0_s[seed] = sample_vec[seed_ch_idx]
+        #end
+        # NEW
         u0_s = copy(u0_template)
-        if seed_ch_idx === nothing
-            u0_s[seed] = inference["seed_value"]
+        if seed_ch_idx === nothing || isempty(seed_ch_idx)
+            # No inferred seed(s) — use fixed initialization
+            if isa(seed, Int)
+                u0_s[seed] = inference["seed_value"]
+            else
+                u0_s[seed] .= inference["seed_value"]
+            end
         else
-            u0_s[seed] = sample_vec[seed_ch_idx]
+            # Inferred seed(s)
+            if isa(seed, Int)
+                u0_s[seed] = sample_vec[seed_ch_idx[1]]
+            else
+                # Multiple seeds: assign each sample to its corresponding region
+                for (i, sidx) in enumerate(seed)
+                    u0_s[sidx] = sample_vec[seed_ch_idx[i]]
+                end
+            end
         end
         sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
         traj[:, :, s] = Array(sol[sol_idxs, :])
@@ -2683,10 +2932,31 @@ function predicted_observed_marked(inference;
 
     u0 = copy(inference["u0"])
     if get(inference, "bayesian_seed", false)
-        u0[seed] = chain["seed"][argmax]
+        # Get parameter names and seed indices
+        par_names = names(chain, :parameters)
+        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
+        isempty(seed_ch_idx) && error("No seed parameters found in chain.")
+        seed_ch_idx = sort(seed_ch_idx)
+    
+        # If single seed
+        if isa(seed, Int)
+            u0[seed] = chain.value[argmax[1], seed_ch_idx[1], argmax[2]]
+        else
+            # Multiple seeds — assume same order as priors
+            for (i, sidx) in enumerate(seed)
+                u0[sidx] = chain.value[argmax[1], seed_ch_idx[i], argmax[2]]
+            end
+        end
+    
     else
-        u0[seed] = inference["seed_value"]
+        # Fixed seeding (non-Bayesian)
+        if isa(seed, Int)
+            u0[seed] = inference["seed_value"]
+        else
+            u0[seed] .= inference["seed_value"]
+        end
     end
+    
 
     prob = make_ode_problem(ode;
         labels     = labels,
@@ -3055,7 +3325,7 @@ function plot_inference(inference, save_path;
             timepoints_override  = full_timepoints,
             train_timepoints     = inference["timepoints"],
             mark_heldout         = true,
-            skip_first_timepoint = true
+            skip_first_timepoint = false
         )
         # Full series available → color held-out (red triangles) vs train (blue circles)
         predicted_observed_marked(
@@ -3065,7 +3335,7 @@ function plot_inference(inference, save_path;
             timepoints_override  = full_timepoints,
             train_timepoints     = inference["timepoints"],
             mark_heldout         = true,
-            skip_first_timepoint = true,
+            skip_first_timepoint = false,
             plotscale=identity
         )
     else
@@ -3074,7 +3344,7 @@ function plot_inference(inference, save_path;
             inference;
             save_path            = joinpath(save_path, "predicted_observed_marked"),
             mark_heldout         = false,
-            skip_first_timepoint = true,
+            skip_first_timepoint = false,
             show_r2 = true,
             plotscale=identity
         )
@@ -3192,12 +3462,9 @@ function plot_inference(inference, save_path;
     end
     # --------------------------------------------------------------------------
 
-    predicted_observed(inference; save_path=save_path*"/predicted_observed_log10", plotscale=log10);
-    predicted_observed(inference; save_path=save_path*"/predicted_observed_id",  plotscale=identity);
-
-
-
-
+    # predicted observed marked works better
+    #predicted_observed(inference; save_path=save_path*"/predicted_observed_log10", plotscale=log10);
+    #predicted_observed(inference; save_path=save_path*"/predicted_observed_id",  plotscale=identity);
 
     plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     plot_posteriors(inference, save_path=save_path*"/posteriors");

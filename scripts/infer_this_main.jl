@@ -213,6 +213,7 @@ function main(parsed)
     # PRINT SEED LABELS FOR VERIFICATION
     println("→ Seed indices: ", seed_indices)
     println("→ Seed labels:  ", labels[seed_indices])
+    println("→ Timepoints:  ", timepoints)
     flush(stdout)
 
 
