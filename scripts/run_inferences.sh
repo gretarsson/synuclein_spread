@@ -65,7 +65,7 @@ for JOBNAME in "${!BASE_JOBS[@]}"; do
 #SBATCH --job-name=$FULL_JOBNAME
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=1
 #SBATCH --mem=32G
 #SBATCH --partition=all
 #SBATCH --time=2-00:00:00
