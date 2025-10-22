@@ -3,9 +3,9 @@ using MCMCChains
 using Serialization
 
 # --- SETTINGS ---
-base     = "simulations/hippo_DIFFGA"
+base     = "simulations/DIFF_BIDIR"
 nchains  = 4
-outfile  = "simulations/hippo_DIFFGA.jls"
+outfile  = "simulations/DIFF_BIDIR.jls"
 
 # --- LOAD ALL CHAINS ---
 inference_list = Dict[]

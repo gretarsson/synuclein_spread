@@ -5,9 +5,9 @@ using PrettyTables, DataFrames
 # Read inference results
 simulations = [
     #"simulations/DIFF_EUCL",
-    #"simulations/DIFF_ANTERO",
-    #"simulations/DIFF_RETRO",
-    #"simulations/DIFF_BIDIR",
+    "simulations/DIFF_ANTERO",
+    "simulations/DIFF_RETRO",
+    "simulations/DIFF_BIDIR",
     #
     #"simulations/DIFFG_EUCL",
     #"simulations/DIFFG_ANTERO",
@@ -19,10 +19,10 @@ simulations = [
     #"simulations/DIFFGA_RETRO",
     #"simulations/DIFFGA_BIDIR",
     ##
-    "simulations/DIFFGAM_EUCL",
-    "simulations/DIFFGAM_ANTERO",
-    "simulations/DIFFGAM_RETRO",
-    "simulations/DIFFGAM_BIDIR",
+    #"simulations/DIFFGAM_EUCL",
+    #"simulations/DIFFGAM_ANTERO",
+    #"simulations/DIFFGAM_RETRO",
+    #"simulations/DIFFGAM_BIDIR",
     #
     #"simulations/DIFF_RETRO",
     #"simulations/DIFFG_RETRO",
@@ -42,9 +42,9 @@ simulations = [
 ]
 model_names = [
     #"DIFF euclidean", 
-    #"DIFF anterograde", 
-    #"DIFF retrograde", 
-    #"DIFF bidirectional", 
+    "DIFF anterograde", 
+    "DIFF retrograde", 
+    "DIFF bidirectional", 
     #
     #"DIFFG euclidean", 
     #"DIFFG anterograde", 
@@ -56,10 +56,10 @@ model_names = [
     #"DIFFGA retrograde", 
     #"DIFFGA bidirectional", 
     ##
-    "DIFFGAM euclidean", 
-    "DIFFGAM anterograde", 
-    "DIFFGAM retrograde", 
-    "DIFFGAM bidirectional", 
+    #"DIFFGAM euclidean", 
+    #"DIFFGAM anterograde", 
+    #"DIFFGAM retrograde", 
+    #"DIFFGAM bidirectional", 
     #
     #"DIFF retrograde", 
     #"DIFFG retrograde", 
@@ -323,4 +323,4 @@ Makie.xlims!(ax, xmin-0.1*pad, xmax + pad)
 
 # save figure
 fig
-save("figures/model_comparison/DIFFGAM_delta_waic_vs_best.pdf", fig)
+save("figures/model_comparison/DIFF_delta_waic_vs_best_NEW.pdf", fig)
