@@ -5,18 +5,18 @@ using PrettyTables, DataFrames
 # Read inference results
 simulations = [
     #"simulations/DIFF_EUCL",
-    "simulations/DIFF_ANTERO",
-    "simulations/DIFF_RETRO",
-    "simulations/DIFF_BIDIR",
+    #"simulations/DIFF_ANTERO",
+    #"simulations/DIFF_RETRO",
+    #"simulations/DIFF_BIDIR",
     #
     #"simulations/DIFFG_EUCL",
     #"simulations/DIFFG_ANTERO",
     #"simulations/DIFFG_RETRO",
     #"simulations/DIFFG_BIDIR",
     ##
-    #"simulations/DIFFGA_EUCL",
-    #"simulations/DIFFGA_ANTERO",
-    #"simulations/DIFFGA_RETRO",
+    "simulations/DIFFGA_EUCL",
+    "simulations/DIFFGA_ANTERO",
+    "simulations/DIFFGA_RETRO",
     #"simulations/DIFFGA_BIDIR",
     ##
     #"simulations/DIFFGAM_EUCL",
@@ -42,18 +42,18 @@ simulations = [
 ]
 model_names = [
     #"DIFF euclidean", 
-    "DIFF anterograde", 
-    "DIFF retrograde", 
-    "DIFF bidirectional", 
+    #"DIFF anterograde", 
+    #"DIFF retrograde", 
+    #"DIFF bidirectional", 
     #
     #"DIFFG euclidean", 
     #"DIFFG anterograde", 
     #"DIFFG retrograde", 
     #"DIFFG bidirectional", 
     ##
-    #"DIFFGA euclidean", 
-    #"DIFFGA anterograde", 
-    #"DIFFGA retrograde", 
+    "DIFFGA euclidean", 
+    "DIFFGA anterograde", 
+    "DIFFGA retrograde", 
     #"DIFFGA bidirectional", 
     ##
     #"DIFFGAM euclidean", 
@@ -323,4 +323,4 @@ Makie.xlims!(ax, xmin-0.1*pad, xmax + pad)
 
 # save figure
 fig
-save("figures/model_comparison/DIFF_delta_waic_vs_best_NEW.pdf", fig)
+save("figures/model_comparison/DIFFGA_delta_waic_vs_best_NEW.pdf", fig)
