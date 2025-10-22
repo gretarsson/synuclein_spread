@@ -973,8 +973,20 @@ function compute_waic(inference; S=10)
     factors = inference["factors"]
     N_pars = findall(x->x=="σ",ks)[1] - 1
     par_names = chain.name_map.parameters
-    if inference["bayesian_seed"]
-        seed_ch_idx = findall(x->x==:seed,par_names)[1]  
+    # OLD
+    #if inference["bayesian_seed"]
+    #    seed_ch_idx = findall(x->x==:seed,par_names)[1]  
+    #end
+    # NEW
+    if get(inference, "bayesian_seed", false)
+        # Find *all* seed parameters
+        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
+        isempty(seed_ch_idx) && error("No seed parameters found in chain.name_map.parameters")
+    
+        # Sort to preserve order in 'seed' (important if par_names is not lexicographically sorted)
+        seed_ch_idx = sort(seed_ch_idx)
+    else
+        seed_ch_idx = nothing
     end
     sigma_idx = findall(x->x==:σ,par_names)[1]  
 
@@ -1011,14 +1023,35 @@ function compute_waic(inference; S=10)
     for sample in eachrow(Array(posterior_samples))
         # Extract parameter samples
         p = sample[1:N_pars]  
-        if inference["bayesian_seed"]
-            u0[seed] = sample[seed_ch_idx]  
-        else    
-            u0[seed] = inference["seed_value"]
+        #OLD
+        #if inference["bayesian_seed"]
+        #    u0[seed] = sample[seed_ch_idx]  
+        #else    
+        #    u0[seed] = inference["seed_value"]
+        #end
+        # NEW
+        u0_s = copy(u0)
+        if get(inference, "bayesian_seed", false)
+            if isa(seed, Int)
+                # Single seed case (as before)
+                u0_s[seed] = sample[seed_ch_idx[1]]
+            else
+                # Multiple seed regions — one seed parameter per index (same order guaranteed)
+                for (i, sidx) in enumerate(seed)
+                    u0_s[sidx] = sample[seed_ch_idx[i]]
+                end
+            end
+        else
+            # Deterministic (non-Bayesian) seeding
+            if isa(seed, Int)
+                u0_s[seed] = inference["seed_value"]
+            else
+                u0_s[seed] .= inference["seed_value"]
+            end
         end
         σ = sample[sigma_idx]  # extract σ
         # solve the ODE
-        sol_p = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-6, reltol=1e-6)
+        sol_p = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=timepoints, abstol=1e-6, reltol=1e-6)
         sol_p = Array(sol_p[inference["sol_idxs"],:])
         # Repeat solution for each of the N_samples (if data has replicated observations)
         solution = vec(cat([sol_p for _ in 1:N_samples]..., dims=3))
@@ -2103,10 +2136,21 @@ function extract_mode_params(inference::Dict)
     mode_pars = Array(chain[argmax[1], 1:n_pars, argmax[2]])
     p = mode_pars[1:N_pars]
     u0 = copy(inference["u0"])
-    if inference["bayesian_seed"]
-        u0[inference["seed_idx"]] = chain["seed"][argmax]
+    seed_indices = inference["seed_idx"]  # can be one or multiple indices
+    if get(inference, "bayesian_seed", false)
+        # Handle multiple seed parameters dynamically
+        region_labels = inference["labels"][seed_indices]  # region names
+        for (i, region) in enumerate(region_labels)
+            parname = Symbol("seed_$(region)")
+            if parname in chain.name_map.parameters
+                u0[seed_indices[i]] = chain[parname][argmax]
+            else
+                @warn "Missing parameter $(parname) in chain.name_map.parameters"
+            end
+        end
     else
-        u0[inference["seed_idx"]] = inference["seed_value"]
+        # Fallback for fixed-seed models
+        u0[seed_indices] .= inference["seed_value"]
     end
     return p, u0, N_pars
 end
