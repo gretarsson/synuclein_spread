@@ -8,15 +8,6 @@ using Glob
 base     = "simulations/DIFFGA_BIDIR"
 outfile  = base*".jls"
 
-# --- LOAD ALL CHAINS ---
-# OLD
-#inference_list = Dict[]
-#for i in 1:nchains
-#    path = "$(base)_C$(i).jls"
-#    println("Loading $path ...")
-#    push!(inference_list, load_inference(path))
-#end
-# NEW
 # --- FIND ALL MATCHING CHAINS ---
 dir = dirname(base)
 pattern = basename(base) * "_C*.jls"
