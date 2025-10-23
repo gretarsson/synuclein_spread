@@ -3,7 +3,7 @@ using Serialization, Statistics
 using PrettyTables, DataFrames
 
 # name of figure to be saved
-fig_file = "DIFFGA_WAIC_comparison.pdf"
+fig_file = "simulations/model_comparison/DIFFGA_WAIC_comparison.pdf"
 
 # Read inference results
 simulations = [
