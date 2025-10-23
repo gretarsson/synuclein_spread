@@ -2,6 +2,9 @@ using PathoSpread
 using Serialization, Statistics
 using PrettyTables, DataFrames
 
+# name of figure to be saved
+fig_file = "DIFFGA_WAIC_comparison.pdf"
+
 # Read inference results
 simulations = [
     #"simulations/DIFF_EUCL",
@@ -17,7 +20,7 @@ simulations = [
     "simulations/DIFFGA_EUCL",
     "simulations/DIFFGA_ANTERO",
     "simulations/DIFFGA_RETRO",
-    "simulations/DIFFGA_BIDIR_C2",
+    "simulations/DIFFGA_BIDIR",
     ##
     #"simulations/DIFFGAM_EUCL",
     #"simulations/DIFFGAM_ANTERO",
@@ -323,4 +326,4 @@ Makie.xlims!(ax, xmin-0.1*pad, xmax + pad)
 
 # save figure
 fig
-save("figures/model_comparison/DIFFGA_delta_waic_vs_best_NEW.pdf", fig)
+save(fig_file, fig)

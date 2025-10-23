@@ -1,19 +1,36 @@
 using PathoSpread
 using MCMCChains
 using Serialization
+using Glob
+
 
 # --- SETTINGS ---
-base     = "simulations/DIFFGA_ANTERO"
-nchains  = 4
-outfile  = "simulations/DIFFGA_ANTERO.jls"
+base     = "simulations/DIFFGA_BIDIR"
+outfile  = base*".jls"
 
 # --- LOAD ALL CHAINS ---
-inference_list = Dict[]
-for i in 1:nchains
-    path = "$(base)_C$(i).jls"
-    println("Loading $path ...")
-    push!(inference_list, load_inference(path))
+# OLD
+#inference_list = Dict[]
+#for i in 1:nchains
+#    path = "$(base)_C$(i).jls"
+#    println("Loading $path ...")
+#    push!(inference_list, load_inference(path))
+#end
+# NEW
+# --- FIND ALL MATCHING CHAINS ---
+dir = dirname(base)
+pattern = basename(base) * "_C*.jls"
+paths = sort(glob(pattern, dir))  # e.g. [".../DIFFGA_ANTERO_C1.jls", "…_C2.jls", …]
+
+if isempty(paths)
+    error("No files matching pattern $(joinpath(dir, pattern)) found.")
 end
+
+println("Found $(length(paths)) chain files:")
+foreach(println, paths)
+
+# --- LOAD ALL CHAINS ---
+inference_list = [load_inference(p) for p in paths]
 
 # --- MERGE CHAINS ---
 merged = deepcopy(inference_list[1])
