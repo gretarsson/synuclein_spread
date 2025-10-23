@@ -17,7 +17,7 @@ simulations = [
     "simulations/DIFFGA_EUCL",
     "simulations/DIFFGA_ANTERO",
     "simulations/DIFFGA_RETRO",
-    #"simulations/DIFFGA_BIDIR",
+    "simulations/DIFFGA_BIDIR_C2",
     ##
     #"simulations/DIFFGAM_EUCL",
     #"simulations/DIFFGAM_ANTERO",
@@ -54,7 +54,7 @@ model_names = [
     "DIFFGA euclidean", 
     "DIFFGA anterograde", 
     "DIFFGA retrograde", 
-    #"DIFFGA bidirectional", 
+    "DIFFGA bidirectional", 
     ##
     #"DIFFGAM euclidean", 
     #"DIFFGAM anterograde", 
