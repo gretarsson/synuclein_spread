@@ -122,6 +122,11 @@ function build_parser()
         "--shuffle"
             action = :store_true
             help = "If set, randomly permute the weights of the adjacency matrix before building the Laplacian (null model control)"
+        "--posterior_priors"
+            arg_type = String
+            default = nothing
+            help = "path to a previous inference (.jls) whose posterior will define new priors"
+        
     end
 
     return s
@@ -234,6 +239,15 @@ function main(parsed)
     priors = get_priors(ode,K)
     priors["σ"] = LogNormal(0,1);
     priors["seed"] = truncated(Normal(0,0.1),lower=0);
+    # OPTIONALLY REPLACE PRIORS WITH POSTERIOR-BASED PRIORS
+    if parsed["posterior_priors"] !== nothing
+        println("→ Using posterior-based priors from: $(parsed["posterior_priors"])")
+        prev_inference = load_inference(parsed["posterior_priors"])
+        priors = posterior_to_priors(prev_inference; widen=1.0)
+        println("→ Replaced base priors with posterior-based priors.")
+        flush(stdout)
+    end
+
 
     # DEFINE ODE PROBLEM
     factors = ones(length(get_priors(ode,K)))
