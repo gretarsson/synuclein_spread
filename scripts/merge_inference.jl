@@ -5,7 +5,7 @@ using Glob
 
 
 # --- SETTINGS ---
-base     = "simulations/hippo_DIFFGA_RETRO_C2"
+base     = "simulations/hippo_DIFF_EUCL"
 outfile  = base*".jls"
 
 # --- FIND ALL MATCHING CHAINS ---
