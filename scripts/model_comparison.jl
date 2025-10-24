@@ -3,7 +3,7 @@ using Serialization, Statistics
 using PrettyTables, DataFrames
 
 # name of figure to be saved
-fig_file = "simulations/model_comparison/DIFFGA_WAIC_comparison.pdf"
+fig_file = "figures/model_comparison/hippo_DIFFGA_WAIC_comparison.pdf"
 
 # Read inference results
 simulations = [
@@ -17,10 +17,10 @@ simulations = [
     #"simulations/DIFFG_RETRO",
     #"simulations/DIFFG_BIDIR",
     ##
-    "simulations/DIFFGA_EUCL",
-    "simulations/DIFFGA_ANTERO",
-    "simulations/DIFFGA_RETRO",
-    "simulations/DIFFGA_BIDIR",
+    #"simulations/DIFFGA_EUCL",
+    #"simulations/DIFFGA_ANTERO",
+    #"simulations/DIFFGA_RETRO",
+    #"simulations/DIFFGA_BIDIR",
     ##
     #"simulations/DIFFGAM_EUCL",
     #"simulations/DIFFGAM_ANTERO",
@@ -42,6 +42,11 @@ simulations = [
     #
     #"simulations/DIFFGA_RETRO",
     #"simulations/DIFFGA_BILATERAL",
+    # HIPPO
+    "simulations/hippo_DIFFGA_EUCL",
+    "simulations/hippo_DIFFGA_ANTERO",
+    "simulations/hippo_DIFFGA_RETRO_C2",
+    "simulations/hippo_DIFFGA_BIDIR",
 ]
 model_names = [
     #"DIFF euclidean", 
@@ -54,10 +59,10 @@ model_names = [
     #"DIFFG retrograde", 
     #"DIFFG bidirectional", 
     ##
-    "DIFFGA euclidean", 
-    "DIFFGA anterograde", 
-    "DIFFGA retrograde", 
-    "DIFFGA bidirectional", 
+    #"DIFFGA euclidean", 
+    #"DIFFGA anterograde", 
+    #"DIFFGA retrograde", 
+    #"DIFFGA bidirectional", 
     ##
     #"DIFFGAM euclidean", 
     #"DIFFGAM anterograde", 
@@ -79,6 +84,11 @@ model_names = [
     #
     #"simulations/DIFFGA_RETRO",
     #"simulations/DIFFGA_BILATERAL",
+    # HIPPO
+    "hippo DIFFGA euclidean", 
+    "hippo DIFFGA anterograde", 
+    "hippo DIFFGA retrograde", 
+    "hippo DIFFGA bidirectional", 
 ]
 inferences = []
 for simulation in simulations
