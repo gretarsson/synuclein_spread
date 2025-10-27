@@ -3,7 +3,7 @@ using Serialization, Statistics
 using PrettyTables, DataFrames
 
 # name of figure to be saved
-fig_file = "figures/model_comparison/hippo_DIFFG_WAIC_comparison.pdf"
+fig_file = "figures/model_comparison/hippo_DIFFGA_WAIC_comparison.pdf"
 
 # Read inference results
 simulations = [
@@ -49,15 +49,15 @@ simulations = [
     #"simulations/hippo_DIFF_RETRO",
     #"simulations/hippo_DIFF_BIDIR",
     #
-    "simulations/hippo_DIFFG_EUCL",
-    "simulations/hippo_DIFFG_ANTERO",
-    "simulations/hippo_DIFFG_RETRO",
-    "simulations/hippo_DIFFG_BIDIR",
+    #"simulations/hippo_DIFFG_EUCL",
+    #"simulations/hippo_DIFFG_ANTERO",
+    #"simulations/hippo_DIFFG_RETRO",
+    #"simulations/hippo_DIFFG_BIDIR",
     #
-    #"simulations/hippo_DIFFGA_EUCL",
-    #"simulations/hippo_DIFFGA_ANTERO",
-    #"simulations/hippo_DIFFGA_RETRO_C2",
-    #"simulations/hippo_DIFFGA_BIDIR",
+    "simulations/hippo_DIFFGA_EUCL",
+    "simulations/hippo_DIFFGA_ANTERO",
+    "simulations/hippo_DIFFGA_RETRO_C2",
+    "simulations/hippo_DIFFGA_BIDIR",
     #
     #"simulations/hippo_DIFFGAM_EUCL",
     #"simulations/hippo_DIFFGAM_ANTERO",
@@ -107,15 +107,15 @@ model_names = [
     #"hippo DIFF retrograde", 
     #"hippo DIFF bidirectional", 
     #
-    "hippo DIFFG euclidean", 
-    "hippo DIFFG anterograde", 
-    "hippo DIFFG retrograde", 
-    "hippo DIFFG bidirectional", 
+    #"hippo DIFFG euclidean", 
+    #"hippo DIFFG anterograde", 
+    #"hippo DIFFG retrograde", 
+    #"hippo DIFFG bidirectional", 
     #
-    #"hippo DIFFGA euclidean", 
-    #"hippo DIFFGA anterograde", 
-    #"hippo DIFFGA retrograde", 
-    #"hippo DIFFGA bidirectional", 
+    "hippo DIFFGA euclidean", 
+    "hippo DIFFGA anterograde", 
+    "hippo DIFFGA retrograde", 
+    "hippo DIFFGA bidirectional", 
     #
     #"hippo DIFFGAM euclidean", 
     #"hippo DIFFGAM anterograde", 
