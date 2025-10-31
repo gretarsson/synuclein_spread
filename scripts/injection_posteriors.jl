@@ -14,8 +14,8 @@ using StatsPlots, Distributions
 # -------------------------------------------------------------
 # SETTINGS
 # -------------------------------------------------------------
-inferenceA_path = "simulations/DIFFGAM_RETRO.jls"
-inferenceB_path = "simulations/hippo_DIFFGAM_RETRO_posterior_prior_C2.jls"
+inferenceA_path = "simulations/DIFFGA_RETRO.jls"
+inferenceB_path = "simulations/hippo_DIFFGA_RETRO_posterior_prior.jls"
 out_prefix      = "results/injection_comparison/"
 pathology_thresh = 0.05   # threshold for nonzero pathology
 
