@@ -3137,3 +3137,14 @@ function posterior_to_priors(inference::Dict; widen=2.0)
     return new_priors
 end
 
+# Compute coefficient of determination (R²)
+function r2_score(y::AbstractVector, ŷ::AbstractVector)
+    # remove any missing values pairwise
+    mask = .!ismissing.(y) .& .!ismissing.(ŷ)
+    y_valid = y[mask]
+    ŷ_valid = ŷ[mask]
+
+    ss_res = sum((y_valid .- ŷ_valid).^2)
+    ss_tot = sum((y_valid .- mean(y_valid)).^2)
+    return 1 - ss_res / ss_tot
+end

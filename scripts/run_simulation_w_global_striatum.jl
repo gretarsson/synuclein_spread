@@ -8,8 +8,8 @@ using Statistics, Printf, DataFrames, CSV, StatsPlots, MCMCChains, DifferentialE
 # -------------------------------------------------------------
 # SETTINGS
 # -------------------------------------------------------------
-inference_striatum_path = "simulations/DIFFGA_RETRO.jls"       # globals from here
-inference_hippo_path    = "simulations/hippo_DIFFGA_RETRO_posterior_prior.jls"  # regionals + data from here
+inference_striatum_path = "simulations/DIFFGAM_RETRO.jls"       # globals from here
+inference_hippo_path    = "simulations/hippo_DIFFGAM_RETRO_posterior_prior.jls"  # regionals + data from here
 out_prefix              = "results/injection_comparison/cross_site_global_striatum"
 save_figures            = true
 
@@ -68,7 +68,9 @@ using OrderedCollections
 function get_mode_params(chain::Chains)
     lp = chain[:lp]
     imax = argmax(lp)
-    return OrderedDict(name => chain[name][imax] for name in names(chain))
+    # Keep only model parameters — skip diagnostics and internals
+    param_names = names(chain, :parameters)
+    return OrderedDict(name => chain[name][imax] for name in param_names)
 end
 
 mode_striatum = get_mode_params(chain_striatum)
@@ -88,9 +90,11 @@ println("Regional parameters detected: ", first(local_keys, 5), " …")
 
 # Construct cross-site parameter dictionary
 params_cross = copy(mode_hippo)
+#params_cross = copy(mode_striatum)  # testing all parameters from striatum
 for g in global_keys
     if haskey(mode_striatum, g)
         params_cross[g] = mode_striatum[g]
+        #params_cross[g] = mode_hippo[g]  # testing
     end
 end
 
@@ -120,38 +124,74 @@ println("→ Constructed u0 with $(count(!=(0.0), u0_cross)) nonzero seed region
 # -------------------------------------------------------------
 # CONVERT PARAMETER DICTIONARY TO VECTOR (ORDERED LIKE PRIORS)
 # -------------------------------------------------------------
-p_cross_vec = collect(values(params_cross))
+# Filter parameter vector: keep everything before :σ (exclusive)
+param_syms = collect(keys(mode_hippo))
+sigma_idx  = findfirst(isequal(:σ), param_syms)
+@assert !isnothing(sigma_idx) "No σ found — check parameter ordering."
+
+# Keep parameters strictly before σ
+dynamic_syms = param_syms[1:(sigma_idx-1)]
+
+# Build ordered dynamic parameter vector
+p_cross_vec = [params_cross[s] for s in dynamic_syms]
+
+println("→ Using $(length(p_cross_vec)) parameters for ODE simulation.")
+
+
+#p_cross_vec = collect(values(params_cross))
 
 
 # -------------------------------------------------------------
 # SIMULATE SYSTEM
 # -------------------------------------------------------------
 println("Building and simulating ODE with mixed parameters …")
-prob = PathoSpread.make_ode_problem(
-    odes["DIFFGA"],                # ODE function
-    labels = inf_hippo["labels"],       # region labels
-    Ltuple = inf_hippo["L"],       # Laplacian or connectivity matrices
-    factors = inf_hippo["factors"],     # scaling factors
-    u0 = u0_cross,               # initial state, posterior mode seeds from hippocampus
-    timepoints = inf_hippo["timepoints"]
+
+# Extract what's needed
+Ltuple     = inf_hippo["L"]
+N = Ltuple[2]
+factors    = inf_hippo["factors"]
+u0         = u0_cross
+tspan      = (0.0, inf_hippo["timepoints"][end])
+save_times = inf_hippo["timepoints"]
+p_vec      = p_cross_vec  # vector of parameters in correct order
+# Construct the ODEProblem directly — no PathoSpread wrapper
+prob = ODEProblem(
+    (du, u, p, t) -> odes[inf_hippo["ode"]](du, u, p, t; L=Ltuple, factors=factors),
+    u0,
+    tspan
 )
-@show prob
-@show odes["DIFFGA"]
-@show inf_hippo["timepoints"]
+
+
+
 # Standard DifferentialEquations solve
-sol = solve(prob, Tsit5(); p=params_cross, saveat=inf_hippo["timepoints"])
+sol = solve(prob, Tsit5(); p=p_vec, saveat=inf_hippo["timepoints"])
 
 # Align simulated output with observed data
-predicted = Array(sol)
-observed  = Array(data_hippo)
+predicted = Array(sol[1:N,:])
+observed  = Array(PathoSpread.mean3(data_hippo))
 @assert size(predicted) == size(observed) "Shape mismatch between simulated and observed data."
 
 # -------------------------------------------------------------
-# COMPUTE R²
+# COMPUTE R² (ignoring missing values)
 # -------------------------------------------------------------
-r2_val = r2_score(vec(observed), vec(predicted))
-println(@sprintf("Cross-site R² (globals from striatum, regionals from hippocampus): %.4f", r2_val))
+# Compute coefficient of determination (R²)
+function r2_score(y::AbstractVector, ŷ::AbstractVector)
+    # remove any missing values pairwise
+    mask = .!ismissing.(y) .& .!ismissing.(ŷ)
+    y_valid = y[mask]
+    ŷ_valid = ŷ[mask]
 
+    ss_res = sum((y_valid .- ŷ_valid).^2)
+    ss_tot = sum((y_valid .- mean(y_valid)).^2)
+    return 1 - ss_res / ss_tot
+end
+
+r2_val = PathoSpread.r2_score(vec(predicted), vec(observed))
+
+println(@sprintf(
+    "Cross-site R² (globals from striatum, regionals from hippocampus): %.4f (computed over %d valid points)",
+    r2_val, length(vec(observed))
+))
 # -------------------------------------------------------------
 # PLOT
 # -------------------------------------------------------------
