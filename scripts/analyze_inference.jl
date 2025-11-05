@@ -4,13 +4,13 @@ here we create a folder of analysis plots of interence results
 using PathoSpread
 
 # simulation to analyze
-simulation = "hippo_DIFFGA_RETRO_posterior_prior";
+simulation = "DIFFGA_RETRO";
 
 # read file 
 inference_obj = load_inference("simulations/"*simulation*".jls")
 
 # look at chains
-display(inference_obj["chain"][:,:,:])
+#display(inference_obj["chain"][:,:,:])
 #save_inference("simulations/" * simulation * ".jl", inference_obj)
 
 # plot

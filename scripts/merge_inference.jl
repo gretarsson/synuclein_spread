@@ -5,7 +5,7 @@ using Glob
 
 
 # --- SETTINGS ---
-base     = "simulations/hippo_DIFFG_RETRO_posterior_prior"
+base     = "simulations/DIFFGAM_T3"
 outfile  = base*".jls"
 
 # --- FIND ALL MATCHING CHAINS ---
@@ -21,11 +21,11 @@ println("Found $(length(paths)) chain files:")
 foreach(println, paths)
 
 # --- LOAD ALL CHAINS ---
-inference_list = [load_inference(p) for p in paths]
+inference_list = [load_inference(p) for p in paths];
 
 # --- MERGE CHAINS ---
-merged = deepcopy(inference_list[1])
-merged["chain"] = chainscat([inf["chain"] for inf in inference_list]...)
+merged = deepcopy(inference_list[1]);
+merged["chain"] = chainscat([inf["chain"] for inf in inference_list]...);
 
 # Optionally merge WAIC- or log-likelihood–related fields if they exist
 for key in ["waic_i", "log_likelihoods"]
@@ -35,5 +35,5 @@ for key in ["waic_i", "log_likelihoods"]
 end
 
 # --- SAVE MERGED RESULT ---
-serialize(outfile, merged)
+serialize(outfile, merged);
 println("✅ Saved merged inference → $outfile")
