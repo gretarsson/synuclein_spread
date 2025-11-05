@@ -21,8 +21,8 @@ sbatch <<EOF
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=32G
-#SBATCH --partition=short
-#SBATCH --time=04:00:00
+#SBATCH --partition=all
+#SBATCH --time=24:00:00
 #SBATCH --chdir=$PROJECT_DIR
 #SBATCH --output=$LOG_OUT
 #SBATCH --error=$LOG_ERR
