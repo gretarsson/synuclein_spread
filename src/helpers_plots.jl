@@ -3155,17 +3155,43 @@ function plot_ppc_coverage_heldout(
     # --- Solve trajectories ---
     traj = Array{Float64}(undef, R, T_full, S)
     u0_template = fill!(similar(inference["u0"]), 0.0)
+
+    # Handle possible multi-seed Bayesian setup
+    seed_ch_idx = nothing
+    if get(inference, "bayesian_seed", false)
+        # find all parameters that start with "seed"
+        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
+        isempty(seed_ch_idx) && error("Could not find any seed parameters in chain.name_map.parameters")
+        seed_ch_idx = sort(seed_ch_idx)
+    end
+
     for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
         p    = sample_vec[1:N_pars]
         u0_s = copy(u0_template)
-        if seed_ch_idx === nothing
-            u0_s[seed] = inference["seed_value"]
+
+        if get(inference, "bayesian_seed", false)
+            if isa(seed, Int)
+                # single seed region
+                u0_s[seed] = sample_vec[seed_ch_idx[1]]
+            else
+                # multiple seed regions (one per param)
+                for (i, sidx) in enumerate(seed)
+                    u0_s[sidx] = sample_vec[seed_ch_idx[i]]
+                end
+            end
         else
-            u0_s[seed] = sample_vec[seed_ch_idx]
+            # fixed (non-bayesian) seed
+            if isa(seed, Int)
+                u0_s[seed] = inference["seed_value"]
+            else
+                u0_s[seed] .= inference["seed_value"]
+            end
         end
+
         sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=full_tp, abstol=1e-9, reltol=1e-6)
         traj[:, :, s] = Array(sol[sol_idxs, :])
     end
+
 
     # --- Predictive draws with noise ---
     ypred = similar(traj)
@@ -3466,8 +3492,8 @@ function plot_inference(inference, save_path;
     #predicted_observed(inference; save_path=save_path*"/predicted_observed_log10", plotscale=log10);
     #predicted_observed(inference; save_path=save_path*"/predicted_observed_id",  plotscale=identity);
 
-    plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
-    plot_posteriors(inference, save_path=save_path*"/posteriors");
+    #plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
+    #plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
     #plot_priors(inference; save_path=save_path*"/priors");
     return nothing
