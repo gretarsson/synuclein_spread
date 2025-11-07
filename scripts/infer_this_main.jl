@@ -126,6 +126,9 @@ function build_parser()
             arg_type = String
             default = nothing
             help = "path to a previous inference (.jls) whose posterior will define new priors"
+        "--mean_data"
+            action = :store_true
+            help = "If set, randomly permute the weights of the adjacency matrix before building the Laplacian (null model control)"
         
     end
 
@@ -146,6 +149,7 @@ function main(parsed)
     test = parsed["test"]
     holdout_last = parsed["holdout_last"]
     shuffle = parsed["shuffle"]
+    mean_data = parsed["mean_data"]
 
     # PRINT ARGS
     println("→ ODE:        $ode")
@@ -156,6 +160,7 @@ function main(parsed)
     println("→ Infer seed:    $infer_seed")
     println("→ Hold out last timepoints: $holdout_last")
     println("→ Shuffle network weights: $shuffle")
+    println("→ Average data samples: $mean_data")
     println("→ Target acceptance:    $target_acceptance")
     println("→ Output:     $out_file")
     if test
