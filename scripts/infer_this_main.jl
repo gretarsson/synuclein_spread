@@ -99,7 +99,7 @@ function build_parser()
         "--seed_indices"
             arg_type = Any
             default  = [74]  # default is iCP
-            help     = "Indices of seeded regions. Pass as Int or Vector{Int} (e.g., --seed_indices [12,13,14])"
+            help     = "Indices of seeded regions. Pass as Int or Vector{Int} (e.g., --seed_indices '[12,13,14]')"
         "--infer_seed"
             arg_type = Bool
             default  = true
