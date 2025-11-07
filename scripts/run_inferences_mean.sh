@@ -56,66 +56,66 @@ BASE_JOBS["DIFFGAM_T3"]="DIFFGAM data/W_labeled_filtered.csv data/total_path.csv
 # HIPPOCAMPUS INJECTION SITE
 # --------------------------------
 # DIFF
-BASE_JOBS["hippo_DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFF_ANTERO"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv  --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFF_BIDIR"]="DIFF_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv  --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFF_EUCL"]="DIFF data/Euclidean_distance_matrix_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
-
-# DIFFG
-BASE_JOBS["hippo_DIFFG_RETRO"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFFG_ANTERO"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFFG_BIDIR"]="DIFFG_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFFG_EUCL"]="DIFFG data/Euclidean_distance_matrix_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
-
-# DIFFGA
-BASE_JOBS["hippo_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFFGA_ANTERO"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFFGA_BIDIR"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
-
-# DIFFGAM
-BASE_JOBS["hippo_DIFFGAM_RETRO"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFFGAM_ANTERO"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFFGAM_BIDIR"]="DIFFGAM_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
-BASE_JOBS["hippo_DIFFGAM_EUCL"]="DIFFGAM data/Euclidean_distance_matrix_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
-
-# HELD OUT LAST TIME POINTS
-BASE_JOBS["hippo_DIFF_T1"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=1  --mean_data"
-BASE_JOBS["hippo_DIFF_T2"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=2  --mean_data"
-BASE_JOBS["hippo_DIFF_T3"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=3  --mean_data"
-
-BASE_JOBS["hippo_DIFFG_T1"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=1  --mean_data"
-BASE_JOBS["hippo_DIFFG_T2"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=2  --mean_data"
-BASE_JOBS["hippo_DIFFG_T3"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=3  --mean_data"
-
-BASE_JOBS["hippo_DIFFGA_T1"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=1  --mean_data"
-BASE_JOBS["hippo_DIFFGA_T2"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=2  --mean_data"
-BASE_JOBS["hippo_DIFFGA_T3"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=3  --mean_data"
-
-BASE_JOBS["hippo_DIFFGAM_T1"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=1  --mean_data"
-BASE_JOBS["hippo_DIFFGAM_T2"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=2  --mean_data"
-BASE_JOBS["hippo_DIFFGAM_T3"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=3  --mean_data"
-
-# HIPPO WITH PRIORS FROM STRIATUM
-BASE_JOBS["hippo_DIFF_RETRO_posterior_prior"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1 --posterior_priors='simulations/DIFF_RETRO.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFG_RETRO_posterior_prior"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --posterior_priors='simulations/DIFFG_RETRO.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFGA_RETRO_posterior_prior"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --posterior_priors='simulations/DIFFGA_RETRO.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFGAM_RETRO_posterior_prior"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --posterior_priors='simulations/DIFFGAM_RETRO.jls'  --mean_data"
-
-BASE_JOBS["hippo_DIFF_ANTERO_posterior_prior"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1 --posterior_priors='simulations/DIFF_ANTERO.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFG_ANTERO_posterior_prior"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFG_ANTERO.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFGA_ANTERO_posterior_prior"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGA_ANTERO.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFGAM_ANTERO_posterior_prior"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGAM_ANTERO.jls'  --mean_data"
-
-BASE_JOBS["hippo_DIFF_BIDIR_posterior_prior"]="DIFF_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1 --posterior_priors='simulations/DIFF_BIDIR.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFG_BIDIR_posterior_prior"]="DIFFG_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFG_BIDIR.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFGA_BIDIR_posterior_prior"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGA_BIDIR.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFGAM_BIDIR_posterior_prior"]="DIFFGAM_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGAM_BIDIR.jls'  --mean_data"
-
-BASE_JOBS["hippo_DIFF_EUCL_posterior_prior"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1 --posterior_priors='simulations/DIFF_EUCL.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFG_EUCL_posterior_prior"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFG_EUCL.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFGA_EUCL_posterior_prior"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGA_EUCL.jls'  --mean_data"
-BASE_JOBS["hippo_DIFFGAM_EUCL_posterior_prior"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGAM_EUCL.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFF_ANTERO"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv  --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFF_BIDIR"]="DIFF_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv  --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFF_EUCL"]="DIFF data/Euclidean_distance_matrix_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
+#
+## DIFFG
+#BASE_JOBS["hippo_DIFFG_RETRO"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFFG_ANTERO"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFFG_BIDIR"]="DIFFG_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFFG_EUCL"]="DIFFG data/Euclidean_distance_matrix_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
+#
+## DIFFGA
+#BASE_JOBS["hippo_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFFGA_ANTERO"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFFGA_BIDIR"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
+#
+## DIFFGAM
+#BASE_JOBS["hippo_DIFFGAM_RETRO"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFFGAM_ANTERO"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFFGAM_BIDIR"]="DIFFGAM_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
+#BASE_JOBS["hippo_DIFFGAM_EUCL"]="DIFFGAM data/Euclidean_distance_matrix_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --n_chains=1  --mean_data"
+#
+## HELD OUT LAST TIME POINTS
+#BASE_JOBS["hippo_DIFF_T1"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=1  --mean_data"
+#BASE_JOBS["hippo_DIFF_T2"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=2  --mean_data"
+#BASE_JOBS["hippo_DIFF_T3"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=3  --mean_data"
+#
+#BASE_JOBS["hippo_DIFFG_T1"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=1  --mean_data"
+#BASE_JOBS["hippo_DIFFG_T2"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=2  --mean_data"
+#BASE_JOBS["hippo_DIFFG_T3"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=3  --mean_data"
+#
+#BASE_JOBS["hippo_DIFFGA_T1"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=1  --mean_data"
+#BASE_JOBS["hippo_DIFFGA_T2"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=2  --mean_data"
+#BASE_JOBS["hippo_DIFFGA_T3"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=3  --mean_data"
+#
+#BASE_JOBS["hippo_DIFFGAM_T1"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=1  --mean_data"
+#BASE_JOBS["hippo_DIFFGAM_T2"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=2  --mean_data"
+#BASE_JOBS["hippo_DIFFGAM_T3"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --holdout_last=3  --mean_data"
+#
+## HIPPO WITH PRIORS FROM STRIATUM
+#BASE_JOBS["hippo_DIFF_RETRO_posterior_prior"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1 --posterior_priors='simulations/DIFF_RETRO.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFG_RETRO_posterior_prior"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --posterior_priors='simulations/DIFFG_RETRO.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFGA_RETRO_posterior_prior"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --posterior_priors='simulations/DIFFGA_RETRO.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFGAM_RETRO_posterior_prior"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1  --posterior_priors='simulations/DIFFGAM_RETRO.jls'  --mean_data"
+#
+#BASE_JOBS["hippo_DIFF_ANTERO_posterior_prior"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1 --posterior_priors='simulations/DIFF_ANTERO.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFG_ANTERO_posterior_prior"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFG_ANTERO.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFGA_ANTERO_posterior_prior"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGA_ANTERO.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFGAM_ANTERO_posterior_prior"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGAM_ANTERO.jls'  --mean_data"
+#
+#BASE_JOBS["hippo_DIFF_BIDIR_posterior_prior"]="DIFF_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1 --posterior_priors='simulations/DIFF_BIDIR.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFG_BIDIR_posterior_prior"]="DIFFG_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFG_BIDIR.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFGA_BIDIR_posterior_prior"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGA_BIDIR.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFGAM_BIDIR_posterior_prior"]="DIFFGAM_bidirectional data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGAM_BIDIR.jls'  --mean_data"
+#
+#BASE_JOBS["hippo_DIFF_EUCL_posterior_prior"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1 --posterior_priors='simulations/DIFF_EUCL.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFG_EUCL_posterior_prior"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFG_EUCL.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFGA_EUCL_posterior_prior"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGA_EUCL.jls'  --mean_data"
+#BASE_JOBS["hippo_DIFFGAM_EUCL_posterior_prior"]="DIFFGAM data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1  --posterior_priors='simulations/DIFFGAM_EUCL.jls'  --mean_data"
 
 # --------------------------------------------------
 # For each base job, submit 4 independent chains
