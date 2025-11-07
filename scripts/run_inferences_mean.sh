@@ -124,7 +124,7 @@ for JOBNAME in "${!BASE_JOBS[@]}"; do
   CMD_BASE="${BASE_JOBS[$JOBNAME]}"
   for CHAIN in {1..4}; do
     FULL_JOBNAME="${JOBNAME}_C${CHAIN}"
-    OUT_FILE="simulations/mean_${FULL_JOBNAME}.jls"
+    OUT_FILE="simulations_mean/mean_${FULL_JOBNAME}.jls"
 
     # Skip if output file already exists
     if [[ -f "$OUT_FILE" ]]; then
