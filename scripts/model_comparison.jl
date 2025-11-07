@@ -61,6 +61,12 @@ simulations_list = [
         "simulations/hippo_DIFFGAM_RETRO",
         "simulations/hippo_DIFFGAM_BIDIR",
     ],
+    [
+        "simulations/hippo_DIFFGAM_RETRO",
+        "simulations/hippo_DIFFGAM_RETRO",
+        "simulations/hippo_DIFFGAM_RETRO",
+        "simulations/hippo_DIFFGAM_RETRO"
+    ],
 ]
 
 model_names_list = [
@@ -119,23 +125,20 @@ model_names_list = [
         "hippo DIFFGAM retrograde",
         "hippo DIFFGAM bidirectional",
     ],
+    [
+        "hippo DIFFGAM retrograde" 
+        "hippo DIFFGAM retrograde" 
+        "hippo DIFFGAM retrograde" 
+        "hippo DIFFGAM retrograde" 
+    ]
 ]
+fig_prefixes = ["DIFF", "DIFFG", "DIFFGA", "DIFFGAM", "RETRO_ONLY",
+              "hippo_DIFF", "hippo_DIFFG", "hippo_DIFFGA", "hippo_DIFFGAM", "hippo_RETRO_ONLY"]
 
-for (i,(simulations, model_names)) in enumerate(zip(simulations_list, model_names_list))
-    s = basename(simulations[1])  # e.g. "hippo_DIFF_EUCL" or "DIFF_EUCL"
-    parts = split(s, "_")
+for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, model_names_list, fig_prefixes))
+    # file name
+    fig_file = "figures/model_comparison/$(prefix)_WAIC.pdf"
     
-    if parts[1] == "hippo"
-        # hippo + model family
-        prefix = join(parts[1:2], "_")   # "hippo_DIFF"
-    else
-        # model family only
-        prefix = parts[1]                # "DIFF", "DIFFG", ...
-    end
-    
-    fig_file = "figures/model_comparison/$(prefix)_WAIC_comparison.pdf"
-    
-
     println("\n──────────────────────────────────────────────")
     println("🧩 Batch $i → $(fig_file)")
     for (m, s) in zip(model_names, simulations)
