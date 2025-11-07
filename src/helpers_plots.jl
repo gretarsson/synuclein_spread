@@ -3492,7 +3492,7 @@ function plot_inference(inference, save_path;
     #predicted_observed(inference; save_path=save_path*"/predicted_observed_log10", plotscale=log10);
     #predicted_observed(inference; save_path=save_path*"/predicted_observed_id",  plotscale=identity);
 
-    #plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
+    plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     #plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
     #plot_priors(inference; save_path=save_path*"/priors");

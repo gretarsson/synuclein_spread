@@ -3,6 +3,9 @@ using Serialization, Statistics
 using PrettyTables, DataFrames
 using Printf
 
+# number of samples for WAIC
+Sn = 300
+group_cells = true  # weight each region x timepoint equally in WAIC
 
 # Read inference results
 simulations_list = [
@@ -25,8 +28,8 @@ simulations_list = [
         "simulations/DIFFGA_BIDIR",
     ],
     [
-        "simulations/DIFFGAM_EUCL",
-        "simulations/DIFFGAM_ANTERO",
+        "simulations/DIFFGAM_EUCL_CUT",
+        "simulations/DIFFGAM_ANTERO_CUT",
         "simulations/DIFFGAM_RETRO",
         "simulations/DIFFGAM_BIDIR",
     ],
@@ -62,9 +65,9 @@ simulations_list = [
         "simulations/hippo_DIFFGAM_BIDIR",
     ],
     [
-        "simulations/hippo_DIFFGAM_RETRO",
-        "simulations/hippo_DIFFGAM_RETRO",
-        "simulations/hippo_DIFFGAM_RETRO",
+        "simulations/hippo_DIFF_RETRO",
+        "simulations/hippo_DIFFG_RETRO",
+        "simulations/hippo_DIFFGA_RETRO",
         "simulations/hippo_DIFFGAM_RETRO"
     ],
 ]
@@ -126,9 +129,9 @@ model_names_list = [
         "hippo DIFFGAM bidirectional",
     ],
     [
-        "hippo DIFFGAM retrograde" 
-        "hippo DIFFGAM retrograde" 
-        "hippo DIFFGAM retrograde" 
+        "hippo DIFF retrograde" 
+        "hippo DIFFG retrograde" 
+        "hippo DIFFGA retrograde" 
         "hippo DIFFGAM retrograde" 
     ]
 ]
@@ -167,7 +170,7 @@ for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, mo
     pwaic_vals  = Float64[]   # optional: if you returned p_waic
 
     for inference in inferences
-        waic, se_waic, waic_i, lppd, p_waic, n_used = compute_waic(inference; S=300)
+        waic, se_waic, waic_i, lppd, p_waic, n_used = compute_waic(inference; S=Sn, group_cells=group_cells)
         push!(waic_vals, waic)
         push!(se_waic_vals, se_waic)
         push!(waic_i_list, waic_i)

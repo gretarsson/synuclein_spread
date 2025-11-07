@@ -202,6 +202,10 @@ function main(parsed)
     else
         # PATHOLOGY DATA
         data, timepoints = process_pathology(data_file; W_csv=w_file);
+        if mean_data  # take mean over samples if told so
+            data = PathoSpread.mean3(data)
+            data = Array(reshape(data, size(data,1), size(data,2), 1))
+        end
         # STRUCTURAL DATA
         Lr,N,labels = read_W(w_file, direction=:retro, shuffle=shuffle);
         La,_,_ = read_W(w_file, direction=:antero, shuffle=shuffle);

@@ -959,55 +959,186 @@ end
 
 
 # --- WAIC and WBIC Computation ---
-function compute_waic(inference; S=10)
-    # unpack the inference object
-    priors = inference["priors"]
-    ks = collect(keys(priors))
-    chain = inference["chain"]
-    data = inference["data"]
-    seed = inference["seed_idx"]
-    ode = odes[inference["ode"]]
-    u0 = inference["u0"]
-    timepoints = inference["timepoints"]
-    L = inference["L"]
-    # assume L is given as a tuple (matrix, _)
-    N = size(L[1])[1]
-    factors = inference["factors"]
-    N_pars = findall(x->x=="σ",ks)[1] - 1
-    par_names = chain.name_map.parameters
-    # OLD
-    #if inference["bayesian_seed"]
-    #    seed_ch_idx = findall(x->x==:seed,par_names)[1]  
-    #end
-    # NEW
+# OLD WORKS
+#function compute_waic(inference; S=10)
+#    # unpack the inference object
+#    priors = inference["priors"]
+#    ks = collect(keys(priors))
+#    chain = inference["chain"]
+#    data = inference["data"]
+#    seed = inference["seed_idx"]
+#    ode = odes[inference["ode"]]
+#    u0 = inference["u0"]
+#    timepoints = inference["timepoints"]
+#    L = inference["L"]
+#    # assume L is given as a tuple (matrix, _)
+#    N = size(L[1])[1]
+#    factors = inference["factors"]
+#    N_pars = findall(x->x=="σ",ks)[1] - 1
+#    par_names = chain.name_map.parameters
+#    # OLD
+#    #if inference["bayesian_seed"]
+#    #    seed_ch_idx = findall(x->x==:seed,par_names)[1]  
+#    #end
+#    # NEW
+#    if get(inference, "bayesian_seed", false)
+#        # Find *all* seed parameters
+#        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
+#        isempty(seed_ch_idx) && error("No seed parameters found in chain.name_map.parameters")
+#    
+#        # Sort to preserve order in 'seed' (important if par_names is not lexicographically sorted)
+#        seed_ch_idx = sort(seed_ch_idx)
+#    else
+#        seed_ch_idx = nothing
+#    end
+#    sigma_idx = findall(x->x==:σ,par_names)[1]  
+#
+#    # reshape data
+#    N_samples = size(data)[3]
+#    vec_data = vec(data)
+#    nonmissing = findall(vec_data .!== missing)
+#    vec_data = vec_data[nonmissing]
+#    vec_data = identity.(vec_data)  # converts Union{Missing,Float64} to Float64
+#    n = length(vec_data)
+#
+#    # define ODE problem
+#    # OLD
+#    #tspan = (0, timepoints[end])
+#    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
+#    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
+#    # NEW
+#    # --- Define ODE Problem using same factory as inference ---
+#    #     (this ensures correct setup for bilateral/bidirectional models)
+#    prob = make_ode_problem(
+#        odes[inference["ode"]];
+#        labels     = inference["labels"],
+#        Ltuple     = inference["L"],
+#        factors    = inference["factors"],
+#        u0         = inference["u0"],
+#        timepoints = inference["timepoints"]
+#    )
+#
+#
+#    # sample from posterior and store ODE solutions for each sample
+#    posterior_samples = sample(chain, S; replace=false)
+#    solutions = Vector{Vector{Float64}}()  # each element holds the solution vector for a sample
+#    sigmas = []
+#    for sample in eachrow(Array(posterior_samples))
+#        # Extract parameter samples
+#        p = sample[1:N_pars]  
+#        #OLD
+#        #if inference["bayesian_seed"]
+#        #    u0[seed] = sample[seed_ch_idx]  
+#        #else    
+#        #    u0[seed] = inference["seed_value"]
+#        #end
+#        # NEW
+#        u0_s = copy(u0)
+#        if get(inference, "bayesian_seed", false)
+#            if isa(seed, Int)
+#                # Single seed case (as before)
+#                u0_s[seed] = sample[seed_ch_idx[1]]
+#            else
+#                # Multiple seed regions — one seed parameter per index (same order guaranteed)
+#                for (i, sidx) in enumerate(seed)
+#                    u0_s[sidx] = sample[seed_ch_idx[i]]
+#                end
+#            end
+#        else
+#            # Deterministic (non-Bayesian) seeding
+#            if isa(seed, Int)
+#                u0_s[seed] = inference["seed_value"]
+#            else
+#                u0_s[seed] .= inference["seed_value"]
+#            end
+#        end
+#        σ = sample[sigma_idx]  # extract σ
+#        # solve the ODE
+#        sol_p = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=timepoints, abstol=1e-6, reltol=1e-6)
+#        sol_p = Array(sol_p[inference["sol_idxs"],:])
+#        # Repeat solution for each of the N_samples (if data has replicated observations)
+#        solution = vec(cat([sol_p for _ in 1:N_samples]..., dims=3))
+#        solution = solution[nonmissing]
+#        push!(solutions, solution)
+#        push!(sigmas, σ)
+#    end
+#    means = transpose(hcat(solutions...))  # S x n matrix
+#
+#    # Compute pointwise log-likelihoods for each sample and data point
+#    log_lik = zeros(S, n)
+#    for s in 1:S
+#        for i in 1:n
+#            log_lik[s, i] = logpdf(Normal(means[s,i], sigmas[s]), vec_data[i])
+#        end
+#    end
+#
+#    # --- WAIC computation ---
+#    #lppd = sum(log.(mean(exp.(log_lik), dims=1)))   # Log Pointwise Predictive Density, OLD
+#    # stabilized computation of lppd
+#    m = maximum(log_lik; dims=1)                       # 1×n (max per data point across draws)
+#    lppd = sum(vec(m) .+ log.(vec(mean(exp.(log_lik .- m); dims=1))))
+#    p_waic = sum(var(log_lik, dims=1))                # Effective number of parameters
+#    waic = -2 * (lppd - p_waic)                       # WAIC formula
+#
+#    # WAIC STANDARD DEVIATION
+#    waic_i = [-2 * (log(mean(exp.(log_lik[:,i]))) - var(log_lik[:,i])) for i in 1:n]
+#    se_waic = sqrt(n * var(waic_i))
+#
+#
+#    # --- WBIC computation ---
+#    # Compute total log-likelihood per posterior sample
+#    #total_log_lik = vec(sum(log_lik, dims=2))  # vector of length S
+#    ## Temperature for WBIC: T = 1 / log(n)
+#    #T = 1 / log(n)
+#    ## Compute log-weights to stabilize the exponentiation
+#    #log_weights = (T - 1) * total_log_lik
+#    #max_log_weight = maximum(log_weights)
+#    #stabilized_weights = exp.(log_weights .- max_log_weight)
+#    ## Compute weighted expectation of the log-likelihood
+#    #wbic_expectation = sum(stabilized_weights .* total_log_lik) / sum(stabilized_weights)
+#    #wbic = -2 * wbic_expectation
+#
+#    #return waic, se_waic, wbic
+#    return waic, se_waic, waic_i::Vector{Float64}, lppd, p_waic, n
+#end
+# ============================================================
+# WAIC (and optional WBIC) Computation
+# ============================================================
+
+function compute_waic(inference; S::Int=10, group_cells::Bool=false)
+    # --- Unpack inference object ---
+    priors      = inference["priors"]
+    ks          = collect(keys(priors))
+    chain       = inference["chain"]
+    data        = inference["data"]
+    seed        = inference["seed_idx"]
+    ode         = odes[inference["ode"]]
+    u0          = inference["u0"]
+    timepoints  = inference["timepoints"]
+    L           = inference["L"]             # tuple (matrix, _)
+    factors     = inference["factors"]
+    N_pars      = findall(x -> x == "σ", ks)[1] - 1
+    par_names   = chain.name_map.parameters
+
+    # --- Handle Bayesian or deterministic seeding ---
     if get(inference, "bayesian_seed", false)
-        # Find *all* seed parameters
         seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
         isempty(seed_ch_idx) && error("No seed parameters found in chain.name_map.parameters")
-    
-        # Sort to preserve order in 'seed' (important if par_names is not lexicographically sorted)
         seed_ch_idx = sort(seed_ch_idx)
     else
         seed_ch_idx = nothing
     end
-    sigma_idx = findall(x->x==:σ,par_names)[1]  
 
-    # reshape data
-    N_samples = size(data)[3]
-    vec_data = vec(data)
+    sigma_idx = findall(x -> x == :σ, par_names)[1]
+
+    # --- Reshape and clean data ---
+    N_samples = size(data, 3)
+    vec_data  = vec(data)
     nonmissing = findall(vec_data .!== missing)
-    vec_data = vec_data[nonmissing]
-    vec_data = identity.(vec_data)  # converts Union{Missing,Float64} to Float64
-    n = length(vec_data)
+    vec_data  = Float64.(vec_data[nonmissing])
+    n         = length(vec_data)
 
-    # define ODE problem
-    # OLD
-    #tspan = (0, timepoints[end])
-    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
-    # NEW
-    # --- Define ODE Problem using same factory as inference ---
-    #     (this ensures correct setup for bilateral/bidirectional models)
+    # --- Define ODE problem using inference factory ---
     prob = make_ode_problem(
         odes[inference["ode"]];
         labels     = inference["labels"],
@@ -1017,89 +1148,105 @@ function compute_waic(inference; S=10)
         timepoints = inference["timepoints"]
     )
 
-
-    # sample from posterior and store ODE solutions for each sample
+    # --- Draw posterior samples ---
+    chain_length = length(chain)
+    S = min(S, chain_length)
     posterior_samples = sample(chain, S; replace=false)
-    solutions = Vector{Vector{Float64}}()  # each element holds the solution vector for a sample
-    sigmas = []
+
+    solutions = Vector{Vector{Float64}}()
+    sigmas    = Float64[]
+
     for sample in eachrow(Array(posterior_samples))
-        # Extract parameter samples
-        p = sample[1:N_pars]  
-        #OLD
-        #if inference["bayesian_seed"]
-        #    u0[seed] = sample[seed_ch_idx]  
-        #else    
-        #    u0[seed] = inference["seed_value"]
-        #end
-        # NEW
+        p = sample[1:N_pars]
         u0_s = copy(u0)
+
         if get(inference, "bayesian_seed", false)
             if isa(seed, Int)
-                # Single seed case (as before)
                 u0_s[seed] = sample[seed_ch_idx[1]]
             else
-                # Multiple seed regions — one seed parameter per index (same order guaranteed)
                 for (i, sidx) in enumerate(seed)
                     u0_s[sidx] = sample[seed_ch_idx[i]]
                 end
             end
         else
-            # Deterministic (non-Bayesian) seeding
             if isa(seed, Int)
                 u0_s[seed] = inference["seed_value"]
             else
                 u0_s[seed] .= inference["seed_value"]
             end
         end
-        σ = sample[sigma_idx]  # extract σ
-        # solve the ODE
+
+        σ = sample[sigma_idx]
         sol_p = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=timepoints, abstol=1e-6, reltol=1e-6)
-        sol_p = Array(sol_p[inference["sol_idxs"],:])
-        # Repeat solution for each of the N_samples (if data has replicated observations)
-        solution = vec(cat([sol_p for _ in 1:N_samples]..., dims=3))
-        solution = solution[nonmissing]
+        sol_p = Array(sol_p[inference["sol_idxs"], :])
+
+        # Repeat solution for replicated observations
+        solution = vec(cat([sol_p for _ in 1:N_samples]..., dims=3))[nonmissing]
+
         push!(solutions, solution)
         push!(sigmas, σ)
     end
-    means = transpose(hcat(solutions...))  # S x n matrix
 
-    # Compute pointwise log-likelihoods for each sample and data point
+    means = transpose(hcat(solutions...))  # S × n
+
+    # --- Pointwise log-likelihoods ---
     log_lik = zeros(S, n)
     for s in 1:S
         for i in 1:n
-            log_lik[s, i] = logpdf(Normal(means[s,i], sigmas[s]), vec_data[i])
+            log_lik[s, i] = logpdf(Normal(means[s, i], sigmas[s]), vec_data[i])
         end
     end
 
+    # ============================================================
     # --- WAIC computation ---
-    #lppd = sum(log.(mean(exp.(log_lik), dims=1)))   # Log Pointwise Predictive Density, OLD
-    # stabilized computation of lppd
-    m = maximum(log_lik; dims=1)                       # 1×n (max per data point across draws)
-    lppd = sum(vec(m) .+ log.(vec(mean(exp.(log_lik .- m); dims=1))))
-    p_waic = sum(var(log_lik, dims=1))                # Effective number of parameters
-    waic = -2 * (lppd - p_waic)                       # WAIC formula
+    # ============================================================
 
-    # WAIC STANDARD DEVIATION
-    waic_i = [-2 * (log(mean(exp.(log_lik[:,i]))) - var(log_lik[:,i])) for i in 1:n]
-    se_waic = sqrt(n * var(waic_i))
+    if group_cells
+        # --------------------------------------------------------
+        # Group replicates by cell (region × timepoint)
+        # --------------------------------------------------------
+        n_regions, n_timepoints, N_rep = size(data)
+        @assert N_rep > 1 "Grouping only makes sense with replicated samples"
 
+        # Mapping from vectorized index -> cell index
+        cell_id_full = repeat(collect(1:(n_regions * n_timepoints)), inner=N_rep)
+        cell_id = cell_id_full[nonmissing]
+        unique_cells = unique(cell_id)
+        C = length(unique_cells)
 
-    # --- WBIC computation ---
-    # Compute total log-likelihood per posterior sample
-    #total_log_lik = vec(sum(log_lik, dims=2))  # vector of length S
-    ## Temperature for WBIC: T = 1 / log(n)
-    #T = 1 / log(n)
-    ## Compute log-weights to stabilize the exponentiation
-    #log_weights = (T - 1) * total_log_lik
-    #max_log_weight = maximum(log_weights)
-    #stabilized_weights = exp.(log_weights .- max_log_weight)
-    ## Compute weighted expectation of the log-likelihood
-    #wbic_expectation = sum(stabilized_weights .* total_log_lik) / sum(stabilized_weights)
-    #wbic = -2 * wbic_expectation
+        # Average log-likelihoods per cell
+        log_lik_cell = zeros(S, C)
+        for (j, c) in enumerate(unique_cells)
+            idx = findall(==(c), cell_id)
+            log_lik_cell[:, j] = mean(log_lik[:, idx]; dims=2)[:]
+        end
 
-    #return waic, se_waic, wbic
+        # Stabilized computation
+        m = maximum(log_lik_cell; dims=1)
+        lppd  = sum(vec(m) .+ log.(vec(mean(exp.(log_lik_cell .- m); dims=1))))
+        p_waic = sum(vec(var(log_lik_cell, dims=1)))
+        waic  = -2 * (lppd - p_waic)
+
+        waic_i  = [-2 * (log(mean(exp.(log_lik_cell[:, j]))) - var(log_lik_cell[:, j])) for j in 1:C]
+        se_waic = sqrt(C * var(waic_i))
+
+    else
+        # --------------------------------------------------------
+        # Standard observation-level WAIC
+        # --------------------------------------------------------
+        m = maximum(log_lik; dims=1)
+        lppd  = sum(vec(m) .+ log.(vec(mean(exp.(log_lik .- m); dims=1))))
+        p_waic = sum(vec(var(log_lik, dims=1)))
+        waic  = -2 * (lppd - p_waic)
+
+        waic_i  = [-2 * (log(mean(exp.(log_lik[:, i]))) - var(log_lik[:, i])) for i in 1:n]
+        se_waic = sqrt(n * var(waic_i))
+    end
+
     return waic, se_waic, waic_i::Vector{Float64}, lppd, p_waic, n
 end
+
+
 
 
 function compute_aic_bic(inference)
