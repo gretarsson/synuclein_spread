@@ -2,5 +2,6 @@
 /simulations/gene_significance_beta.jls
 /old/*
 /logs/*
+/figures/*
 .DS_Store
 scripts/.DS_Store
