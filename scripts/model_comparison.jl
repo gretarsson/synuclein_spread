@@ -70,6 +70,12 @@ simulations_list = [
         "simulations/hippo_DIFFGA_RETRO",
         "simulations/hippo_DIFFGAM_RETRO"
     ],
+    [
+        "simulations/hippo_DIFF_RETRO_posterior_prior",
+        "simulations/hippo_DIFFG_RETRO_posterior_prior_CUT",
+        "simulations/hippo_DIFFGA_RETRO_posterior_prior_CUT",
+        "simulations/hippo_DIFFGAM_RETRO_posterior_prior_CUT"
+    ],
 ]
 
 model_names_list = [
@@ -133,10 +139,16 @@ model_names_list = [
         "hippo DIFFG retrograde" 
         "hippo DIFFGA retrograde" 
         "hippo DIFFGAM retrograde" 
+    ],
+    [
+        "hippo post DIFF retrograde" 
+        "hippo post DIFFG retrograde" 
+        "hippo post DIFFGA retrograde" 
+        "hippo post DIFFGAM retrograde" 
     ]
 ]
 fig_prefixes = ["DIFF", "DIFFG", "DIFFGA", "DIFFGAM", "RETRO_ONLY",
-              "hippo_DIFF", "hippo_DIFFG", "hippo_DIFFGA", "hippo_DIFFGAM", "hippo_RETRO_ONLY"]
+              "hippo_DIFF", "hippo_DIFFG", "hippo_DIFFGA", "hippo_DIFFGAM", "hippo_RETRO_ONLY", "hippo_RETRO_ONLY_POST"]
 
 for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, model_names_list, fig_prefixes))
     # file name
