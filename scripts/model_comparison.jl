@@ -5,7 +5,7 @@ using Printf
 
 # number of samples for WAIC
 Sn = 300
-group_cells = true  # weight each region x timepoint equally in WAIC
+group_cells = false  # weight each region x timepoint equally in WAIC
 
 # Read inference results
 simulations_list = [

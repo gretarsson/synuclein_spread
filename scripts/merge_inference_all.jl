@@ -8,7 +8,7 @@ using Printf
 # ============================================================
 # SETTINGS
 # ============================================================
-basedir = "simulations"  # directory to search in
+basedir = "simulations_mean"  # directory to search in
 pattern = joinpath(basedir, "*_C*.jls")
 
 # ============================================================
