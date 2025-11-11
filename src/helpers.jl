@@ -1122,9 +1122,9 @@ function compute_waic(inference; S::Int=10, group_cells::Bool=false)
 
     # --- Handle Bayesian or deterministic seeding ---
     if get(inference, "bayesian_seed", false)
-        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
+        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)  # should be in chronological order
         isempty(seed_ch_idx) && error("No seed parameters found in chain.name_map.parameters")
-        seed_ch_idx = sort(seed_ch_idx)
+        #seed_ch_idx = sort(seed_ch_idx)
     else
         seed_ch_idx = nothing
     end
@@ -1242,6 +1242,10 @@ function compute_waic(inference; S::Int=10, group_cells::Bool=false)
         waic_i  = [-2 * (log(mean(exp.(log_lik[:, i]))) - var(log_lik[:, i])) for i in 1:n]
         se_waic = sqrt(n * var(waic_i))
     end
+    #@info "Log-likelihood summary" mean_ll=mean(log_lik) min_ll=minimum(log_lik) max_ll=maximum(log_lik)
+    #@info "Sigma range" minσ=minimum(sigmas) maxσ=maximum(sigmas) meanσ=mean(sigmas)
+    #@info "Data range" extrema_data=extrema(vec_data)
+    #@info "Pred range" extrema_pred=extrema(means)
 
     return waic, se_waic, waic_i::Vector{Float64}, lppd, p_waic, n
 end

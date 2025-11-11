@@ -7,74 +7,77 @@ using Printf
 Sn = 300
 group_cells = false  # weight each region x timepoint equally in WAIC
 
+use_mean = false
+mean_suffix = use_mean ? "mean_" : ""
+
 # Read inference results
 simulations_list = [
     [
-        "simulations/DIFF_EUCL",
-        "simulations/DIFF_ANTERO",
-        "simulations/DIFF_RETRO",
-        "simulations/DIFF_BIDIR",
+        "simulations/$(mean_suffix)DIFF_EUCL",
+        "simulations/$(mean_suffix)DIFF_ANTERO",
+        "simulations/$(mean_suffix)DIFF_RETRO",
+        "simulations/$(mean_suffix)DIFF_BIDIR",
     ],
     [
-        "simulations/DIFFG_EUCL",
-        "simulations/DIFFG_ANTERO",
-        "simulations/DIFFG_RETRO",
-        "simulations/DIFFG_BIDIR",
+        "simulations/$(mean_suffix)DIFFG_EUCL",
+        "simulations/$(mean_suffix)DIFFG_ANTERO",
+        "simulations/$(mean_suffix)DIFFG_RETRO",
+        "simulations/$(mean_suffix)DIFFG_BIDIR",
     ],
     [
-        "simulations/DIFFGA_EUCL",
-        "simulations/DIFFGA_ANTERO",
-        "simulations/DIFFGA_RETRO",
-        "simulations/DIFFGA_BIDIR",
+        "simulations/$(mean_suffix)DIFFGA_EUCL",
+        "simulations/$(mean_suffix)DIFFGA_ANTERO_CUT",
+        "simulations/$(mean_suffix)DIFFGA_RETRO",
+        "simulations/$(mean_suffix)DIFFGA_BIDIR",
     ],
     [
-        "simulations/DIFFGAM_EUCL_CUT",
-        "simulations/DIFFGAM_ANTERO_CUT",
-        "simulations/DIFFGAM_RETRO",
-        "simulations/DIFFGAM_BIDIR",
+        "simulations/$(mean_suffix)DIFFGAM_EUCL_CUT",
+        "simulations/$(mean_suffix)DIFFGAM_ANTERO_CUT",
+        "simulations/$(mean_suffix)DIFFGAM_RETRO",
+        "simulations/$(mean_suffix)DIFFGAM_BIDIR",
     ],
     [
-        "simulations/DIFF_RETRO",
-        "simulations/DIFFG_RETRO",
-        "simulations/DIFFGA_RETRO",
-        "simulations/DIFFGAM_RETRO",
+        "simulations/$(mean_suffix)DIFF_RETRO",
+        "simulations/$(mean_suffix)DIFFG_RETRO",
+        "simulations/$(mean_suffix)DIFFGA_RETRO",
+        "simulations/$(mean_suffix)DIFFGAM_RETRO",
     ],
     # HIPPO
     [
-        "simulations/hippo_DIFF_EUCL",
-        "simulations/hippo_DIFF_ANTERO",
-        "simulations/hippo_DIFF_RETRO",
-        "simulations/hippo_DIFF_BIDIR",
+        "simulations/$(mean_suffix)hippo_DIFF_EUCL",
+        "simulations/$(mean_suffix)hippo_DIFF_ANTERO",
+        "simulations/$(mean_suffix)hippo_DIFF_RETRO",
+        "simulations/$(mean_suffix)hippo_DIFF_BIDIR",
     ],
     [
-        "simulations/hippo_DIFFG_EUCL",
-        "simulations/hippo_DIFFG_ANTERO",
-        "simulations/hippo_DIFFG_RETRO",
-        "simulations/hippo_DIFFG_BIDIR",
+        "simulations/$(mean_suffix)hippo_DIFFG_EUCL",
+        "simulations/$(mean_suffix)hippo_DIFFG_ANTERO",
+        "simulations/$(mean_suffix)hippo_DIFFG_RETRO",
+        "simulations/$(mean_suffix)hippo_DIFFG_BIDIR",
     ],
     [
-        "simulations/hippo_DIFFGA_EUCL",
-        "simulations/hippo_DIFFGA_ANTERO",
-        "simulations/hippo_DIFFGA_RETRO_C2",
-        "simulations/hippo_DIFFGA_BIDIR",
+        "simulations/$(mean_suffix)hippo_DIFFGA_EUCL",
+        "simulations/$(mean_suffix)hippo_DIFFGA_ANTERO",
+        "simulations/$(mean_suffix)hippo_DIFFGA_RETRO_CUT",
+        "simulations/$(mean_suffix)hippo_DIFFGA_BIDIR",
     ],
     [
-        "simulations/hippo_DIFFGAM_EUCL",
-        "simulations/hippo_DIFFGAM_ANTERO",
-        "simulations/hippo_DIFFGAM_RETRO",
-        "simulations/hippo_DIFFGAM_BIDIR",
+        "simulations/$(mean_suffix)hippo_DIFFGAM_EUCL",
+        "simulations/$(mean_suffix)hippo_DIFFGAM_ANTERO",
+        "simulations/$(mean_suffix)hippo_DIFFGAM_RETRO",
+        "simulations/$(mean_suffix)hippo_DIFFGAM_BIDIR",
     ],
     [
-        "simulations/hippo_DIFF_RETRO",
-        "simulations/hippo_DIFFG_RETRO",
-        "simulations/hippo_DIFFGA_RETRO",
-        "simulations/hippo_DIFFGAM_RETRO"
+        "simulations/$(mean_suffix)hippo_DIFF_RETRO",
+        "simulations/$(mean_suffix)hippo_DIFFG_RETRO",
+        "simulations/$(mean_suffix)hippo_DIFFGA_RETRO_CUT",
+        "simulations/$(mean_suffix)hippo_DIFFGAM_RETRO"
     ],
     [
-        "simulations/hippo_DIFF_RETRO_posterior_prior",
-        "simulations/hippo_DIFFG_RETRO_posterior_prior_CUT",
-        "simulations/hippo_DIFFGA_RETRO_posterior_prior_CUT",
-        "simulations/hippo_DIFFGAM_RETRO_posterior_prior_CUT"
+        "simulations/$(mean_suffix)hippo_DIFF_RETRO_posterior_prior",
+        "simulations/$(mean_suffix)hippo_DIFFG_RETRO_posterior_prior",
+        "simulations/$(mean_suffix)hippo_DIFFGA_RETRO_posterior_prior",
+        "simulations/$(mean_suffix)hippo_DIFFGAM_RETRO_posterior_prior"
     ],
 ]
 
@@ -147,8 +150,24 @@ model_names_list = [
         "hippo post DIFFGAM retrograde" 
     ]
 ]
-fig_prefixes = ["DIFF", "DIFFG", "DIFFGA", "DIFFGAM", "RETRO_ONLY",
-              "hippo_DIFF", "hippo_DIFFG", "hippo_DIFFGA", "hippo_DIFFGAM", "hippo_RETRO_ONLY", "hippo_RETRO_ONLY_POST"]
+fig_prefixes = [
+    "$(mean_suffix)DIFF",
+    "$(mean_suffix)DIFFG",
+    "$(mean_suffix)DIFFGA",
+    "$(mean_suffix)DIFFGAM",
+    "$(mean_suffix)RETRO_ONLY",
+    "$(mean_suffix)hippo_DIFF",
+    "$(mean_suffix)hippo_DIFFG",
+    "$(mean_suffix)hippo_DIFFGA",
+    "$(mean_suffix)hippo_DIFFGAM",
+    "$(mean_suffix)hippo_RETRO_ONLY",
+    "$(mean_suffix)hippo_RETRO_ONLY_POST",
+]
+
+
+#model_names_list = [model_names_list[end]]
+#simulations_list = [simulations_list[end]]
+#fig_prefixes = [fig_prefixes[end]]
 
 for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, model_names_list, fig_prefixes))
     # file name
@@ -162,10 +181,21 @@ for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, mo
     println("──────────────────────────────────────────────")
 
 
-    inferences = []
-    for simulation in simulations
-        push!(inferences, load_inference(simulation * ".jls"))
+    # load inferences, skip if doesn't exist
+    # --- Filter out missing simulations ---
+    pairs = [(m, s) for (m, s) in zip(model_names, simulations) if isfile(s * ".jls")]
+
+    if isempty(pairs)
+        @warn "No valid inference files found for this batch; skipping."
+        continue
     end
+
+    # overwrite the same names
+    unzip(v) = (getindex.(v, 1), getindex.(v, 2))
+    model_names, simulations = unzip(pairs)
+
+    # --- Load remaining inferences ---
+    inferences = [load_inference(s * ".jls") for s in simulations]
 
     # Compute WAIC, AIC, BIC, MSE, and Frobenius covariance norm for models
     waic_vals = Float64[]
@@ -235,6 +265,7 @@ for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, mo
         ParCor = round.(covnorm_vals, digits=4),
         ∆ParCor   = round.(delta_cov, digits=4)
     )
+    display(df)
 
     # Print LaTeX table
     pretty_table(df; formatters = ft_printf("%5d"), backend = Val(:latex))
