@@ -129,6 +129,9 @@ function build_parser()
         "--mean_data"
             action = :store_true
             help = "If set, randomly permute the weights of the adjacency matrix before building the Laplacian (null model control)"
+        "--ignore_seed"
+            action = :store_true
+            help = "If set, removes the seeded region(s) from the training data"
         
     end
 
@@ -150,6 +153,7 @@ function main(parsed)
     holdout_last = parsed["holdout_last"]
     shuffle = parsed["shuffle"]
     mean_data = parsed["mean_data"]
+    ignore_seed = parsed["ignore_seed"]
 
     # PRINT ARGS
     println("→ ODE:        $ode")
@@ -160,6 +164,7 @@ function main(parsed)
     println("→ Infer seed:    $infer_seed")
     println("→ Hold out last timepoints: $holdout_last")
     println("→ Shuffle network weights: $shuffle")
+    println("→ Ignore seed regional data: $ignore_seed")
     println("→ Average data samples: $mean_data")
     println("→ Target acceptance:    $target_acceptance")
     println("→ Output:     $out_file")
@@ -211,6 +216,9 @@ function main(parsed)
             data = PathoSpread.mean3(data)
             data = Array(reshape(data, size(data,1), size(data,2), 1))
         end
+        if ignore_seed  # set seed region data to missing, if told so
+            data[seed_indices, :, :] .= missing
+        end
         # STRUCTURAL DATA
         Lr,N,labels = read_W(w_file, direction=:retro, shuffle=shuffle);
         La,_,_ = read_W(w_file, direction=:antero, shuffle=shuffle);
@@ -256,7 +264,6 @@ function main(parsed)
         println("→ Replaced base priors with posterior-based priors.")
         flush(stdout)
     end
-
 
     # DEFINE ODE PROBLEM
     factors = ones(length(get_priors(ode,K)))
