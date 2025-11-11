@@ -98,7 +98,7 @@ function build_parser()
             help = "If true then retrograde transport is used, if false anterograde transport is used"
         "--seed_indices"
             arg_type = Any
-            default  = [74]  # default is iCP
+            default  = [74]  # default is iCP (striatum), [53,55,56] for ipsilateral hippocampus
             help     = "Indices of seeded regions. Pass as Int or Vector{Int} (e.g., --seed_indices '[12,13,14]')"
         "--infer_seed"
             arg_type = Bool
@@ -217,6 +217,7 @@ function main(parsed)
             data = Array(reshape(data, size(data,1), size(data,2), 1))
         end
         if ignore_seed  # set seed region data to missing, if told so
+            display("IT WORKED")
             data[seed_indices, :, :] .= missing
         end
         # STRUCTURAL DATA

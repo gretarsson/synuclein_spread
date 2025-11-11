@@ -4,17 +4,16 @@ here we create a folder of analysis plots of interence results
 using PathoSpread
 
 # simulation to analyze
-simulation = "DIFFGA_BIDIR"
+simulation = "DIFF_ANTERO"
 
 # read file 
 inference_obj = load_inference("simulations/"*simulation*".jls")
 
-
 # look at chains
 inference_obj["chain"]
-new_chain = inference_obj["chain"][:,:,[2,3,4]]
-inference_obj["chain"] = new_chain
-save_inference("simulations/" * simulation * "_CUT.jls", inference_obj)
+#new_chain = inference_obj["chain"][:,:,[2,3,4]]
+#inference_obj["chain"] = new_chain
+#save_inference("simulations/" * simulation * "_CUT.jls", inference_obj)
 
 # plot
 setup_plot_theme!()  # set plotting settings
