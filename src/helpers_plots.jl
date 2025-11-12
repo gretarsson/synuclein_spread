@@ -33,7 +33,7 @@ function setup_plot_theme!(; font="Arial", base=18, lw=2, markersize=10, dpi=300
         fonts = (regular=font, bold=font, italic=font),
         font = font,
         fontsize = base,
-        Figure = (resolution = (1200, 900),),
+        Figure = (size = (1200, 900),),
         Axis = (
             titlesize      = round(Int, 1.6*base),
             titlealign     = :left,
@@ -606,7 +606,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=200,
         band_el  = CairoMakie.PolyElement(color=band_fill_color, strokecolor=:transparent)  # 95% CI patch
         mark_el  = CairoMakie.MarkerElement(marker=:circle, color=data_color, markersize=data_marker_size)
 
-        leg_fig  = CairoMakie.Figure(resolution = (480, 200), figure_padding=20)
+        leg_fig  = CairoMakie.Figure(size = (480, 200), figure_padding=20)
         legend   = CairoMakie.Legend(
             leg_fig,
             [line_el, band_el, mark_el],
@@ -1703,7 +1703,7 @@ function plot_ppc_coverage_by_region(inference;
     end
 
     # --- Plot (keep labels sane for large R) ---
-    f = Figure(resolution=(max(1400, 3R), 500))
+    f = Figure(size=(max(1400, 3R), 500))
     ax = Axis(f[1,1];
         title  = "Posterior predictive coverage by region (level=$(round(level*100))%)",
         xlabel = "Region",
@@ -1937,7 +1937,7 @@ function plot_two_local_params_scatter(inference;
             end
         end
         if length(found) != 2
-            @info "plot_two_local_params_scatter: expected exactly 2 local families, found $(length(found)). Doing nothing."
+            #@info "plot_two_local_params_scatter: expected exactly 2 local families, found $(length(found)). Doing nothing."
             return nothing
         end
         bases = (found[1], found[2])
@@ -2079,7 +2079,7 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         f  = CairoMakie.Figure()
         ax = CairoMakie.Axis(
             f[1,1];
-            title  = "Region $(i): $(labels[i])",
+            title  = "$(labels[i])",
             xlabel = "Time (months)",
             ylabel = "\u03b1-synuclein pathology (% area)",
             limits = truncate_at_zero ? (nothing, nothing, ymin, nothing) :
@@ -2339,7 +2339,7 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         band_el  = CairoMakie.PolyElement(color=band_fill_color, strokecolor=:transparent)
         mark_el  = CairoMakie.MarkerElement(marker=:circle, color=data_color, markersize=data_marker_size)
 
-        leg_fig  = CairoMakie.Figure(resolution = (480, 200), figure_padding=20)
+        leg_fig  = CairoMakie.Figure(size = (480, 200), figure_padding=20)
         legend   = CairoMakie.Legend(
             leg_fig,
             [line_el, band_el, mark_el],
@@ -2802,7 +2802,7 @@ function plot_global_posterior_slope(infs::Vector, inf_names::Vector{<:AbstractS
     gpars = collect(intersect(gsets...))
     isempty(gpars) && return nothing
 
-    f = Figure(resolution=(900, 250 + 60*length(gpars)))
+    f = Figure(size=(900, 250 + 60*length(gpars)))
     ax = Axis(f[1,1]; title="Global parameters: posterior medians with 95% CI",
               xlabel="Inference", ylabel="Value")
     xs = 1:length(infs)
@@ -2860,7 +2860,7 @@ function plot_local_delta_heatmap(infs::Vector, inf_names::Vector{<:AbstractStri
 
     rows   = size(Dc, 1)         # or just R
     height = 250 + ceil(Int, 0.7 * rows)   # or round(Int, ...), or floor(Int, ...)
-    f = Figure(resolution = (600, height))
+    f = Figure(size = (600, height))
     ax = Axis(f[1,1]; title="$base: effect-size shift (δ)", xlabel="Comparison", ylabel="Region (ordered)")
     hm = CairoMakie.heatmap!(ax, Dc'; colormap=:viridis)  # transpose to put pairs on x-axis
     ax.xticks = (1:length(compare_pairs), ["$(inf_names[a])→$(inf_names[b])" for (a,b) in compare_pairs])
@@ -2880,7 +2880,7 @@ function plot_local_scatter_vs_full(full_inf, other_inf; base::String,
     μ_full  = posterior_mean_vector_from_priors(full_inf["chain"],  full_inf["priors"],  base, R)
     μ_other = posterior_mean_vector_from_priors(other_inf["chain"], other_inf["priors"], base, R)
 
-    f = Figure(resolution=(700,600))
+    f = Figure(size=(700,600))
     ax = Axis(f[1,1]; title="$base: posterior means ($other_name vs $full_name)",
               xlabel="$other_name", ylabel="$full_name")
     CairoMakie.scatter!(ax, μ_other, μ_full; markersize=8, color=(RGBf(0,0,0), alpha))
@@ -3042,7 +3042,7 @@ function predicted_observed_marked(inference;
 
     f = Figure()
     ax = Axis(f[1,1];
-        title="Predicted vs Observed (pooled)",
+        title="",
         xlabel="Observed", ylabel="Predicted",
         xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=xticks)
 
@@ -3062,7 +3062,7 @@ function predicted_observed_marked(inference;
     # Add R² label (optional)
     if show_r2 && isfinite(r2_global)
         text!(ax, 0.05, 0.95, text=@sprintf("R² = %.3f", r2_global),
-              align=(:left,:top), space=:relative, color=:black, fontsize=16)
+              align=(:left,:top), space=:relative, color=:black, fontsize=20)
     end
 
     if !isempty(save_path)
@@ -3078,7 +3078,8 @@ function predicted_observed_marked(inference;
 
         f_t = Figure()
         ax_t = Axis(f_t[1,1];
-            title = @sprintf("t = %.3f%s", timepoints[j], (is_train_time(timepoints[j]) ? " (train)" : " (held-out)")),
+            #title = @sprintf("t = %.3f%s", timepoints[j], (is_train_time(timepoints[j]) ? " (train)" : " (held-out)")),
+            title = @sprintf("t = %.3f", timepoints[j]),
             xlabel="Observed", ylabel="Predicted",
             xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=xticks)
 
@@ -3492,7 +3493,7 @@ function plot_inference(inference, save_path;
     #predicted_observed(inference; save_path=save_path*"/predicted_observed_log10", plotscale=log10);
     #predicted_observed(inference; save_path=save_path*"/predicted_observed_id",  plotscale=identity);
 
-    plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
+    #plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
     #plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
     #plot_priors(inference; save_path=save_path*"/priors");

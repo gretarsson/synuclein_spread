@@ -7,170 +7,134 @@ using Printf
 Sn = 300
 group_cells = false  # weight each region x timepoint equally in WAIC
 
-use_mean = false
-#mean_suffix = use_mean ? "mean_" : ""
-mean_suffix = "igs_"
-
 # Read inference results
 simulations_list = [
     [
-        "simulations/$(mean_suffix)DIFF_EUCL",
-        "simulations/$(mean_suffix)DIFF_ANTERO",
-        "simulations/$(mean_suffix)DIFF_RETRO",
-        "simulations/$(mean_suffix)DIFF_BIDIR",
+        "simulations/igs_DIFF_EUCL",
+        "simulations/igs_DIFF_ANTERO",
+        "simulations/igs_DIFF_RETRO",
+        "simulations/igs_DIFF_BIDIR",
     ],
     [
-        "simulations/$(mean_suffix)DIFFG_EUCL",
-        "simulations/$(mean_suffix)DIFFG_ANTERO",
-        "simulations/$(mean_suffix)DIFFG_RETRO",
-        "simulations/$(mean_suffix)DIFFG_BIDIR",
+        "simulations/DIFFG_EUCL",
+        "simulations/DIFFG_ANTERO",
+        "simulations/DIFFG_RETRO",
+        "simulations/DIFFG_BIDIR",
     ],
     [
-        "simulations/$(mean_suffix)DIFFGA_EUCL",
-        "simulations/$(mean_suffix)DIFFGA_ANTERO_CUT",
-        "simulations/$(mean_suffix)DIFFGA_RETRO",
-        "simulations/$(mean_suffix)DIFFGA_BIDIR",
+        "simulations/DIFFGA_EUCL",
+        "simulations/DIFFGA_ANTERO_CUT",
+        "simulations/DIFFGA_RETRO",
+        "simulations/DIFFGA_BIDIR",
     ],
     [
-        "simulations/$(mean_suffix)DIFFGAM_EUCL_CUT",
-        "simulations/$(mean_suffix)DIFFGAM_ANTERO_CUT",
-        "simulations/$(mean_suffix)DIFFGAM_RETRO",
-        "simulations/$(mean_suffix)DIFFGAM_BIDIR",
-    ],
-    [
-        "simulations/$(mean_suffix)DIFF_RETRO",
-        "simulations/$(mean_suffix)DIFFG_RETRO",
-        "simulations/$(mean_suffix)DIFFGA_RETRO",
-        "simulations/$(mean_suffix)DIFFGAM_RETRO",
+        "simulations/DIFF_RETRO",
+        "simulations/DIFFG_RETRO",
+        "simulations/DIFFGA_RETRO",
     ],
     # HIPPO
     [
-        "simulations/$(mean_suffix)hippo_DIFF_EUCL",
-        "simulations/$(mean_suffix)hippo_DIFF_ANTERO",
-        "simulations/$(mean_suffix)hippo_DIFF_RETRO",
-        "simulations/$(mean_suffix)hippo_DIFF_BIDIR",
+        "simulations/igs_hippo_DIFF_EUCL",
+        "simulations/igs_hippo_DIFF_ANTERO",
+        "simulations/igs_hippo_DIFF_RETRO",
+        "simulations/igs_hippo_DIFF_BIDIR",
     ],
     [
-        "simulations/$(mean_suffix)hippo_DIFFG_EUCL",
-        "simulations/$(mean_suffix)hippo_DIFFG_ANTERO",
-        "simulations/$(mean_suffix)hippo_DIFFG_RETRO",
-        "simulations/$(mean_suffix)hippo_DIFFG_BIDIR",
+        "simulations/hippo_DIFFG_EUCL",
+        "simulations/hippo_DIFFG_ANTERO",
+        "simulations/hippo_DIFFG_RETRO",
+        "simulations/hippo_DIFFG_BIDIR",
     ],
     [
-        "simulations/$(mean_suffix)hippo_DIFFGA_EUCL",
-        "simulations/$(mean_suffix)hippo_DIFFGA_ANTERO",
-        "simulations/$(mean_suffix)hippo_DIFFGA_RETRO_CUT",
-        "simulations/$(mean_suffix)hippo_DIFFGA_BIDIR",
+        "simulations/hippo_DIFFGA_EUCL",
+        "simulations/hippo_DIFFGA_ANTERO",
+        "simulations/hippo_DIFFGA_RETRO_CUT",
+        "simulations/hippo_DIFFGA_BIDIR",
     ],
     [
-        "simulations/$(mean_suffix)hippo_DIFFGAM_EUCL",
-        "simulations/$(mean_suffix)hippo_DIFFGAM_ANTERO",
-        "simulations/$(mean_suffix)hippo_DIFFGAM_RETRO",
-        "simulations/$(mean_suffix)hippo_DIFFGAM_BIDIR",
-    ],
-    [
-        "simulations/$(mean_suffix)hippo_DIFF_RETRO",
-        "simulations/$(mean_suffix)hippo_DIFFG_RETRO",
-        "simulations/$(mean_suffix)hippo_DIFFGA_RETRO_CUT",
-        "simulations/$(mean_suffix)hippo_DIFFGAM_RETRO"
-    ],
-    [
-        "simulations/$(mean_suffix)hippo_DIFF_RETRO_posterior_prior",
-        "simulations/$(mean_suffix)hippo_DIFFG_RETRO_posterior_prior",
-        "simulations/$(mean_suffix)hippo_DIFFGA_RETRO_posterior_prior",
-        "simulations/$(mean_suffix)hippo_DIFFGAM_RETRO_posterior_prior"
+        "simulations/hippo_DIFF_RETRO",
+        "simulations/hippo_DIFFG_RETRO",
+        "simulations/hippo_DIFFGA_RETRO_CUT",
     ],
 ]
 
 model_names_list = [
     [
-        "DIFF euclidean",
-        "DIFF anterograde",
-        "DIFF retrograde",
-        "DIFF bidirectional",
+        "euclidean",
+        "anterograde",
+        "retrograde",
+        "bidirectional",
     ],
     [
-        "DIFFG euclidean",
-        "DIFFG anterograde",
-        "DIFFG retrograde",
-        "DIFFG bidirectional",
+        "euclidean",
+        "anterograde",
+        "retrograde",
+        "bidirectional",
     ],
     [
-        "DIFFGA euclidean",
-        "DIFFGA anterograde",
-        "DIFFGA retrograde",
-        "DIFFGA bidirectional",
+        "euclidean",
+        "anterograde",
+        "retrograde",
+        "bidirectional",
     ],
     [
-        "DIFFGAM euclidean",
-        "DIFFGAM anterograde",
-        "DIFFGAM retrograde",
-        "DIFFGAM bidirectional",
-    ],
-    [
-        "DIFF retrograde",
-        "DIFFG retrograde",
-        "DIFFGA retrograde",
-        "DIFFGAM retrograde",
+        "DIFF",
+        "DIFFG",
+        "DIFFGA",
     ],
     # HIPPO
     [
-        "hippo DIFF euclidean",
-        "hippo DIFF anterograde",
-        "hippo DIFF retrograde",
-        "hippo DIFF bidirectional",
+        "euclidean",
+        "anterograde",
+        "retrograde",
+        "bidirectional",
     ],
     [
-        "hippo DIFFG euclidean",
-        "hippo DIFFG anterograde",
-        "hippo DIFFG retrograde",
-        "hippo DIFFG bidirectional",
+        "euclidean",
+        "anterograde",
+        "retrograde",
+        "bidirectional",
     ],
     [
-        "hippo DIFFGA euclidean",
-        "hippo DIFFGA anterograde",
-        "hippo DIFFGA retrograde",
-        "hippo DIFFGA bidirectional",
+        "euclidean",
+        "anterograde",
+        "retrograde",
+        "bidirectional",
     ],
     [
-        "hippo DIFFGAM euclidean",
-        "hippo DIFFGAM anterograde",
-        "hippo DIFFGAM retrograde",
-        "hippo DIFFGAM bidirectional",
+        "DIFF" 
+        "DIFFG" 
+        "DIFFGA" 
     ],
-    [
-        "hippo DIFF retrograde" 
-        "hippo DIFFG retrograde" 
-        "hippo DIFFGA retrograde" 
-        "hippo DIFFGAM retrograde" 
-    ],
-    [
-        "hippo post DIFF retrograde" 
-        "hippo post DIFFG retrograde" 
-        "hippo post DIFFGA retrograde" 
-        "hippo post DIFFGAM retrograde" 
-    ]
 ]
+
 fig_prefixes = [
-    "$(mean_suffix)DIFF",
-    "$(mean_suffix)DIFFG",
-    "$(mean_suffix)DIFFGA",
-    "$(mean_suffix)DIFFGAM",
-    "$(mean_suffix)RETRO_ONLY",
-    "$(mean_suffix)hippo_DIFF",
-    "$(mean_suffix)hippo_DIFFG",
-    "$(mean_suffix)hippo_DIFFGA",
-    "$(mean_suffix)hippo_DIFFGAM",
-    "$(mean_suffix)hippo_RETRO_ONLY",
-    "$(mean_suffix)hippo_RETRO_ONLY_POST",
+    "striatum_DIFF",
+    "striatum_DIFFG",
+    "striatum_DIFFGA",
+    "striatum_RETRO_ONLY",
+    "hippo_DIFF",
+    "hippo_DIFFG",
+    "hippo_DIFFGA",
+    "hippo_RETRO_ONLY",
 ]
 
+fig_titles = [
+    "DIFF",
+    "DIFFG",
+    "DIFFGA",
+    "Retrograde transport",
+    "DIFF (hippocampal)",
+    "DIFFG (hippocampal)",
+    "DIFFGA (hippocampal)",
+    "Retrograde transport (hippocampal)",
+]
 
-#model_names_list = [model_names_list[end]]
-#simulations_list = [simulations_list[end]]
-#fig_prefixes = [fig_prefixes[end]]
+#model_names_list = [model_names_list[1]]
+#simulations_list = [simulations_list[1]]
+#fig_prefixes = [fig_prefixes[1]]
 
-for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, model_names_list, fig_prefixes))
+for (i,(simulations, model_names, prefix, fig_title)) in enumerate(zip(simulations_list, model_names_list, fig_prefixes, fig_titles))
     # file name
     fig_file = "figures/model_comparison/$(prefix)_WAIC.pdf"
     
@@ -295,8 +259,6 @@ for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, mo
     backend = Val(:latex),
     )
 
-
-
     # PAIRED WAIC COMPARISON
     # ─── Paired ΔWAIC ± SE(Δ) vs the best model ───────────────────────────────────
     # 1. FILTER OUT INVALID WAICs BEFORE ANYTHING ELSE
@@ -355,8 +317,9 @@ for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, mo
     )
 
 
-
+    # ─── PLOTTING PAIRED ΔWAIC ± 2SE ─────────────────────────────────────────────
     using CairoMakie, Statistics, Printf, Colors
+    setup_plot_theme!()  # set plotting settings
 
     # classify with 95% bands
     low  = delta_waic_paired .- 2 .* se_delta_waic
@@ -385,16 +348,20 @@ for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, mo
     ord = sortperm(delta_waic_paired)
     ys  = collect(1:length(ord))
 
-    fig = Figure(resolution=(1100, 350 + 44*length(model_names)), figure_padding = (20, 20, 20, 20));
+    fig = Figure(size=(1200, 300 + 30*length(model_names)), figure_padding = (25, 25, 25, 25));
     ax  = Axis(fig[1,1];
-        title="ΔWAIC ± 2·SE(Δ) vs best",
-        titlesize=25,
+        title=fig_title,
+        titlesize=38,
         xlabel="ΔWAIC",
-        xlabelsize=24,
-        xticklabelsize=24,
-        yticklabelsize=26,
+        #xlabelsize=24,
+        xlabelsize=35,
+        xticklabelsize=32,
+        yticklabelsize=35,
         yticks=(ys, model_names[ord]),
     )
+
+    # reference at zero
+    vlines!(ax, [0.0]; color=:grey, linestyle=:dash, linewidth=8, alpha=0.8)
 
     for (row, idx) in enumerate(ord)
         Δ   = delta_waic_paired[idx]
@@ -416,27 +383,27 @@ for (i,(simulations, model_names, prefix)) in enumerate(zip(simulations_list, mo
             strokecolor=:black, strokewidth=1.2)
 
         # label "Δ ± 2SE" offset up & right (to avoid overlap)
-        txt = @sprintf("%.0f ± %.0f", Δ, SE2)
-        text!(ax, Δ, y;
-            text=txt,
-            align=(:left,:bottom),
-            offset=(14, 10),          # ← right & up
-            fontsize=24,
-            color=:black)
+        if c !== :best
+            txt = @sprintf("%.0f ± %.0f", Δ, SE2)
+            text!(ax, Δ, y;
+                text=txt,
+                align=(:left,:bottom),
+                offset=(14, 10),          # ← right & up
+                fontsize=30,
+                color=:black)
+        end
     end
 
-    # reference at zero
-    vlines!(ax, [0.0]; color=:gray, linestyle=:dash, linewidth=4)
     # Add headroom inside the axis so top text isn’t cut off
-    Makie.ylims!(ax, 0.5, length(model_names) + 0.5)
+    Makie.ylims!(ax, 0.5, length(model_names) + 0.9)
 
     # compute tight bounds from the drawn bars
     xmax = maximum(delta_waic_paired .+ 2 .* se_delta_waic)
     xmin = min(0.0, minimum(delta_waic_paired .- 2 .* se_delta_waic))
     # add a sensible right pad (>= 50 units or 6% of span)
     span = max(xmax - xmin, 1e-9)
-    pad  = max(0.2 * span, 50.0)
-    Makie.xlims!(ax, xmin-0.1*pad, xmax + pad)
+    pad  = max(0.25 * span, 50.0)
+    Makie.xlims!(ax, xmin-0.15*pad, xmax + pad)
 
     # save figure
     fig

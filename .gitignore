@@ -3,5 +3,6 @@
 /old/*
 /logs/*
 /figures/*
+/publication/*
 .DS_Store
 scripts/.DS_Store

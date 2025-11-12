@@ -11,6 +11,7 @@ w_file = "data/W_labeled_filtered.csv"
 
 data, timepoints = process_pathology(data_file; W_csv=w_file)
 
+
 # Read Laplacians
 Lr, N, labels = read_W(w_file, direction=:retro)
 La, _, _ = read_W(w_file, direction=:antero)
