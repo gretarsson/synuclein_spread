@@ -2302,18 +2302,20 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
             low = (shared_ymin isa Number && isfinite(shared_ymin)) ? shared_ymin : ymin
             Makie.ylims!(axs[i], low, global_ymax)
         else
-            dvals_i = ndims(local_data) == 3 ? vec(local_data[i, :, :]) : vec(local_data[i, :])
-            dvals_i = Float64.(filter(isfinite, collect(skipmissing(dvals_i))))
-            panel_data_max = isempty(dvals_i) ? ymin + 1.0 : maximum(dvals_i)
-            panel_band_max = show_band ? maximum(q_high_draw[i, :]) : maximum(q_med_draw[i, :])
-            panel_top = max(panel_data_max, panel_band_max)
+            # OLD
+            #dvals_i = ndims(local_data) == 3 ? vec(local_data[i, :, :]) : vec(local_data[i, :])
+            #dvals_i = Float64.(filter(isfinite, collect(skipmissing(dvals_i))))
+            #panel_data_max = isempty(dvals_i) ? ymin + 1.0 : maximum(dvals_i)
+            #panel_band_max = show_band ? maximum(q_high_draw[i, :]) : maximum(q_med_draw[i, :])
+            #panel_top = max(panel_data_max, panel_band_max)
 
-            floor = isnothing(clamp_floor) ? ymin : clamp_floor
-            panel_low = floor - lower_headroom_frac * max(panel_top - floor, 1e-9)
-            if !(panel_top > panel_low) || !isfinite(panel_top)
-                panel_top = floor + 1.0
-            end
-            Makie.ylims!(axs[i], panel_low, panel_top)
+            #floor = isnothing(clamp_floor) ? ymin : clamp_floor
+            #panel_low = floor - lower_headroom_frac * max(panel_top - floor, 1e-9)
+            #if !(panel_top > panel_low) || !isfinite(panel_top)
+            #    panel_top = floor + 1.0
+            #end
+            #Makie.ylims!(axs[i], panel_low, panel_top)
+            nothing
         end
 
         if save_path !== nothing
