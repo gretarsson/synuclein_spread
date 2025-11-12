@@ -4,7 +4,7 @@ here we create a folder of analysis plots of interence results
 using PathoSpread
 
 # simulation to analyze
-simulation = "igs_DIFF_RETRO_C2"
+simulation = "igs_DIFF_ANTERO_C1"
 
 # read file 
 inference_obj = load_inference("simulations/"*simulation*".jls")

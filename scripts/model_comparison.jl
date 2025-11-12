@@ -8,7 +8,8 @@ Sn = 300
 group_cells = false  # weight each region x timepoint equally in WAIC
 
 use_mean = false
-mean_suffix = use_mean ? "mean_" : ""
+#mean_suffix = use_mean ? "mean_" : ""
+mean_suffix = "igs_"
 
 # Read inference results
 simulations_list = [
