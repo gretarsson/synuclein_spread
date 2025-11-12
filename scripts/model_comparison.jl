@@ -405,7 +405,8 @@ for (i,(simulations, model_names, prefix, fig_title)) in enumerate(zip(simulatio
                 align=(:left,:bottom),
                 offset=(14, 10),          # ← right & up
                 fontsize=30,
-                color=:black)
+                color=:black,
+                )
         end
     end
 
@@ -413,13 +414,21 @@ for (i,(simulations, model_names, prefix, fig_title)) in enumerate(zip(simulatio
     Makie.ylims!(ax, 0.5, length(model_names) + 0.9)
 
     # compute tight bounds from the drawn bars
+    # OLD
+    #xmax = maximum(delta_waic_paired .+ 2 .* se_delta_waic)
+    #xmin = min(0.0, minimum(delta_waic_paired .- 2 .* se_delta_waic))
+    ## add a sensible right pad (>= 50 units or 6% of span)
+    #span = max(xmax - xmin, 1e-9)
+    #pad  = max(0.1 * span, 50.0)
+    #Makie.xlims!(ax, xmin-0.15*pad, xmax + pad)
+
+    # NEW
     xmax = maximum(delta_waic_paired .+ 2 .* se_delta_waic)
     xmin = min(0.0, minimum(delta_waic_paired .- 2 .* se_delta_waic))
-    # add a sensible right pad (>= 50 units or 6% of span)
-    span = max(xmax - xmin, 1e-9)
-    pad  = max(0.25 * span, 50.0)
-    Makie.xlims!(ax, xmin-0.15*pad, xmax + pad)
-
+    txt      = @sprintf("%.0f ± %.0f", xmax, 2 * maximum(se_delta_waic))
+    char_pad = 0.012 * length(txt) * (xmax - xmin)
+    Makie.xlims!(ax, xmin-0.05*(xmax-xmin), xmax + char_pad)
+    
     # save figure
     fig
     save(fig_file, fig)
