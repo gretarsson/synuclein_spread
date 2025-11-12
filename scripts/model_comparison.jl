@@ -246,18 +246,33 @@ for (i,(simulations, model_names, prefix, fig_title)) in enumerate(zip(simulatio
     df2 = df[:, ordered]
 
     # ─── print LaTeX table with mixed formatting ───────────────────────────────────
-    pretty_table(
-    df2;
-    formatters = (
-        ft_printf("%s",        1),     # Model (string)
-        ft_printf("%7.0f",   2:4),     # WAIC, AIC, BIC  (zero‑decimal floats)
-        ft_printf("%.2e",    5:6),     # MSE, ParCor     (sci‑notation 6 d.p.)
-        ft_printf("%7.0f",   7:9),     # ∆WAIC, ∆AIC, ∆BIC (zero‑decimal floats)
-        ft_printf("%.2e",     10),     # ∆MSE           (sci‑notation 6 d.p.)
-        ft_printf("%.2e",     11)      # ∆ParCor        (sci‑notation 4 d.p.)
-    ),
-    backend = Val(:latex),
-    )
+    #pretty_table(
+    #df2;
+    #formatters = (
+    #    ft_printf("%s",        1),     # Model (string)
+    #    ft_printf("%7.0f",   2:4),     # WAIC, AIC, BIC  (zero‑decimal floats)
+    #    ft_printf("%.2e",    5:6),     # MSE, ParCor     (sci‑notation 6 d.p.)
+    #    ft_printf("%7.0f",   7:9),     # ∆WAIC, ∆AIC, ∆BIC (zero‑decimal floats)
+    #    ft_printf("%.2e",     10),     # ∆MSE           (sci‑notation 6 d.p.)
+    #    ft_printf("%.2e",     11)      # ∆ParCor        (sci‑notation 4 d.p.)
+    #),
+    #backend = Val(:latex),
+    #)
+    open("figures/model_comparison/$(prefix)_table.txt", "w") do io
+        pretty_table(io, df2;
+            formatters = (
+                ft_printf("%s",        1),     # Model
+                ft_printf("%7.0f",   2:4),     # WAIC, AIC, BIC
+                ft_printf("%.2e",    5:6),     # MSE, ParCor
+                ft_printf("%7.0f",   7:9),     # ΔWAIC, ΔAIC, ΔBIC
+                ft_printf("%.2e",     10),     # ΔMSE
+                ft_printf("%.2e",     11)      # ΔParCor
+            ),
+            backend = Val(:latex),
+        )
+    end
+
+
 
     # PAIRED WAIC COMPARISON
     # ─── Paired ΔWAIC ± SE(Δ) vs the best model ───────────────────────────────────

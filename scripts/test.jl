@@ -11,6 +11,27 @@ w_file = "data/W_labeled_filtered.csv"
 
 data, timepoints = process_pathology(data_file; W_csv=w_file)
 
+# FIND TOP N REGIONS WITH HIGHEST MEAN PATHOLOGY
+meandata = PathoSpread.mean3(data)
+# Step 1: compute per-row maxima (ignoring missings)
+rowmax = [maximum(skipmissing(meandata[i, :])) for i in 1:size(meandata, 1)]
+# Step 2: mask out rows that are entirely missing
+mask = .!ismissing.(rowmax)
+valid_idx = findall(mask)
+# Step 3: sort valid rows by descending max value
+sorted_idx = sort(valid_idx; by = i -> rowmax[i], rev = true)
+# Step 4: take top N rows
+N = 4
+top_idx = sorted_idx[1:min(N, length(sorted_idx))]
+top_vals = rowmax[top_idx]
+println("Top $N regions with highest peak pathology:")
+for (i, val) in zip(top_idx, top_vals)
+    println("Row $i → max = $val")
+end
+
+
+
+
 
 # Read Laplacians
 Lr, N, labels = read_W(w_file, direction=:retro)
