@@ -2076,7 +2076,7 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
     fs  = Vector{Any}(undef, N)
     axs = Vector{Any}(undef, N)
     for i in 1:N
-        f  = CairoMakie.Figure()
+        f  = CairoMakie.Figure(size=(650,400))
         ax = CairoMakie.Axis(
             f[1,1];
             title  = "$(labels[i])",
@@ -2085,6 +2085,11 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
             limits = truncate_at_zero ? (nothing, nothing, ymin, nothing) :
                                         (nothing, nothing, nothing, nothing)
         )
+        # ensure margins and size are all the same
+        #ax.leftmargin   = 65
+        #ax.rightmargin  = 20
+        #ax.topmargin    = 10
+        #ax.bottommargin = 50
         fs[i]  = f
         axs[i] = ax
     end
@@ -3064,7 +3069,7 @@ function predicted_observed_marked(inference;
     # Add R² label (optional)
     if show_r2 && isfinite(r2_global)
         text!(ax, 0.05, 0.95, text=@sprintf("R² = %.3f", r2_global),
-              align=(:left,:top), space=:relative, color=:black, fontsize=20)
+              align=(:left,:top), space=:relative, color=:black, fontsize=28)
     end
 
     if !isempty(save_path)
