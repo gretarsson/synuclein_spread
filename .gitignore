@@ -4,5 +4,6 @@
 /logs/*
 /figures/*
 /publication/*
+/results/*
 .DS_Store
 scripts/.DS_Store
