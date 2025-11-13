@@ -72,7 +72,7 @@ exec stdbuf -oL -eL julia --project=. scripts/infer_this_main.jl \
     ${MODEL} data/W_labeled_filtered.csv data/total_path.csv \
     --retrograde=true \
     --n_chains=1 \
-    --seed_indices='[\$i]' \
+    --seed_indices="[\$i]" \
     --infer_seed=true \
     --out_file=\$OUT_FILE
 EOF
