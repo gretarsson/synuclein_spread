@@ -5,7 +5,7 @@ Random.seed!(12345)
 
 
 mode = :shuffle
-sim_true = "simulations/DIFFGA_seed_74.jls"
+sim_true = "simulations/DIFFGA_RETRO.jls"
 waic_cache_file = "results/waic_cache/DIFFGA_$(String(mode))_waic_all.jls"
 waic_cache_dir  = "results/waic_cache"
 out_pdf = "figures/model_comparison/nulls/DIFFGA_$(String(mode))_WAIC_box.pdf"
@@ -108,7 +108,7 @@ keep = falses(length(sim_paths))
     sp = sim_paths[i]
     inf = load_inference(sp)
     # (1) convergence (as you prefer, e.g., is_converged or is_converged_param)
-    conv = is_converged_param(inf; param_index=1, rhat_thresh=1.4, ess_thresh=100)
+    conv = is_converged_param(inf; param_index=2, rhat_thresh=1.1, ess_thresh=100)
 
     # (2) prior update
     if mode == :seed
@@ -130,7 +130,7 @@ println("→ Using $(length(waic_nulls)) converged WAICs out of $(length(waic_di
 
 # Load true model WAIC
 true_inf = load_inference(sim_true)
-true_waic, _, _, _, _, _ = compute_waic(true_inf; S=1000)
+true_waic, _, _, _, _, _ = compute_waic(true_inf; S=300)
 
 
 
@@ -145,25 +145,25 @@ fig = Figure(size=(500,600));
 ax = Axis(fig[1,1];
     ylabel="WAIC",
     xticks=([], []),
-    titlesize=26, ylabelsize=34, yticklabelsize=24)
+    titlesize=26, ylabelsize=36, yticklabelsize=32)
 
 # --- Boxplot ---
 group = ones(length(waic_nulls))
 boxplot!(ax, group, waic_nulls;
     color=c_null, mediancolor=:black,
-    whiskercolor=:black, whiskerlinewidth=5, medianlinewidth=5,
+    whiskercolor=:black, whiskerlinewidth=10, medianlinewidth=10,
     strokecolor=:black, outliercolor=:transparent,
-    show_notch=false, show_outliers=false, width=0.2)
+    show_notch=false, show_outliers=false, width=0.25)
 
 # --- Scatter individual null points ---
 scatter!(ax, 1 .+ 0.1 .* (rand(length(waic_nulls)) .- 0.5),
-         waic_nulls; color=:black, alpha=0.7, markersize=30)
+         waic_nulls; color=:black, alpha=0.7, markersize=35)
 
 # --- True model ---
 #scatter!(ax, [1.0], [true_waic];
 #         color=c_true, marker=:star5, markersize=36)
 scatter!(ax, [1.0], [true_waic];
-         color=c_true, markersize=30)
+         color=c_true, markersize=40)
 
 # --- Adjust limits (automatic zoom) ---
 #Makie.autolimits!(ax)
