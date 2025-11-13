@@ -8,7 +8,7 @@ simulations = ["igs_DIFF_EUCL", "igs_DIFF_ANTERO", "igs_DIFF_RETRO", "igs_DIFF_B
                "DIFFG_EUCL", "DIFFG_ANTERO", "DIFFG_RETRO", "DIFFG_BIDIR",
                "DIFFGA_EUCL", "DIFFGA_ANTERO_CUT", "DIFFGA_RETRO", "DIFFGA_BIDIR",
 ]
-simulations = ["DIFFGAM_RETRO"]
+#simulations = ["DIFFGAM_RETRO"]
 
 for simulation in simulations
     # simulation to analyze
