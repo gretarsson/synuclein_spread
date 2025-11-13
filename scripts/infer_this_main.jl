@@ -217,7 +217,6 @@ function main(parsed)
             data = Array(reshape(data, size(data,1), size(data,2), 1))
         end
         if ignore_seed  # set seed region data to missing, if told so
-            display("IT WORKED")
             data[seed_indices, :, :] .= missing
         end
         # STRUCTURAL DATA
