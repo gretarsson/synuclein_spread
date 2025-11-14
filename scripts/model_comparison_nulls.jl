@@ -4,7 +4,7 @@ using Random
 Random.seed!(12345)
 
 
-mode = :shuffle
+mode = :seed
 sim_true = "simulations/DIFFGA_RETRO.jls"
 waic_cache_file = "results/waic_cache/DIFFGA_$(String(mode))_waic_all.jls"
 waic_cache_dir  = "results/waic_cache"
@@ -117,7 +117,8 @@ keep = falses(length(sim_paths))
         updated = true
     end
 
-    keep[i] = conv && updated
+    #keep[i] = conv && updated
+    keep[i] = updated 
     #if mode == :shuffle  # don't bother with this for shuffle
     #    keep[i] = true
     #end
@@ -220,9 +221,9 @@ if mode == :seed
     # Apply and save clipped version
     Makie.ylims!(ax, lo_padded, hi_padded)
     out_pdf_clipped = replace(out_pdf, ".pdf" => "_clipped.pdf")
-    save(out_pdf_clipped, fig)
-    println("Saved clipped WAIC plot → $out_pdf_clipped")
-    fig
+    #save(out_pdf_clipped, fig)
+    #println("Saved clipped WAIC plot → $out_pdf_clipped")
+    #fig
 end
 
 # ───────────────────────────────────────────────────────────────
@@ -252,7 +253,7 @@ if mode == :seed
     for sp in sim_paths
         inf = load_inference(sp)
         if haskey(inf, "seed_idx")
-            push!(seed_indices, inf["seed_idx"])
+            push!(seed_indices, inf["seed_idx"][1])
         else
             @warn "Missing seed_idx in $sp — skipping"
         end
@@ -263,12 +264,15 @@ if mode == :seed
 
     # Compute all-pairs shortest paths (using edge weights as distances)
     D = floyd_warshall_shortest_paths(g).dists
+    display(D)
 
     # Compute distance to true seed for each null model
-    dist_to_ref = [D[ref_idx, s] for s in seed_indices]
+    dist_to_ref = [D[ref_idx, s][1] for s in seed_indices]
 
     # Compute ΔWAIC relative to true model
     delta_waic = waic_nulls .- true_waic
+    @info dist_to_ref
+    @info delta_waic
 
     # ─── Plot relationship ─────────────────────────────────────
     out_pdf2 = replace(out_pdf, "_WAIC_box.pdf" => "_seed_distance_vs_WAIC.pdf")
@@ -287,83 +291,83 @@ if mode == :seed
     println("Saved seed-distance vs ΔWAIC figure → $out_pdf2")
 
     # --- IDENTIFY NEARLY IDENTICAL WAIC VALUES ---
-    tol = 1e2  # tolerance for considering two WAICs equal (tune as needed)
+    #tol = 1e2  # tolerance for considering two WAICs equal (tune as needed)
 
-    # Pair each seed index with its WAIC
-    pairs = collect(zip(seed_indices, waic_nulls))
+    ## Pair each seed index with its WAIC
+    #pairs = collect(zip(seed_indices, waic_nulls))
 
-    # Sort by WAIC to make clusters easier to see
-    sort!(pairs, by = x -> x[2])
+    ## Sort by WAIC to make clusters easier to see
+    #sort!(pairs, by = x -> x[2])
 
-    println("\nChecking for nearly identical WAICs (tolerance = $(tol)):")
+    #println("\nChecking for nearly identical WAICs (tolerance = $(tol)):")
 
-    duplicate_groups = Vector{Vector{Int}}()
-    current_group = [first(pairs)[1]]
-    prev_waic = first(pairs)[2]
+    #duplicate_groups = Vector{Vector{Int}}()
+    #current_group = [first(pairs)[1]]
+    #prev_waic = first(pairs)[2]
 
-    for (seed, w) in pairs[2:end]
-        if abs(w - prev_waic) < tol
-            push!(current_group, seed)
-        else
-            if length(current_group) > 1
-                push!(duplicate_groups, copy(current_group))
-            end
-            current_group = [seed]
-            prev_waic = w
-        end
-    end
-    if length(current_group) > 1
-        push!(duplicate_groups, current_group)
-    end
+    #for (seed, w) in pairs[2:end]
+    #    if abs(w - prev_waic) < tol
+    #        push!(current_group, seed)
+    #    else
+    #        if length(current_group) > 1
+    #            push!(duplicate_groups, copy(current_group))
+    #        end
+    #        current_group = [seed]
+    #        prev_waic = w
+    #    end
+    #end
+    #if length(current_group) > 1
+    #    push!(duplicate_groups, current_group)
+    #end
 
-    if isempty(duplicate_groups)
-        println("No near-identical WAIC groups found.")
-    else
-        println("Found $(length(duplicate_groups)) near-identical WAIC groups:")
-        for (i, grp) in enumerate(duplicate_groups)
-            wval = pairs[findfirst(x -> x[1] == grp[1], pairs)][2]
-            println("  Group $i: seeds = $(grp)  → WAIC ≈ $(round(wval, digits=3))")
-        end
-    end
+    #if isempty(duplicate_groups)
+    #    println("No near-identical WAIC groups found.")
+    #else
+    #    println("Found $(length(duplicate_groups)) near-identical WAIC groups:")
+    #    for (i, grp) in enumerate(duplicate_groups)
+    #        wval = pairs[findfirst(x -> x[1] == grp[1], pairs)][2]
+    #        println("  Group $i: seeds = $(grp)  → WAIC ≈ $(round(wval, digits=3))")
+    #    end
+    #end
 
-    # ────────────────────────────────────────────────
-    # Compute pathology strength per region
-    # ────────────────────────────────────────────────
-    data_file = "data/total_path.csv"
-    w_file = "data/W_labeled_filtered.csv"
+    ## ────────────────────────────────────────────────
+    ## Compute pathology strength per region
+    ## ────────────────────────────────────────────────
+    #data_file = "data/total_path.csv"
+    #w_file = "data/W_labeled_filtered.csv"
 
-    data, timepoints = process_pathology(data_file; W_csv=w_file)
-    # data has dimensions: (subjects, timepoints, regions)
-    println(size(data))
+    #data, timepoints = process_pathology(data_file; W_csv=w_file)
+    ## data has dimensions: (subjects, timepoints, regions)
+    #println(size(data))
 
-    # Compute max pathology per region (across all subjects/timepoints)
-    max_path = [
-        maximum(skipmissing(data[i, :, :])) for i in 1:size(data, 1)
-    ]
+    ## Compute max pathology per region (across all subjects/timepoints)
+    #max_path = [
+    #    maximum(skipmissing(data[i, :, :])) for i in 1:size(data, 1)
+    #]
     
 
-    # Extract max_path for each seed
-    seed_max_path = max_path[seed_indices]
+    ## Extract max_path for each seed
+    #seed_max_path = max_path[seed_indices]
 
-    # ────────────────────────────────────────────────
-    # Plot 2: ΔWAIC vs. max pathology in seeded region
-    # ────────────────────────────────────────────────
-    out_pdf3 = replace(out_pdf, "_WAIC_box.pdf" => "_seed_maxpath_vs_WAIC.pdf")
-    fig3 = Figure(size=(700,500))
-    ax3 = Axis(fig3[1,1];
-        xlabel = "Max pathology in seeded region",
-        ylabel = "ΔWAIC (seed − true)",
-        titlesize = 28, xlabelsize = 24, ylabelsize = 24,
-        yticklabelsize = 18, xticklabelsize = 18)
-    scatter!(ax3, seed_max_path, delta_waic;
-             color = RGBf(0.2, 0.2, 0.2), markersize = 12, alpha = 0.8)
-    mkpath(dirname(out_pdf3))
-    save(out_pdf3, fig3)
-    println("Saved seed-maxpath vs ΔWAIC figure → $out_pdf3")
+    ## ────────────────────────────────────────────────
+    ## Plot 2: ΔWAIC vs. max pathology in seeded region
+    ## ────────────────────────────────────────────────
+    #out_pdf3 = replace(out_pdf, "_WAIC_box.pdf" => "_seed_maxpath_vs_WAIC.pdf")
+    #fig3 = Figure(size=(700,500))
+    #ax3 = Axis(fig3[1,1];
+    #    xlabel = "Max pathology in seeded region",
+    #    ylabel = "ΔWAIC (seed − true)",
+    #    titlesize = 28, xlabelsize = 24, ylabelsize = 24,
+    #    yticklabelsize = 18, xticklabelsize = 18)
+    #scatter!(ax3, seed_max_path, delta_waic;
+    #         color = RGBf(0.2, 0.2, 0.2), markersize = 12, alpha = 0.8)
+    #mkpath(dirname(out_pdf3))
+    #save(out_pdf3, fig3)
+    #println("Saved seed-maxpath vs ΔWAIC figure → $out_pdf3")
 
-    # --- Optional: print correlation coefficient ---
-    println("\nCorrelation between ΔWAIC and max pathology: ",
-        round(cor(seed_max_path, delta_waic), digits=3))
+    ## --- Optional: print correlation coefficient ---
+    #println("\nCorrelation between ΔWAIC and max pathology: ",
+    #    round(cor(seed_max_path, delta_waic), digits=3))
 
 end
 

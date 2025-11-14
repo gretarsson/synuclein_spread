@@ -10,6 +10,7 @@ simulations = ["igs_DIFF_EUCL", "igs_DIFF_ANTERO", "igs_DIFF_RETRO", "igs_DIFF_B
 ]
 #simulations = ["DIFFGAM_RETRO"]
 
+
 for simulation in simulations
     # simulation to analyze
     display("Plotting simulations: $simulation")

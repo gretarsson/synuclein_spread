@@ -4,8 +4,8 @@ using PathoSpread, Serialization, Statistics, Distributed, MCMCChains
 # ───────────────────────────────────────────────────────────────
 # SETTINGS
 # ───────────────────────────────────────────────────────────────
-mode = :shuffle
-S = 1000  # number of posterior samples per WAIC computation
+mode = :seed
+S = 300  # number of posterior samples per WAIC computation
 addprocs(8)  # adjust to available cores
 
 @everywhere using PathoSpread, Serialization, Statistics, MCMCChains
