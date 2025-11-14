@@ -18,6 +18,26 @@ function DIFFG(du,u,p,t;L=L,factors=(1.,1.))
 
     du .= -ρ*L*u .+ α .* u .* (β .- u)  
 end
+function DIFFG_comm_in(du,u,p,t;L=L,factors=(1.,1.), C=nothing)
+    L, _ = L
+    kα,kβ = factors 
+    ρ = p[1]
+    α = kα * p[2]
+    βi = kβ .* p[3]
+    βs = p[4]
+
+    du .= -ρ*L*u .+ α .* u .* (βi .+ βs.*C .- u)  
+end
+function DIFFG_comm_out(du,u,p,t;L=L,factors=(1.,1.), C=nothing)  # this is an exact copy of DIFFG_comm_in
+    L, _ = L
+    kα,kβ = factors 
+    ρ = p[1]
+    α = kα * p[2]
+    βi = kβ .* p[3]
+    βs = p[4]
+
+    du .= -ρ*L*u .+ α .* u .* (βi .+ βs.*C .- u)  
+end
 function DIFFGA(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
     p = factors .* p
@@ -32,6 +52,38 @@ function DIFFGA(du,u,p,t;L=L,factors=(1.,1.))
 
     du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
     du[(N+1):(2*N)] .=  d .* x  
+end
+function DIFFGA_comm_in(du,u,p,t;L=L,factors=(1.,1.), C=nothing)
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    βi = p[3]
+    βs = p[4]
+    d = p[5]
+
+    # split the state vector
+    x = @view u[1    :  N]
+    y = @view u[N+1  : 2*N]
+
+    du[1:N] .= -ρ*L*x .+ α .* x .* (βi .+ βs.*C .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d.*C .* x  
+end
+function DIFFGA_comm_out(du,u,p,t;L=L,factors=(1.,1.), C=nothing)
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    βi = p[3]
+    βs = p[4]
+    d = p[5]
+
+    # split the state vector
+    x = @view u[1    :  N]
+    y = @view u[N+1  : 2*N]
+
+    du[1:N] .= -ρ*L*x .+ α .* x .* (βi .+ βs.*C .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d.*C .* x  
 end
 function DIFFGAM(du,u,p,t;L=L,factors=(1.,1.))
     L,N = L
@@ -193,4 +245,8 @@ const odes = Dict("DIFF" => DIFF,
             "DIFFG_bilateral" => DIFFG_bilateral,
             "DIFFGA_bilateral" => DIFFGA_bilateral,
             "DIFFGAM_bilateral" => DIFFGAM_bilateral,
+            "DIFFG_comm_in" => DIFFG_comm_in,
+            "DIFFG_comm_out" => DIFFG_comm_out,
+            "DIFFGA_comm_in" => DIFFGA_comm_in,
+            "DIFFGA_comm_out" => DIFFGA_comm_out,
             )

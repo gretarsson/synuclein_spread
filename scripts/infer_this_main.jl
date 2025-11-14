@@ -274,7 +274,9 @@ function main(parsed)
         factors    = factors,
         u0         = u0,
         timepoints = timepoints,
+        seed_indices = seed_indices  # needed in case of _comm_in/out models
     )
+    flush(stdout)
 
     # INFER
     inference = infer(prob, 

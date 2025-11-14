@@ -3,7 +3,7 @@ set -euo pipefail  # exit on first error
 
 # DIFFG test
 #julia --project=. scripts/infer_this_main.jl DIFFGA data/W_labeled_filtered.csv  data/total_path.csv --retrograde=true --n_chains=1 --mean_data --out_file=simulations/test.jls 
-julia --project=. scripts/infer_this_main.jl DIFFGA data/W_labeled_filtered.csv  data/total_path.csv --retrograde=true --n_chains=1 --seed_indices="[53,55,56]" --out_file=simulations/test.jls --ignore_seed
+julia --project=. scripts/infer_this_main.jl DIFFGA_comm_in data/W_labeled_filtered.csv  data/total_path.csv --retrograde=true --n_chains=1 --seed_indices="[53,55,56]" --out_file=simulations/test.jls 
 
 # run inference for all models with retrograde transport
 #julia --project=. scripts/infer_this_main.jl DIFF  data/W_labeled_filtered.csv  data/total_path.csv --retrograde=true --n_chains=4 --out_file=DIFF_RETRO.jls

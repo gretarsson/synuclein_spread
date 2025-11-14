@@ -145,6 +145,28 @@ function get_priors(ode::String, K::Int)
       )
   
 
+    # ———————————————————————————————
+    # Communicability variants
+    # ———————————————————————————————
+    elseif ode === "DIFFG_comm_in" || ode === "DIFFG_comm_out"
+      return OrderedDict{String,Any}(
+        # global parameters
+        "rho"      => truncated(Normal(0,0.1), lower=0),
+        "alpha"    => truncated(Normal(0,0.1), lower=0),
+        "beta_i"      => Normal(0,1),
+        "beta_s"    => Normal(0,1),
+      )
+    elseif ode === "DIFFGA_comm_in" || ode === "DIFFGA_comm_out"
+      return OrderedDict{String,Any}(
+        # global parameters
+        "rho"      => truncated(Normal(0,0.1), lower=0),
+        "alpha"    => truncated(Normal(0,0.1), lower=0),
+        "beta_i"      => Normal(0,1),
+        "beta_s"    => Normal(0,1),
+        "d"    => truncated(Normal(0,0.1), lower=0),
+      )
+
+
     else
         error("No priors defined for ODE: $ode")
     end

@@ -3003,6 +3003,37 @@ function build_region_groups(labels::Vector{String})
     return [ gid[b] for b in bases ]
 end
 
+
+function communicability(W; degree="in")
+    # dimensions
+    N = size(W, 1)
+    @assert size(W,2) == N "W must be square"
+
+    # degrees
+    col_sums = sum(W, dims=1)[:]   # out-degree if rows→cols
+    row_sums = sum(W, dims=2)[:]   # in-degree
+
+    # choose degree
+    d = degree == "in"  ? row_sums :
+        degree == "out" ? col_sums :
+        error("degree must be \"in\" or \"out\"")
+
+    # handle zeros to avoid singular inverse sqrt
+    if any(d .== 0)
+        error("Some nodes have zero degree for degree=\"$degree\"; cannot compute D^{-1/2}")
+    end
+
+    # diagonal and inverse sqrt diagonal
+    Dinv2 = Diagonal(1 ./ sqrt.(d))
+
+    # normalized adjacency
+    A_norm = Dinv2 * W * Dinv2
+
+    # communicability = exp( normalized matrix )
+    return exp(A_norm)
+end
+
+
 """
     make_ode_problem(ode_fn; labels, Ltuple, factors, u0, timepoints, alg=Tsit5())
 
@@ -3012,13 +3043,28 @@ Builds an ODEProblem for either plain or `_bilateral` ODEs:
 - Packs `Ltuple` and `factors` into the keyword args.
 - Sets up the rhs closure and tspan.
 """
-function make_ode_problem(ode_fn; labels, Ltuple, factors, u0, timepoints)
+function make_ode_problem(ode_fn; labels, Ltuple, factors, u0, timepoints, seed_indices=nothing)
     # Base kwargs
     kwargs = (; L = Ltuple, factors = factors)
 
     # Inject region_group only for bilateral models
     if occursin("_bilateral", string(ode_fn))
         kwargs = merge(kwargs, (; region_group = build_region_groups(labels)))
+    end
+
+    # add communicability parameters for network-dependent parameters
+    if occursin("_comm", string(ode_fn))
+        Lmat, N = Ltuple
+        for i in 1:N
+            Lmat[i,i] = 0.0
+        end
+        W = -Lmat
+        degree = occursin("_comm_in", string(ode_fn)) ? "in" : "out"
+        C = communicability(W; degree=degree)
+        Cs = C[:,seed_indices]
+        Cs = mean(Cs,dims=2)  # average communicability from seed -> nodes
+        Cs = Cs ./ maximum(Cs)  # normalize so largest value is 1.0
+        kwargs = merge(kwargs, (; C=Cs))
     end
 
     # Build the RHS closure
