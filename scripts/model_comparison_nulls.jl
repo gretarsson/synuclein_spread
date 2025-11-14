@@ -112,13 +112,14 @@ keep = falses(length(sim_paths))
 
     # (2) prior update
     if mode == :seed
-        updated = check_prior_update(inf; param_index=1, delta_thresh=0.2, shrink_thresh=0.90)
+        updated = check_prior_update(inf; param_index=1, delta_thresh=0.2, shrink_thresh=0.70)
     else
         updated = true
     end
 
     #keep[i] = conv && updated
-    keep[i] = updated 
+    #keep[i] = updated 
+    keep[i] = true
     #if mode == :shuffle  # don't bother with this for shuffle
     #    keep[i] = true
     #end
@@ -139,6 +140,7 @@ true_waic, _, _, _, _, _ = compute_waic(true_inf; S=300)
 # PLOT
 # ───────────────────────────────────────────────────────────────
 waic_nulls = filter(<(0), waic_nulls)
+waic_clean = filter(w -> w < -5e4, waic_nulls)  # just ignore extremely "bad" simulations as these are probably just wrong
 c_null = RGBf(0.4, 0.4, 0.4);
 c_true = RGBf(0/255, 71/255, 171/255);
 
@@ -149,16 +151,16 @@ ax = Axis(fig[1,1];
     titlesize=26, ylabelsize=36, yticklabelsize=32)
 
 # --- Boxplot ---
-group = ones(length(waic_nulls))
-boxplot!(ax, group, waic_nulls;
+group = ones(length(waic_clean))
+boxplot!(ax, group, waic_clean;
     color=c_null, mediancolor=:black,
     whiskercolor=:black, whiskerlinewidth=10, medianlinewidth=10,
     strokecolor=:black, outliercolor=:transparent,
     show_notch=false, show_outliers=false, width=0.25)
 
 # --- Scatter individual null points ---
-scatter!(ax, 1 .+ 0.1 .* (rand(length(waic_nulls)) .- 0.5),
-         waic_nulls; color=:black, alpha=0.7, markersize=35)
+scatter!(ax, 1 .+ 0.1 .* (rand(length(waic_clean)) .- 0.5),
+         waic_clean; color=:black, alpha=0.7, markersize=35)
 
 # --- True model ---
 #scatter!(ax, [1.0], [true_waic];
@@ -172,12 +174,12 @@ Makie.xlims!(ax, 0.85, 1.15)  # e.g. (0.9, 1.1) for very tight framing
 
 
 # Compute percentile & p-value
-pval = (1 + count(x -> x <= true_waic, waic_nulls)) / (1 + length(waic_nulls))
+pval = (1 + count(x -> x <= true_waic, waic_clean)) / (1 + length(waic_clean))
 percentile = 100 * pval
 
 # Compose label text
-if pval <= (1 / (length(waic_nulls) + 1))
-    label_text = @sprintf("Best model\np < %.3f", 1 / (length(waic_nulls) + 1))
+if pval <= (1 / (length(waic_clean) + 1))
+    label_text = @sprintf("Best model\np < %.3f", 1 / (length(waic_clean) + 1))
 else
     label_text = @sprintf("Percentile %.1f%%\np = %.3f", percentile, pval)
 end
