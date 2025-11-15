@@ -3,7 +3,7 @@ here we create a folder of analysis plots of interence results
 =#
 using PathoSpread
 
-simulation = "DIFFGA_RETRO"
+simulation = "DIFFGA_comm_in_RETRO"
 display("Plotting simulations: $simulation")
 
 # read file 

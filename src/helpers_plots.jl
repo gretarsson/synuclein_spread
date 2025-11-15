@@ -105,6 +105,7 @@ function predicted_observed(inference; save_path="", plotscale=log10)
         factors    = factors,
         u0         = u0,
         timepoints = timepoints,
+        seed_indices = inference["seed_idx"],
     )
 
     # find posterior mode
@@ -363,6 +364,7 @@ function plot_retrodiction(inference; save_path=nothing, N_samples=200,
         factors    = factors,
         u0         = inference["u0"],
         timepoints = tgrid,
+        seed_indices = inference["seed_idx"],
     )
 
     # Figures & axes
@@ -688,6 +690,7 @@ function plot_calibration(inference;
         factors    = factors,
         u0         = inference["u0"],
         timepoints = tgrid,
+        seed_indices = inference["seed_idx"],
     )
 
     # Posterior draws
@@ -985,6 +988,7 @@ function plot_calibration_cross(inference;
         factors    = factors,
         u0         = inference["u0"],
         timepoints = tgrid,
+        seed_indices = inference["seed_idx"],
     )
 
     # Posterior draws
@@ -1349,6 +1353,7 @@ function plot_ppc_coverages(inference;
         factors    = factors,
         u0         = inference["u0"],
         timepoints = tgrid,
+        seed_indices = inference["seed_idx"],
     )
 
     # Posterior draws
@@ -1568,6 +1573,7 @@ function plot_ppc_coverage_by_region(inference;
         factors    = factors,
         u0         = inference["u0"],
         timepoints = tgrid,
+        seed_indices = inference["seed_idx"],
     )
 
     # Posterior samples
@@ -2069,6 +2075,7 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         factors    = factors,
         u0         = inference["u0"],
         timepoints = tgrid,
+        seed_indices = inference["seed_idx"],
     )
 
     # Figures & axes
@@ -2443,6 +2450,7 @@ function plot_calibration_cross2(inference;
         factors    = factors,
         u0         = inference["u0"],
         timepoints = tgrid,
+        seed_indices = inference["seed_idx"],
     )
 
     # Posterior draws & process trajectories
@@ -2971,6 +2979,7 @@ function predicted_observed_marked(inference;
         factors    = factors,
         u0         = u0,
         timepoints = timepoints,
+        seed_indices = inference["seed_idx"],
     )
     sol = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
     pred = Array(sol[sol_idxs, :])   # (R,T)
@@ -3149,6 +3158,7 @@ function plot_ppc_coverage_heldout(
         factors    = factors,
         u0         = inference["u0"],
         timepoints = full_tp,
+        seed_indices = inference["seed_idx"],
     )
 
     # --- Posterior samples ---
