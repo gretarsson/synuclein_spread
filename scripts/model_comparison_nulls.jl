@@ -3,6 +3,7 @@ using PathoSpread, Serialization, Statistics, CairoMakie, Colors, Printf, MCMCCh
 using Random
 Random.seed!(12345)
 
+tresh = -5.5*1e4 # WAIC threshold for plotting
 
 mode = :seed
 sim_true = "simulations/DIFFGA_RETRO.jls"
@@ -140,7 +141,7 @@ true_waic, _, _, _, _, _ = compute_waic(true_inf; S=300)
 # PLOT
 # ───────────────────────────────────────────────────────────────
 waic_nulls = filter(<(0), waic_nulls)
-waic_clean = filter(w -> w < -5e4, waic_nulls)  # just ignore extremely "bad" simulations as these are probably just wrong
+waic_clean = filter(w -> w < tresh, waic_nulls)  # just ignore extremely "bad" simulations as these are probably just wrong
 c_null = RGBf(0.4, 0.4, 0.4);
 c_true = RGBf(0/255, 71/255, 171/255);
 
