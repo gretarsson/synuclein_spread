@@ -166,6 +166,50 @@ function get_priors(ode::String, K::Int)
         "d"    => truncated(Normal(0,0.1), lower=0),
       )
 
+    # ———————————————————————————————
+    # Global variants
+    # ———————————————————————————————
+    elseif ode === "DIFFGA_global"
+        return OrderedDict{String,Any}(
+          # fixed‑size
+          "rho"      => truncated(Normal(0,0.1), lower=0),
+          "alpha"    => truncated(Normal(0,0.1), lower=0),
+          "beta"     => Normal(0,1) ,
+          "gamma"    => truncated(Normal(0,0.1), lower=0),
+        )
+    elseif ode === "DIFFG_global"
+        return OrderedDict{String,Any}(
+          # fixed‑size
+          "rho"      => truncated(Normal(0,0.1), lower=0),
+          "alpha"    => truncated(Normal(0,0.1), lower=0),
+          "beta"     => Normal(0,1),
+        )
+
+    # ———————————————————————————————
+    # Alpha variants
+    # ———————————————————————————————
+    elseif ode === "DIFFGA_alpha"
+        return OrderedDict{String,Any}(
+          # regional alpha
+          "rho"      => truncated(Normal(0,0.1), lower=0),
+          [ "alpha[$i]"  => truncated(Normal(0,0.1)) for i in 1:K ]...,
+
+          # global β’s
+          "beta"  => Normal(0,1),
+
+          # regional γ’s
+          [ "gamma[$i]" => truncated(Normal(0,0.1), lower=0) for i in 1:K ]...,
+        )
+
+    elseif ode === "DIFFG_alpha"
+        return OrderedDict{String,Any}(
+          # regional alpha
+          "rho"      => truncated(Normal(0,0.1), lower=0),
+          [ "alpha[$i]"  => truncated(Normal(0,0.1)) for i in 1:K ]...,
+
+          # global β
+          "beta"  => Normal(0,1),
+        )
 
     else
         error("No priors defined for ODE: $ode")

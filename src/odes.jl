@@ -18,6 +18,15 @@ function DIFFG(du,u,p,t;L=L,factors=(1.,1.))
 
     du .= -ρ*L*u .+ α .* u .* (β .- u)  
 end
+function DIFFG_global(du,u,p,t;L=L,factors=(1.,1.))
+    L, _ = L
+    kα,kβ = factors 
+    ρ = p[1]
+    α = kα * p[2]
+    β = kβ .* p[3]
+
+    du .= -ρ*L*u .+ α .* u .* (β .- u)  
+end
 function DIFFG_comm_in(du,u,p,t;L=L,factors=(1.,1.), C=nothing)
     L, _ = L
     kα,kβ = factors 
@@ -45,6 +54,21 @@ function DIFFGA(du,u,p,t;L=L,factors=(1.,1.))
     α = p[2]
     β = p[3:(N+2)]
     d = p[(N+3):(2*N+2)]
+
+    # split the state vector
+    x = @view u[1    :  N]
+    y = @view u[N+1  : 2*N]
+
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  d .* x  
+end
+function DIFFGA_global(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2]
+    β = p[3]
+    d = p[4]
 
     # split the state vector
     x = @view u[1    :  N]
@@ -232,6 +256,31 @@ function DIFFGAM_bilateral(du, u, p, t; L, factors = (1.,1.), region_group::Vect
 
     return nothing
 end
+function DIFFG_alpha(du,u,p,t;L=L,factors=(1.,1.))
+    L, N = L
+    kα,kβ = factors 
+    ρ = p[1]
+    α = kα * p[2:(N+1)]
+    β = kβ .* p[N+2]
+
+    du .= -ρ*L*u .+ α .* u .* (β .- u)  
+end
+function DIFFGA_alpha(du,u,p,t;L=L,factors=(1.,1.))
+    L,N = L
+    p = factors .* p
+    ρ = p[1]
+    α = p[2:(N+1)]
+    β = p[N+2]
+    d = p[(N+3):(2*N+2)]
+
+    # split the state vector
+    x = @view u[1    :  N]
+    y = @view u[N+1  : 2*N]
+
+    du[1:N] .= -ρ*L*x .+ α .* x .* (β .- y .- x)   # quick gradient computation
+    du[(N+1):(2*N)] .=  0 .* d .* x  
+
+end
 
 # Dictionary containing the ODEs
 const odes = Dict("DIFF" => DIFF,
@@ -249,4 +298,8 @@ const odes = Dict("DIFF" => DIFF,
             "DIFFG_comm_out" => DIFFG_comm_out,
             "DIFFGA_comm_in" => DIFFGA_comm_in,
             "DIFFGA_comm_out" => DIFFGA_comm_out,
+            "DIFFG_global" => DIFFG_global,
+            "DIFFGA_global" => DIFFGA_global,
+            "DIFFG_alpha" => DIFFG_alpha,
+            "DIFFGA_alpha" => DIFFGA_alpha,
             )

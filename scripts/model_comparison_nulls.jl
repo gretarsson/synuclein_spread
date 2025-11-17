@@ -1,11 +1,11 @@
 #!/usr/bin/env julia
 using PathoSpread, Serialization, Statistics, CairoMakie, Colors, Printf, MCMCChains, Serialization, StatsBase
 using Random
-Random.seed!(12345)
+Random.seed!(123456)
 
 tresh = -5.5*1e4 # WAIC threshold for plotting
 
-mode = :seed
+mode = :shuffle
 sim_true = "simulations/DIFFGA_RETRO.jls"
 waic_cache_file = "results/waic_cache/DIFFGA_$(String(mode))_waic_all.jls"
 waic_cache_dir  = "results/waic_cache"

@@ -291,6 +291,8 @@ function main(parsed)
                     alg=Tsit5(),  # from DifferentialEquations
                     abstol=1e-6,
                     reltol=1e-3,
+                    #abstol=1e-10,
+                    #reltol=1e-10,
                     adtype=AutoReverseDiff(),  # without compile much faster, from SciMLSensitivity
                     sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),  # from Turing/SciMLSensitivity
                     target_acceptance=target_acceptance,
