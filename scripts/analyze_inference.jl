@@ -8,7 +8,8 @@ simulations = ["igs_DIFF_EUCL", "igs_DIFF_ANTERO", "igs_DIFF_RETRO", "igs_DIFF_B
                "DIFFG_EUCL", "DIFFG_ANTERO", "DIFFG_RETRO", "DIFFG_BIDIR",
                "DIFFGA_EUCL", "DIFFGA_ANTERO_CUT", "DIFFGA_RETRO", "DIFFGA_BIDIR",
 ]
-simulations = ["DIFFG_comm_in_RETRO"]
+simulations = ["DIFFG_global", "DIFFGA_global", "DIFFG_alpha_C2", "DIFFGA_alpha_C3"]
+simulations = ["DIFFG_RETRO"]
 
 
 for simulation in simulations

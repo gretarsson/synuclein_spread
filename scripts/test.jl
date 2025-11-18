@@ -3,14 +3,14 @@ here we create a folder of analysis plots of interence results
 =#
 using PathoSpread
 
-simulation = "DIFFGA_comm_in_RETRO"
+simulation = "DIFFG_RETRO"
 display("Plotting simulations: $simulation")
 
 # read file 
 inference_obj = load_inference("simulations/"*simulation*".jls")
 
 # look at chains
-display(inference_obj["chain"])
+display(inference_obj["chain"][:,76,:])
 #new_chain = inference_obj["chain"][:,:,[2,3,4]]
 #inference_obj["chain"] = new_chain
 #save_inference("simulations/" * simulation * "_CUT.jls", inference_obj)

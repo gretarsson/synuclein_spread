@@ -3,7 +3,7 @@ using PathoSpread, Serialization, Statistics, CairoMakie, Colors, Printf, MCMCCh
 using Random
 Random.seed!(123456)
 
-tresh = -5.5*1e4 # WAIC threshold for plotting
+tresh = -5.8*1e4 # WAIC threshold for plotting
 
 mode = :shuffle
 sim_true = "simulations/DIFFGA_RETRO.jls"
@@ -199,35 +199,6 @@ mkpath(dirname(out_pdf))
 save(out_pdf, fig)
 fig
 
-# ───────────────────────────────────────────────
-# Save a clipped version (1–99 percentile y-range)
-# ───────────────────────────────────────────────
-if mode == :seed
-    # Sort WAIC values
-    sorted = sort(waic_nulls)
-
-    # Drop only the top 2%
-    n = length(sorted)
-    cut = max(1, round(Int, 0.05 * n))  # number of points to drop from top
-
-    hi = sorted[end - cut]               # empirical 98% cutoff
-    lo = minimum(sorted)                 # keep full lower range
-
-    # Add small padding (e.g. 5%)
-    span = hi - lo
-    pad = 0.05 * span
-    lo_padded = lo - pad
-    hi_padded = hi + pad
-
-    println("Clipping WAIC plot to [$(round(lo_padded,digits=1)), $(round(hi_padded,digits=1))] (with 5% padding)")
-
-    # Apply and save clipped version
-    Makie.ylims!(ax, lo_padded, hi_padded)
-    out_pdf_clipped = replace(out_pdf, ".pdf" => "_clipped.pdf")
-    #save(out_pdf_clipped, fig)
-    #println("Saved clipped WAIC plot → $out_pdf_clipped")
-    #fig
-end
 
 # ───────────────────────────────────────────────────────────────
 # ADDITIONAL ANALYSIS: Distance from true seed vs ΔWAIC
@@ -274,6 +245,9 @@ if mode == :seed
 
     # Compute ΔWAIC relative to true model
     delta_waic = waic_nulls .- true_waic
+    idx = findall(waic_nulls .< tresh)
+    delta_waic = delta_waic[idx]
+    dist_to_ref = dist_to_ref[idx]
     @info dist_to_ref
     @info delta_waic
 

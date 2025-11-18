@@ -27,7 +27,7 @@ Set a global plotting theme for both Makie (CairoMakie) and StatsPlots/Plots.
 Call this once (e.g., at the top of your script) to standardize fonts & sizes.
 """
 
-function setup_plot_theme!(; font="Arial", base=18, lw=2, markersize=10, dpi=300)
+function setup_plot_theme!(; font="Arial", base=18, lw=8, markersize=10, dpi=300)
     set_theme!(Theme(
         # ensure every text uses the same family
         fonts = (regular=font, bold=font, italic=font),

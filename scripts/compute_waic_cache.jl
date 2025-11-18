@@ -4,7 +4,7 @@ using PathoSpread, Serialization, Statistics, Distributed, MCMCChains
 # ───────────────────────────────────────────────────────────────
 # SETTINGS
 # ───────────────────────────────────────────────────────────────
-mode = :seed
+mode = :shuffle
 S = 300  # number of posterior samples per WAIC computation
 addprocs(8)  # adjust to available cores
 
@@ -56,3 +56,5 @@ waic_vals = pmap(sp -> compute_and_cache_waic(sp; S=S), sim_paths)
 serialize("results/waic_cache/DIFFGA_$(String(mode))_waic_all.jls", waic_vals)
 
 println("Saved $(count(!ismissing, waic_vals)) / $(length(waic_vals)) WAICs.")
+# kill workers
+rmprocs(workers())
