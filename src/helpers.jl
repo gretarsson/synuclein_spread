@@ -968,149 +968,6 @@ end
 
 
 
-# --- WAIC and WBIC Computation ---
-# OLD WORKS
-#function compute_waic(inference; S=10)
-#    # unpack the inference object
-#    priors = inference["priors"]
-#    ks = collect(keys(priors))
-#    chain = inference["chain"]
-#    data = inference["data"]
-#    seed = inference["seed_idx"]
-#    ode = odes[inference["ode"]]
-#    u0 = inference["u0"]
-#    timepoints = inference["timepoints"]
-#    L = inference["L"]
-#    # assume L is given as a tuple (matrix, _)
-#    N = size(L[1])[1]
-#    factors = inference["factors"]
-#    N_pars = findall(x->x=="σ",ks)[1] - 1
-#    par_names = chain.name_map.parameters
-#    # OLD
-#    #if inference["bayesian_seed"]
-#    #    seed_ch_idx = findall(x->x==:seed,par_names)[1]  
-#    #end
-#    # NEW
-#    if get(inference, "bayesian_seed", false)
-#        # Find *all* seed parameters
-#        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
-#        isempty(seed_ch_idx) && error("No seed parameters found in chain.name_map.parameters")
-#    
-#        # Sort to preserve order in 'seed' (important if par_names is not lexicographically sorted)
-#        seed_ch_idx = sort(seed_ch_idx)
-#    else
-#        seed_ch_idx = nothing
-#    end
-#    sigma_idx = findall(x->x==:σ,par_names)[1]  
-#
-#    # reshape data
-#    N_samples = size(data)[3]
-#    vec_data = vec(data)
-#    nonmissing = findall(vec_data .!== missing)
-#    vec_data = vec_data[nonmissing]
-#    vec_data = identity.(vec_data)  # converts Union{Missing,Float64} to Float64
-#    n = length(vec_data)
-#
-#    # define ODE problem
-#    # OLD
-#    #tspan = (0, timepoints[end])
-#    #rhs(du,u,p,t;L=L, func=ode::Function) = func(du,u,p,t;L=L,factors=factors)
-#    #prob = ODEProblem(rhs, u0, tspan; alg=Tsit5())
-#    # NEW
-#    # --- Define ODE Problem using same factory as inference ---
-#    #     (this ensures correct setup for bilateral/bidirectional models)
-#    prob = make_ode_problem(
-#        odes[inference["ode"]];
-#        labels     = inference["labels"],
-#        Ltuple     = inference["L"],
-#        factors    = inference["factors"],
-#        u0         = inference["u0"],
-#        timepoints = inference["timepoints"]
-#    )
-#
-#
-#    # sample from posterior and store ODE solutions for each sample
-#    posterior_samples = sample(chain, S; replace=false)
-#    solutions = Vector{Vector{Float64}}()  # each element holds the solution vector for a sample
-#    sigmas = []
-#    for sample in eachrow(Array(posterior_samples))
-#        # Extract parameter samples
-#        p = sample[1:N_pars]  
-#        #OLD
-#        #if inference["bayesian_seed"]
-#        #    u0[seed] = sample[seed_ch_idx]  
-#        #else    
-#        #    u0[seed] = inference["seed_value"]
-#        #end
-#        # NEW
-#        u0_s = copy(u0)
-#        if get(inference, "bayesian_seed", false)
-#            if isa(seed, Int)
-#                # Single seed case (as before)
-#                u0_s[seed] = sample[seed_ch_idx[1]]
-#            else
-#                # Multiple seed regions — one seed parameter per index (same order guaranteed)
-#                for (i, sidx) in enumerate(seed)
-#                    u0_s[sidx] = sample[seed_ch_idx[i]]
-#                end
-#            end
-#        else
-#            # Deterministic (non-Bayesian) seeding
-#            if isa(seed, Int)
-#                u0_s[seed] = inference["seed_value"]
-#            else
-#                u0_s[seed] .= inference["seed_value"]
-#            end
-#        end
-#        σ = sample[sigma_idx]  # extract σ
-#        # solve the ODE
-#        sol_p = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=timepoints, abstol=1e-6, reltol=1e-6)
-#        sol_p = Array(sol_p[inference["sol_idxs"],:])
-#        # Repeat solution for each of the N_samples (if data has replicated observations)
-#        solution = vec(cat([sol_p for _ in 1:N_samples]..., dims=3))
-#        solution = solution[nonmissing]
-#        push!(solutions, solution)
-#        push!(sigmas, σ)
-#    end
-#    means = transpose(hcat(solutions...))  # S x n matrix
-#
-#    # Compute pointwise log-likelihoods for each sample and data point
-#    log_lik = zeros(S, n)
-#    for s in 1:S
-#        for i in 1:n
-#            log_lik[s, i] = logpdf(Normal(means[s,i], sigmas[s]), vec_data[i])
-#        end
-#    end
-#
-#    # --- WAIC computation ---
-#    #lppd = sum(log.(mean(exp.(log_lik), dims=1)))   # Log Pointwise Predictive Density, OLD
-#    # stabilized computation of lppd
-#    m = maximum(log_lik; dims=1)                       # 1×n (max per data point across draws)
-#    lppd = sum(vec(m) .+ log.(vec(mean(exp.(log_lik .- m); dims=1))))
-#    p_waic = sum(var(log_lik, dims=1))                # Effective number of parameters
-#    waic = -2 * (lppd - p_waic)                       # WAIC formula
-#
-#    # WAIC STANDARD DEVIATION
-#    waic_i = [-2 * (log(mean(exp.(log_lik[:,i]))) - var(log_lik[:,i])) for i in 1:n]
-#    se_waic = sqrt(n * var(waic_i))
-#
-#
-#    # --- WBIC computation ---
-#    # Compute total log-likelihood per posterior sample
-#    #total_log_lik = vec(sum(log_lik, dims=2))  # vector of length S
-#    ## Temperature for WBIC: T = 1 / log(n)
-#    #T = 1 / log(n)
-#    ## Compute log-weights to stabilize the exponentiation
-#    #log_weights = (T - 1) * total_log_lik
-#    #max_log_weight = maximum(log_weights)
-#    #stabilized_weights = exp.(log_weights .- max_log_weight)
-#    ## Compute weighted expectation of the log-likelihood
-#    #wbic_expectation = sum(stabilized_weights .* total_log_lik) / sum(stabilized_weights)
-#    #wbic = -2 * wbic_expectation
-#
-#    #return waic, se_waic, wbic
-#    return waic, se_waic, waic_i::Vector{Float64}, lppd, p_waic, n
-#end
 # ============================================================
 # WAIC (and optional WBIC) Computation
 # ============================================================
@@ -3354,4 +3211,133 @@ function r2_score(y::AbstractVector, ŷ::AbstractVector)
     ss_res = sum((y_valid .- ŷ_valid).^2)
     ss_tot = sum((y_valid .- mean(y_valid)).^2)
     return 1 - ss_res / ss_tot
+end
+
+
+function rhat_matrix(x::AbstractMatrix)
+    # x is S × C: samples in rows, chains in columns
+    S, C = size(x)
+    S < 2 && error("Need at least 2 samples per chain for Rhat")
+    C < 2 && error("Need at least 2 chains for Rhat")
+
+    # chain means: 1 × C
+    chain_means = vec(mean(x; dims=1))
+
+    # chain variances: 1 × C (unbiased)
+    chain_vars = vec(var(x; dims=1, corrected=true))
+
+    # overall mean
+    mean_overall = mean(chain_means)
+
+    # between-chain variance
+    B = S * var(chain_means; corrected=true)
+
+    # within-chain variance
+    W = mean(chain_vars)
+
+    # marginal posterior variance estimate
+    var_hat = ((S - 1) / S) * W + (1 / S) * B
+
+    # Rhat
+    return sqrt(var_hat / W)
+end
+
+function loglik(inference)
+    chain       = inference["chain"]
+    data        = inference["data"]
+    priors      = inference["priors"]
+    seed        = inference["seed_idx"]
+    timepoints  = inference["timepoints"]
+    u0          = inference["u0"]
+    N_samples   = size(data, 3)
+    vec_data_raw = vec(data)
+    nonmissing   = findall(vec_data_raw .!== missing)
+    vec_data     = Float64.(vec_data_raw[nonmissing])
+    par_names   = chain.name_map.parameters
+
+    n_obs = length(vec_data)
+
+
+    # --- Handle Bayesian or deterministic seeding ---
+    if get(inference, "bayesian_seed", false)
+        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)  # should be in chronological order
+        isempty(seed_ch_idx) && error("No seed parameters found in chain.name_map.parameters")
+        #seed_ch_idx = sort(seed_ch_idx)
+    else
+        seed_ch_idx = nothing
+    end
+
+
+    # total number of posterior samples
+    total_samples = length(eachrow(Array(chain)))
+
+    # prepare ODE problem
+    prob = make_ode_problem(
+        odes[inference["ode"]];
+        labels     = inference["labels"],
+        Ltuple     = inference["L"],
+        factors    = inference["factors"],
+        u0         = inference["u0"],
+        timepoints = timepoints
+    )
+
+    # figure out σ location
+    par_names = chain.name_map.parameters
+    sigma_idx = findfirst(==(Symbol(:σ)), par_names)
+    N_pars    = findall(x -> x == "σ", collect(keys(priors)))[1] - 1
+
+    loglik_all = Vector{Float64}(undef, total_samples)
+
+    # Loop across samples in the stored order
+    for (sample_i, sample_vec) in enumerate(eachrow(Array(chain)))
+        p = sample_vec[1:N_pars]
+        σ = sample_vec[sigma_idx]
+        
+
+        # seeding
+        u0_s = copy(u0)
+
+        if seed_ch_idx === nothing
+            # deterministic seeding
+            if isa(seed, Int)
+                u0_s[seed] = inference["seed_value"]
+            else
+                for sidx in seed
+                    u0_s[sidx] = inference["seed_value"]
+                end
+            end
+        else
+            # Bayesian seeding
+            if isa(seed, Int)
+                u0_s[seed] = sample_vec[seed_ch_idx[1]]
+            else
+                for (i,sidx) in enumerate(seed)
+                    u0_s[sidx] = sample_vec[seed_ch_idx[i]]
+                end
+            end
+        end
+
+
+        # solve ODE
+        sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=timepoints,
+                    abstol=1e-6, reltol=1e-6)
+        sol_p = Array(sol[inference["sol_idxs"], :])
+
+        # expand predictions for measurement replicates
+        pred = vec(cat([sol_p for _ in 1:N_samples]..., dims=3))[nonmissing]
+
+        # compute total log-likelihood
+        ll = 0.0
+        for i in 1:n_obs
+            ll += logpdf(Normal(pred[i], σ), vec_data[i])
+        end
+
+        loglik_all[sample_i] = ll
+    end
+
+    # reshape into a matrix with samples in rows and chains in columns
+    S, P, C = size(chain.value.data)
+    loglik_mat = reshape(loglik_all, S, C)
+    rhat = rhat_matrix(loglik_mat)
+    return loglik_mat, rhat
 end
