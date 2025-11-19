@@ -5,7 +5,7 @@ Random.seed!(123456)
 
 tresh = -5.8*1e4 # WAIC threshold for plotting
 
-mode = :shuffle
+mode = :seed
 sim_true = "simulations/DIFFGA_RETRO.jls"
 waic_cache_file = "results/waic_cache/DIFFGA_$(String(mode))_waic_all.jls"
 waic_cache_dir  = "results/waic_cache"
