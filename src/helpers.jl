@@ -350,8 +350,7 @@ function infer(prob, priors::OrderedDict, data::Array{Union{Missing,Float64},3},
 
 
         # Simulate diffusion model 
-        #predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=6000)
-        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=10000000)
+        predicted = solve(prob, alg; u0=u00, p=p, saveat=timepointss, sensealg=sensealg, abstol=abstol, reltol=reltol, maxiters=6000)
 
         # DEBUGGING
         # check timepoint alignment, i.e. if solver failed and stopped early
