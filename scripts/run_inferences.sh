@@ -12,10 +12,18 @@ declare -A BASE_JOBS
 # --------------------------------
 # iCP injection site
 # --------------------------------
-# RERUN DIVERGENT INFERENCES WITH HIGHER TARGET ACCEPTANCE
-BASE_JOBS["DIFFGA_ANTERO"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1 --target_acceptance=0.8"
-BASE_JOBS["DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1 --target_acceptance=0.8"
-
+# RERUN WITH HIGHER TARGET ACCEPTANCE RATE
+## DIFFG
+BASE_JOBS["DIFFG_RETRO_TGT"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1 --target_acceptance=0.8"
+BASE_JOBS["DIFFG_ANTERO_TGT"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1  --target_acceptance=0.8"
+BASE_JOBS["DIFFG_BIDIR_TGT"]="DIFFG_bidirectional data/W_labeled_filtered.csv data/total_path.csv --n_chains=1  --target_acceptance=0.8"
+BASE_JOBS["DIFFG_EUCL_TGT"]="DIFFG data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1  --target_acceptance=0.8"
+#
+## DIFFGA
+BASE_JOBS["DIFFGA_RETRO_TGT"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1  --target_acceptance=0.8"
+BASE_JOBS["DIFFGA_ANTERO_TGT"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1  --target_acceptance=0.8"
+BASE_JOBS["DIFFGA_BIDIR_TGT"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/total_path.csv --n_chains=1  --target_acceptance=0.8"
+BASE_JOBS["DIFFGA_EUCL_TGT"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1  --target_acceptance=0.8"
 
 # DIFF
 #BASE_JOBS["DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
