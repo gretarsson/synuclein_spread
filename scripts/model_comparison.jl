@@ -22,8 +22,8 @@ simulations_list = [
         "simulations/DIFFG_BIDIR",
     ],
     [
-        "simulations/DIFFGA_EUCL",
-        "simulations/DIFFGA_ANTERO_CUT",
+        "simulations/DIFFGA_EUCL_C1",
+        "simulations/DIFFGA_ANTERO_C1",
         "simulations/DIFFGA_RETRO",
         "simulations/DIFFGA_BIDIR",
     ],

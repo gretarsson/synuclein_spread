@@ -27,9 +27,9 @@ inference_files = Dict(
     "DIFFG_EUCL"      => "simulations/DIFFG_EUCL.jls",
 
     "DIFFGA_RETRO"    => "simulations/DIFFGA_RETRO.jls",
-    "DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO_CUT.jls",  # removed one chain
+    "DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO.jls",  # non-convergent  
     "DIFFGA_BIDIR"    => "simulations/DIFFGA_BIDIR.jls",
-    "DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL_CUT.jls",  # removed one chain
+    "DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL.jls",  # non-convergent
 )
 
 save_dir = "figures/rhat_plots"
@@ -152,7 +152,7 @@ function plot_rhat_scatter(model_key::String,
         xlabel = "Parameter index",
         ylabel = L"\hat{R}",
         title = title_str,
-        #markersize = 7,
+        markersize = 14,
         alpha = 0.8,
         color = :blue,
         legend = false,

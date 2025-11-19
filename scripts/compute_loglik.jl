@@ -25,10 +25,12 @@ const inference_files = Dict(
     #"DIFFG_EUCL"      => "simulations/DIFFG_EUCL.jls",
 
     #"DIFFGA_RETRO"    => "simulations/DIFFGA_RETRO.jls",
-    #"DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO_CUT.jls",
+    "DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO.jls",
     #"DIFFGA_BIDIR"    => "simulations/DIFFGA_BIDIR.jls",
     #"DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL.jls",
-    "DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL_CUT.jls",
+    # CUT
+    #"DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL_CUT.jls",
+    #"DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO_CUT.jls",
 )
 
 println("==============================================")
@@ -87,3 +89,4 @@ end
 println("\n==============================================")
 println("All log-likelihood computations finished.")
 println("==============================================")
+rmprocs(workers())
