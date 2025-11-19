@@ -27,9 +27,9 @@ inference_files = Dict(
     "DIFFG_EUCL"      => "simulations/DIFFG_EUCL.jls",
 
     "DIFFGA_RETRO"    => "simulations/DIFFGA_RETRO.jls",
-    "DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO_CUT.jls",
+    "DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO_CUT.jls",  # removed one chain
     "DIFFGA_BIDIR"    => "simulations/DIFFGA_BIDIR.jls",
-    "DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL.jls",
+    "DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL_CUT.jls",  # removed one chain
 )
 
 save_dir = "figures/rhat_plots"
@@ -192,7 +192,8 @@ for (model_key, path) in inference_files
     modeltype = get_model_type(model_key)
 
     # ---------- LOG-LIKELIHOOD ----------
-    loglik_mat, rhat_loglik = PathoSpread.loglik(inf)
+    loglik_mat =  inf["loglik_mat"]
+    rhat_loglik = inf["loglik_rhat"]
 
     # ---------- GLOBAL ----------
     global_rhats = Dict{String,Float64}()

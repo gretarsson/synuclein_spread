@@ -1,156 +1,33 @@
 #=
 here we create a folder of analysis plots of interence results
 =#
-using PathoSpread
+using PathoSpread, Statistics
 
-simulation = "DIFFG_RETRO"
+simulation = "DIFFGA_EUCL"
 display("Plotting simulations: $simulation")
 
 # read file 
 inference_obj = load_inference("simulations/"*simulation*".jls")
-println(names(inference_obj["chain"]))
-chain = inference_obj["chain"]
-println(keys(chain))
 
+loglik, rhat = PathoSpread.loglik(inference_obj)
+rhat
 
-using MCMCChains, DifferentialEquations, Distributions
+# -----------------------------------------------------------
 
-function rhat_matrix(x::AbstractMatrix)
-    # x is S × C: samples in rows, chains in columns
-    S, C = size(x)
-    S < 2 && error("Need at least 2 samples per chain for Rhat")
-    C < 2 && error("Need at least 2 chains for Rhat")
+simulation = "DIFFGA_EUCL_CUT"
+display("Plotting simulations: $simulation")
 
-    # chain means: 1 × C
-    chain_means = vec(mean(x; dims=1))
+# read file 
+inference_obj = load_inference("simulations/"*simulation*".jls")
 
-    # chain variances: 1 × C (unbiased)
-    chain_vars = vec(var(x; dims=1, corrected=true))
+loglik, rhat_cut = PathoSpread.loglik(inference_obj)
+rhat_cut
 
-    # overall mean
-    mean_overall = mean(chain_means)
-
-    # between-chain variance
-    B = S * var(chain_means; corrected=true)
-
-    # within-chain variance
-    W = mean(chain_vars)
-
-    # marginal posterior variance estimate
-    var_hat = ((S - 1) / S) * W + (1 / S) * B
-
-    # Rhat
-    return sqrt(var_hat / W)
-end
-
-function loglik(inference)
-    chain       = inference["chain"]
-    data        = inference["data"]
-    priors      = inference["priors"]
-    seed        = inference["seed_idx"]
-    timepoints  = inference["timepoints"]
-    u0          = inference["u0"]
-    N_samples   = size(data, 3)
-    vec_data_raw = vec(data)
-    nonmissing   = findall(vec_data_raw .!== missing)
-    vec_data     = Float64.(vec_data_raw[nonmissing])
-    par_names   = chain.name_map.parameters
-
-    n_obs = length(vec_data)
-
-
-    # --- Handle Bayesian or deterministic seeding ---
-    if get(inference, "bayesian_seed", false)
-        seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)  # should be in chronological order
-        isempty(seed_ch_idx) && error("No seed parameters found in chain.name_map.parameters")
-        #seed_ch_idx = sort(seed_ch_idx)
-    else
-        seed_ch_idx = nothing
-    end
-
-
-    # total number of posterior samples
-    total_samples = length(eachrow(Array(chain)))
-
-    # prepare ODE problem
-    prob = make_ode_problem(
-        odes[inference["ode"]];
-        labels     = inference["labels"],
-        Ltuple     = inference["L"],
-        factors    = inference["factors"],
-        u0         = inference["u0"],
-        timepoints = timepoints
-    )
-
-    # figure out σ location
-    par_names = chain.name_map.parameters
-    sigma_idx = findfirst(==(Symbol(:σ)), par_names)
-    N_pars    = findall(x -> x == "σ", collect(keys(priors)))[1] - 1
-
-    loglik_all = Vector{Float64}(undef, total_samples)
-
-    # Loop across samples in the stored order
-    for (sample_i, sample_vec) in enumerate(eachrow(Array(chain)))
-        p = sample_vec[1:N_pars]
-        σ = sample_vec[sigma_idx]
-        
-
-        # seeding
-        u0_s = copy(u0)
-
-        if seed_ch_idx === nothing
-            # deterministic seeding
-            if isa(seed, Int)
-                u0_s[seed] = inference["seed_value"]
-            else
-                for sidx in seed
-                    u0_s[sidx] = inference["seed_value"]
-                end
-            end
-        else
-            # Bayesian seeding
-            if isa(seed, Int)
-                u0_s[seed] = sample_vec[seed_ch_idx[1]]
-            else
-                for (i,sidx) in enumerate(seed)
-                    u0_s[sidx] = sample_vec[seed_ch_idx[i]]
-                end
-            end
-        end
-
-
-        # solve ODE
-        sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=timepoints,
-                    abstol=1e-6, reltol=1e-6)
-        sol_p = Array(sol[inference["sol_idxs"], :])
-
-        # expand predictions for measurement replicates
-        pred = vec(cat([sol_p for _ in 1:N_samples]..., dims=3))[nonmissing]
-
-        # compute total log-likelihood
-        ll = 0.0
-        for i in 1:n_obs
-            ll += logpdf(Normal(pred[i], σ), vec_data[i])
-        end
-
-        loglik_all[sample_i] = ll
-    end
-
-    # reshape into a matrix with samples in rows and chains in columns
-    S, P, C = size(chain.value.data)
-    loglik_mat = reshape(loglik_all, S, C)
-    rhat = rhat_matrix(loglik_mat)
-    return loglik_mat, rhat
-end
-
-new_inference = loglik(inference_obj)
-
-
-
-
+# -----------------------------------------------------------
+inference_obj["loglik_rhat"]
 # look at chains
 display(inference_obj["chain"])
-#new_chain = inference_obj["chain"][:,:,[2,3,4]]
+new_chain = inference_obj["chain"][:,:,[2,3,4]]
 #inference_obj["chain"] = new_chain
 #save_inference("simulations/" * simulation * "_CUT.jls", inference_obj)
 
