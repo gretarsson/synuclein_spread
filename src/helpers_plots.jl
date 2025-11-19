@@ -27,7 +27,7 @@ Set a global plotting theme for both Makie (CairoMakie) and StatsPlots/Plots.
 Call this once (e.g., at the top of your script) to standardize fonts & sizes.
 """
 
-function setup_plot_theme!(; font="Arial", base=18, lw=8, markersize=10, dpi=300)
+function setup_plot_theme!(; font="Arial", base=18, lw=3, markersize=10, dpi=300)
     set_theme!(Theme(
         # ensure every text uses the same family
         fonts = (regular=font, bold=font, italic=font),
@@ -3306,7 +3306,8 @@ function plot_inference(inference, save_path;
     nonzero_regions::Bool=false,
     # --- NEW (optional) ---
     full_data::Union{Nothing,AbstractArray}=nothing,          # (R, T_full) or (R, T_full, K)
-    full_timepoints::Union{Nothing,AbstractVector}=nothing    # length T_full
+    full_timepoints::Union{Nothing,AbstractVector}=nothing,    # length T_full
+    plot_priors_posteriors=false
 )
     # create folder
     try; mkdir(save_path); catch; end
@@ -3510,7 +3511,9 @@ function plot_inference(inference, save_path;
     #predicted_observed(inference; save_path=save_path*"/predicted_observed_log10", plotscale=log10);
     #predicted_observed(inference; save_path=save_path*"/predicted_observed_id",  plotscale=identity);
 
-    #plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
+    if plot_priors_posteriors
+        plot_prior_and_posterior(inference; save_path=save_path*"/prior_and_posterior");
+    end
     #plot_posteriors(inference, save_path=save_path*"/posteriors");
     #plot_chains(inference, save_path=save_path*"/chains");
     #plot_priors(inference; save_path=save_path*"/priors");

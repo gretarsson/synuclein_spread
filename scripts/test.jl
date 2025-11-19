@@ -10,7 +10,7 @@ display("Plotting simulations: $simulation")
 inference_obj = load_inference("simulations/"*simulation*".jls")
 
 # look at chains
-display(inference_obj["chain"][:,76,:])
+display(inference_obj["chain"])
 #new_chain = inference_obj["chain"][:,:,[2,3,4]]
 #inference_obj["chain"] = new_chain
 #save_inference("simulations/" * simulation * "_CUT.jls", inference_obj)
@@ -18,7 +18,7 @@ display(inference_obj["chain"][:,76,:])
 # plot
 setup_plot_theme!()  # set plotting settings
 display("Plotting inference results...")
-plot_inference(inference_obj,"figures/inferences/"*simulation)  
+plot_inference(inference_obj,"figures/inferences/"*simulation, plot_priors_posteriors=true)  
 display("Plots saved to figures/inferences/"*simulation)
 display("---------------------------------------------------")
 

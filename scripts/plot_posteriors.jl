@@ -104,11 +104,23 @@ for pname in global_parameter_names
         continue
     end
 
-    plt = Plots.plot(
-        xlabel = latex_names[pname],
-        ylabel = "Density",
-        #legend = :topright
-    )
+    # only add legend for rho
+    plt = if pname == "rho"
+        # legend ON, but smaller
+        Plots.plot(
+            xlabel = latex_names[pname],
+            ylabel = "Density",
+            legend = :topleft,
+            legendfontsize = 14,   # smaller legend
+        )
+    else
+        # legend OFF
+        Plots.plot(
+            xlabel = latex_names[pname],
+            ylabel = "Density",
+            legend = false,
+        )
+    end
 
     Plots.plot!(plt, prior_dist; lw=4, ls=:dash, color=:black, label="prior")
 
@@ -192,6 +204,7 @@ beta_scatter = Plots.scatter(
     means_G, means_GA;
     xlabel = "DIFFG",
     ylabel = "DIFFGA",
+    title = L"β_i",
     markersize = 8,
     color = :blue,
     legend = false,
@@ -207,3 +220,59 @@ Plots.plot!(beta_scatter, [0, mx], [0, mx]; color = :black, lw=2, ls=:dash)
 outfile_scatter = joinpath(save_dir, "beta_scatter.pdf")
 savefig(beta_scatter, outfile_scatter)
 println("Saved → $outfile_scatter")
+
+
+
+# ============================================================
+# SCATTER PLOT β[i] vs γ[i] for DIFFGA
+# ============================================================
+
+println("Computing β[i] vs γ[i] scatter for DIFFGA…")
+
+priors_GA = inferences["DIFFGA"]["priors"]
+chain_GA  = inferences["DIFFGA"]["chain"]
+
+# Find beta[i] and gamma[i] parameter names
+beta_names_GA  = filter(n -> startswith(n, "beta["),  collect(keys(priors_GA)))
+gamma_names_GA = filter(n -> startswith(n, "gamma["), collect(keys(priors_GA)))
+
+# Sort the names to guarantee consistent ordering:
+# beta[1], beta[2], ..., beta[412]
+sort!(beta_names_GA,  by = x -> parse(Int, match(r"beta\[(\d+)\]", x).captures[1]))
+sort!(gamma_names_GA, by = x -> parse(Int, match(r"gamma\[(\d+)\]", x).captures[1]))
+
+# Sanity check
+if length(beta_names_GA) != length(gamma_names_GA)
+    error("Mismatch between β and γ counts in DIFFGA")
+end
+
+# Extract posterior means
+mean_beta = Float64[]
+mean_gamma = Float64[]
+
+for (bname, gname) in zip(beta_names_GA, gamma_names_GA)
+
+    # β index
+    idx_b = findfirst(==(bname), collect(keys(priors_GA)))
+    push!(mean_beta, mean(posterior_samples_from_p(chain_GA, idx_b)))
+
+    # γ index
+    idx_g = findfirst(==(gname), collect(keys(priors_GA)))
+    push!(mean_gamma, mean(posterior_samples_from_p(chain_GA, idx_g)))
+end
+
+# Scatter plot β[i] vs γ[i]
+beta_gamma_scatter = Plots.scatter(
+    mean_beta, mean_gamma;
+    xlabel = L"\beta_i",
+    ylabel = L"\gamma_i",
+    title = "DIFFGA",
+    markersize = 8,
+    color = :green,
+    alpha = 0.7,
+    legend = false,
+)
+
+outfile_bg = joinpath(save_dir, "beta_gamma_scatter_DIFFGA.pdf")
+savefig(beta_gamma_scatter, outfile_bg)
+println("Saved → $outfile_bg")
