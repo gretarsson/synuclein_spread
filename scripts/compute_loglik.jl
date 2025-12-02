@@ -25,12 +25,23 @@ const inference_files = Dict(
     #"DIFFG_EUCL"      => "simulations/DIFFG_EUCL.jls",
 
     #"DIFFGA_RETRO"    => "simulations/DIFFGA_RETRO.jls",
-    "DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO.jls",
+    #"DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO.jls",
     #"DIFFGA_BIDIR"    => "simulations/DIFFGA_BIDIR.jls",
     #"DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL.jls",
     # CUT
     #"DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL_CUT.jls",
     #"DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO_CUT.jls",
+    # TGT
+    "DIFFGA_RETRO"    => "simulations/DIFFGA_RETRO_TGT.jls",
+    "DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO_TGT.jls",
+    "DIFFGA_BIDIR"    => "simulations/DIFFGA_BIDIR_TGT.jls",
+    "DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL_TGT.jls",
+    #
+    #"DIFFG_RETRO"     => "simulations/DIFFG_RETRO.jls",
+    "DIFFG_ANTERO"    => "simulations/DIFFG_ANTERO_TGT.jls",
+    "DIFFG_BIDIR"     => "simulations/DIFFG_BIDIR_TGT.jls",
+    "DIFFG_EUCL"      => "simulations/DIFFG_EUCL_TGT.jls",
+
 )
 
 println("==============================================")
