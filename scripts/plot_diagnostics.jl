@@ -27,7 +27,7 @@ inference_files = Dict(
     "DIFFG_EUCL"      => "simulations/DIFFG_EUCL.jls",
 
     "DIFFGA_RETRO"    => "simulations/DIFFGA_RETRO.jls",
-    "DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO.jls",  # non-convergent  
+    "DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO_NEW.jls",  # non-convergent  
     "DIFFGA_BIDIR"    => "simulations/DIFFGA_BIDIR.jls",
     "DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL.jls",  # non-convergent
 )
