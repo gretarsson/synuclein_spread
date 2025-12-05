@@ -29,7 +29,7 @@ inference_files = Dict(
     "DIFFGA_RETRO"    => "simulations/DIFFGA_RETRO.jls",
     "DIFFGA_ANTERO"   => "simulations/DIFFGA_ANTERO_NEW.jls",  # non-convergent  
     "DIFFGA_BIDIR"    => "simulations/DIFFGA_BIDIR.jls",
-    "DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL.jls",  # non-convergent
+    "DIFFGA_EUCL"     => "simulations/DIFFGA_EUCL_NEW.jls",  # non-convergent
 )
 
 save_dir = "figures/rhat_plots"

@@ -3,7 +3,7 @@ here we create a folder of analysis plots of interence results
 =#
 using PathoSpread, Statistics
 
-simulation = "DIFFGA_BIDIR"
+simulation = "DIFFGA_EUCL_NEW"
 display("Plotting simulations: $simulation")
 
 # read file 
@@ -15,8 +15,12 @@ mean(loglik, dims=1)
 
 # look at chains
 display(inference_obj["chain"])
-new_chain = inference_obj["chain"][:,:,[1,2,3,4]]
-inference_obj["chain"] = new_chain
+new_chain2 = inference_obj["chain"][:,:,[2]]
+new_chain_new = chainscat(new_chain, new_chain2)
+
+
+
+inference_obj["chain"] = new_chain_new
 save_inference("simulations/" * simulation * ".jls", inference_obj)
 
 # plot
