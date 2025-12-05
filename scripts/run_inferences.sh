@@ -27,7 +27,7 @@ declare -A BASE_JOBS
 
 # DIFFG/DIFFGA NEW
 BASE_JOBS["DIFFGA_EUCL_NEW"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1  --target_acceptance=0.65"
-BASE_JOBS["DIFFGA_ANTERO_NEW"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1  --target_acceptance=0.65"
+#BASE_JOBS["DIFFGA_ANTERO_NEW"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1  --target_acceptance=0.65"
 
 # DIFF
 #BASE_JOBS["DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
@@ -157,8 +157,8 @@ for JOBNAME in "${!BASE_JOBS[@]}"; do
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=32G
-#SBATCH --partition=all
-#SBATCH --time=2-00:00:00
+#SBATCH --partition=long
+#SBATCH --time=5-00:00:00
 #SBATCH --chdir=$PROJECT_DIR
 #SBATCH --output=$LOG_DIR/${FULL_JOBNAME}-%j.out
 #SBATCH --error=$LOG_DIR/${FULL_JOBNAME}-%j.err
