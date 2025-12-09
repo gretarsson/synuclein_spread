@@ -1,7 +1,9 @@
 #=
 here we create a folder of analysis plots of interence results
 =#
-using PathoSpread, Statistics
+using PathoSpread, Statistics, DataFrames, CSV
+gene_data = CSV.read("data/avg_Pangea_exp.csv", DataFrame)
+
 
 simulation = "DIFFGA_EUCL_NEW"
 display("Plotting simulations: $simulation")
