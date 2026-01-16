@@ -5,12 +5,25 @@ using PathoSpread, Statistics, DataFrames, CSV
 gene_data = CSV.read("data/avg_Pangea_exp.csv", DataFrame)
 
 
-simulation = "DIFFGA_EUCL_NEW"
+simulation = "DIFFGA_RETRO"
 display("Plotting simulations: $simulation")
 
 # read file 
 inference_obj = load_inference("simulations/"*simulation*".jls")
 inference_obj["chain"]
+
+L = inference_obj["L"][1]
+W = -L
+for i in axes(W,1)
+    W[i,i] = 0
+end
+
+corrs = [0. for i in axes(W,1)]
+for i in axes(W,1)
+    corrs[i] = cor(W[74,:], W[i,:])
+end
+println(sortperm(corrs, rev=true))
+
 
 loglik = inference_obj["loglik_mat"]
 mean(loglik, dims=1)

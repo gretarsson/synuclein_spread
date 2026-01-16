@@ -50,7 +50,7 @@ function get_priors(ode::String, K::Int)
     elseif ode === "DIFF"
         return OrderedDict{String,Any}(
           # fixed‑size
-          "rho"      => truncated(Normal(0,0.1), lower=0),
+          "rho"      => truncated(Normal(0.2,0.1), lower=0),
         )
 
     # ———————————————————————————————

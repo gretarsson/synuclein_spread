@@ -32,7 +32,7 @@ export posterior_to_priors
 # helpers_plots.jl
 export plot_inference, setup_plot_theme!
 # data_processing.jl
-export process_pathology, save_inference_MAP_csv
+export process_pathology, save_inference_MAP_csv, mean3, nonzero_regions
 # odes.jl
 export odes
 # ode_dimensions.jl

@@ -5,6 +5,11 @@ using Base.Threads
 using ProgressMeter
 using CairoMakie
 
+# create figure folder
+outdir = joinpath("figures", "DIFF_sweep_log")
+mkpath(outdir)
+setup_plot_theme!()  # set plotting settings
+
 # -------------------------------------------------------------
 # SETTINGS
 # -------------------------------------------------------------
@@ -59,10 +64,10 @@ observed = Array(PathoSpread.mean3(data))  # N × T (after time selection)
 # -------------------------------------------------------------
 # PARAMETER GRID
 # -------------------------------------------------------------
-ρ_values   = range(0.0, 1.0; length=50)
-u0_values  = range(0.0, 20.0; length=50)
+ρ_values   = range(1e-6, 1.0; length=50)
+u0_values  = range(1e-6, 20.0; length=50)
 tspan      = (0.0, maximum(timepoints))
-results    = Matrix{Float64}(undef, length(ρ_values), length(u0_values))
+results    = Matrix{Union{Float64,Missing}}(missing, length(ρ_values), length(u0_values))
 
 # -------------------------------------------------------------
 # PARALLEL SWEEP WITH PROGRESS BAR
@@ -138,9 +143,9 @@ else
     ax = Axis(fig[1, 1],
               xlabel = use_logspace ? "log(Observed)" : "Observed",
               ylabel = use_logspace ? "log(Predicted)" : "Predicted",
-              title = "Predicted vs Observed (ρ=$(round(best_ρ,digits=3)), u₀=$(round(best_u0,digits=3)))")
+              title = "")
 
-    scatter!(ax, x, y, markersize=5, alpha=0.6)
+    scatter!(ax, x, y, markersize=12, alpha=0.4)
 
     xmin, xmax = extrema(x)
     lines!(ax, [xmin, xmax], [xmin, xmax], color=:red, linewidth=2)
@@ -149,4 +154,97 @@ else
     text!(ax, "R² = $(round(r2_val, digits=3))", position=(xmin, maximum(y)), align=(:left, :top))
 
     fig  # shows interactively
+    fname = "DIFF_parsweep_all.png"
+    save(joinpath(outdir, fname), fig)
+    
+end
+
+# -------------------------------------------------------------
+# SAVE: PREDICTED VS OBSERVED (ONE PNG PER TIMEPOINT)
+# -------------------------------------------------------------
+for (k, t) in enumerate(timepoints)
+    xk = observed[:, k]
+    yk = predicted[:, k]
+
+    maskk = .!ismissing.(xk)
+    x = Vector{Float64}(xk[maskk])
+    y = Vector{Float64}(yk[maskk])
+
+    if use_logspace
+        valid = (x .> 0) .& (y .> 0)
+        x = log.(x[valid])
+        y = log.(y[valid])
+    end
+
+    fig = Figure(size=(500, 400))
+    ax = Axis(fig[1, 1],
+              xlabel = use_logspace ? "log(Observed)" : "Observed",
+              ylabel = use_logspace ? "log(Predicted)" : "Predicted",
+              title  = "")
+
+    if isempty(x) || isempty(y)
+        text!(ax, "No valid points", position=(0, 0))
+    else
+        scatter!(ax, x, y, alpha=0.6)
+        xmin, xmax = extrema(x)
+        lines!(ax, [xmin, xmax], [xmin, xmax], color=:red, linewidth=2)
+
+        r2k = r2_score(x, y)
+        text!(ax, "R² = $(round(r2k, digits=3))",
+              position=(xmin, maximum(y)),
+              align=(:left, :top))
+    end
+
+    # make filenames stable + sortable
+    t_str = replace(string(t), "." => "p")
+    fname = "DIFF_parsweep_t$(k).png"
+    save(joinpath(outdir, fname), fig)
+end
+
+# -------------------------------------------------------------
+# SAVE: REGION-WISE TRAJECTORIES (OBSERVED vs PREDICTED)
+# -------------------------------------------------------------
+traj_dir = joinpath(outdir, "region_trajectories")
+mkpath(traj_dir)
+
+T = length(timepoints)
+
+for i in 1:N
+    # observed is Float64 with missing possible
+    obs_i = observed[i, :]              # Vector{Union{Missing,Float64}} or similar
+    pred_i = vec(predicted[i, :])       # Vector{Float64}
+
+    # mask missings in observed
+    mask = .!ismissing.(obs_i)
+
+    t = timepoints[mask]
+    x = Vector{Float64}(obs_i[mask])
+    y = pred_i[mask]
+
+    # optional log transform (consistent with your scatter logic)
+    if use_logspace
+        valid = (x .> 0) .& (y .> 0)
+        t = t[valid]
+        x = log.(x[valid])
+        y = log.(y[valid])
+    end
+
+    fig = Figure(size=(700, 300))
+    ax = Axis(fig[1, 1],
+              xlabel = "Time",
+              ylabel = use_logspace ? "log(pathology)" : "Pathology",
+              title  = "")
+
+    if isempty(t)
+        text!(ax, "No valid points", position=(0, 0))
+    else
+        lines!(ax, t, x; linewidth=2, label="Observed")
+        lines!(ax, t, y; linewidth=2, linestyle=:dash, label="Predicted")
+        axislegend(ax; position=:rb)
+    end
+
+    # filename: keep it sortable and filesystem-safe
+    lab = replace(string(labels[i]), r"[^A-Za-z0-9_\-]+" => "_")
+    fname = "region_$(lpad(string(i), 3, '0'))_$(lab).png"
+    save(joinpath(traj_dir, fname), fig)
 end
