@@ -26,7 +26,7 @@ declare -A BASE_JOBS
 #BASE_JOBS["DIFFGA_EUCL_TGT"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1  --target_acceptance=0.9"
 
 # DIFFG/DIFFGA NEW
-BASE_JOBS["DIFFGA_EUCL_NEW"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1  --target_acceptance=0.65"
+#BASE_JOBS["DIFFGA_EUCL_NEW"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1  --target_acceptance=0.65"
 #BASE_JOBS["DIFFGA_ANTERO_NEW"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1  --target_acceptance=0.65"
 
 # DIFF
