@@ -10,52 +10,52 @@ group_cells = false  # weight each region x timepoint equally in WAIC
 # Read inference results
 simulations_list = [
     [
-        "simulations/igs_DIFF_EUCL",
-        "simulations/igs_DIFF_ANTERO",
-        "simulations/igs_DIFF_RETRO",
-        "simulations/igs_DIFF_BIDIR",
+        "simulations/u0_DIFF_EUCL",
+        "simulations/u0_DIFF_ANTERO",
+        "simulations/u0_DIFF_RETRO",
+        "simulations/u0_DIFF_BIDIR",
     ],
+    #[
+    #    "simulations/DIFFG_EUCL",
+    #    "simulations/DIFFG_ANTERO",
+    #    "simulations/DIFFG_RETRO",
+    #    "simulations/DIFFG_BIDIR",
+    #],
+    #[
+    #    "simulations/DIFFGA_EUCL_C1",
+    #    "simulations/DIFFGA_ANTERO_C1",
+    #    "simulations/DIFFGA_RETRO",
+    #    "simulations/DIFFGA_BIDIR",
+    #],
     [
-        "simulations/DIFFG_EUCL",
-        "simulations/DIFFG_ANTERO",
-        "simulations/DIFFG_RETRO",
-        "simulations/DIFFG_BIDIR",
-    ],
-    [
-        "simulations/DIFFGA_EUCL_C1",
-        "simulations/DIFFGA_ANTERO_C1",
-        "simulations/DIFFGA_RETRO",
-        "simulations/DIFFGA_BIDIR",
-    ],
-    [
-        "simulations/DIFF_RETRO",
-        "simulations/DIFFG_RETRO",
-        "simulations/DIFFGA_RETRO",
+        "simulations/u0_DIFF_RETRO",
+        "simulations/u0_DIFFG_RETRO",
+        "simulations/u0_DIFFGA_RETRO",
     ],
     # HIPPO
-    [
-        "simulations/igs_hippo_DIFF_EUCL",
-        "simulations/igs_hippo_DIFF_ANTERO",
-        "simulations/igs_hippo_DIFF_RETRO",
-        "simulations/igs_hippo_DIFF_BIDIR",
-    ],
-    [
-        "simulations/hippo_DIFFG_EUCL",
-        "simulations/hippo_DIFFG_ANTERO",
-        "simulations/hippo_DIFFG_RETRO",
-        "simulations/hippo_DIFFG_BIDIR",
-    ],
-    [
-        "simulations/hippo_DIFFGA_EUCL",
-        "simulations/hippo_DIFFGA_ANTERO",
-        "simulations/hippo_DIFFGA_RETRO_CUT",
-        "simulations/hippo_DIFFGA_BIDIR",
-    ],
-    [
-        "simulations/hippo_DIFF_RETRO",
-        "simulations/hippo_DIFFG_RETRO",
-        "simulations/hippo_DIFFGA_RETRO_CUT",
-    ],
+    #[
+    #    "simulations/igs_hippo_DIFF_EUCL",
+    #    "simulations/igs_hippo_DIFF_ANTERO",
+    #    "simulations/igs_hippo_DIFF_RETRO",
+    #    "simulations/igs_hippo_DIFF_BIDIR",
+    #],
+    #[
+    #    "simulations/hippo_DIFFG_EUCL",
+    #    "simulations/hippo_DIFFG_ANTERO",
+    #    "simulations/hippo_DIFFG_RETRO",
+    #    "simulations/hippo_DIFFG_BIDIR",
+    #],
+    #[
+    #    "simulations/hippo_DIFFGA_EUCL",
+    #    "simulations/hippo_DIFFGA_ANTERO",
+    #    "simulations/hippo_DIFFGA_RETRO_CUT",
+    #    "simulations/hippo_DIFFGA_BIDIR",
+    #],
+    #[
+    #    "simulations/hippo_DIFF_RETRO",
+    #    "simulations/hippo_DIFFG_RETRO",
+    #    "simulations/hippo_DIFFGA_RETRO_CUT",
+    #],
 ]
 
 model_names_list = [
@@ -65,69 +65,69 @@ model_names_list = [
         "retrograde",
         "bidirectional",
     ],
-    [
-        "euclidean",
-        "anterograde",
-        "retrograde",
-        "bidirectional",
-    ],
-    [
-        "euclidean",
-        "anterograde",
-        "retrograde",
-        "bidirectional",
-    ],
+    #[
+    #    "euclidean",
+    #    "anterograde",
+    #    "retrograde",
+    #    "bidirectional",
+    #],
+    #[
+    #    "euclidean",
+    #    "anterograde",
+    #    "retrograde",
+    #    "bidirectional",
+    #],
     [
         "DIFF",
         "DIFFG",
         "DIFFGA",
     ],
     # HIPPO
-    [
-        "euclidean",
-        "anterograde",
-        "retrograde",
-        "bidirectional",
-    ],
-    [
-        "euclidean",
-        "anterograde",
-        "retrograde",
-        "bidirectional",
-    ],
-    [
-        "euclidean",
-        "anterograde",
-        "retrograde",
-        "bidirectional",
-    ],
-    [
-        "DIFF" 
-        "DIFFG" 
-        "DIFFGA" 
-    ],
+    #[
+    #    "euclidean",
+    #    "anterograde",
+    #    "retrograde",
+    #    "bidirectional",
+    #],
+    #[
+    #    "euclidean",
+    #    "anterograde",
+    #    "retrograde",
+    #    "bidirectional",
+    #],
+    #[
+    #    "euclidean",
+    #    "anterograde",
+    #    "retrograde",
+    #    "bidirectional",
+    #],
+    #[
+    #    "DIFF" 
+    #    "DIFFG" 
+    #    "DIFFGA" 
+    #],
 ]
 
 fig_prefixes = [
-    "striatum_DIFF",
-    "striatum_DIFFG",
-    "striatum_DIFFGA",
-    "striatum_RETRO_ONLY",
-    "hippo_DIFF",
-    "hippo_DIFFG",
-    "hippo_DIFFGA",
-    "hippo_RETRO_ONLY",
+    "u0_striatum_DIFF",
+    #"striatum_DIFFG",
+    #"striatum_DIFFGA",
+    "u0_striatum_RETRO_ONLY",
+    #"hippo_DIFF",
+    #"hippo_DIFFG",
+    #"hippo_DIFFGA",
+    #"hippo_RETRO_ONLY",
 ]
 
 fig_titles = [
     "DIFF",
-    "DIFFG",
-    "DIFFGA",
+    #"DIFFG",
+    #"DIFFGA",
     "Retrograde transport",
-    "DIFF (hippocampal)",
-    "DIFFG (hippocampal)",
-    "DIFFGA (hippocampal)",
-    "Retrograde transport (hippocampal)",
+    #"DIFF (hippocampal)",
+    #"DIFFG (hippocampal)",
+    #"DIFFGA (hippocampal)",
+    #"Retrograde transport (hippocampal)",
 ]
 
 #model_names_list = [model_names_list[1]]
