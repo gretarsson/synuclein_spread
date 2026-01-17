@@ -15,18 +15,18 @@ simulations_list = [
         "simulations/u0_DIFF_RETRO",
         "simulations/u0_DIFF_BIDIR",
     ],
-    #[
-    #    "simulations/DIFFG_EUCL",
-    #    "simulations/DIFFG_ANTERO",
-    #    "simulations/DIFFG_RETRO",
-    #    "simulations/DIFFG_BIDIR",
-    #],
-    #[
-    #    "simulations/DIFFGA_EUCL_C1",
-    #    "simulations/DIFFGA_ANTERO_C1",
-    #    "simulations/DIFFGA_RETRO",
-    #    "simulations/DIFFGA_BIDIR",
-    #],
+    [
+        "simulations/u0_DIFFG_EUCL",
+        "simulations/u0_DIFFG_ANTERO",
+        "simulations/u0_DIFFG_RETRO",
+        "simulations/u0_DIFFG_BIDIR",
+    ],
+    [
+        "simulations/u0_DIFFGA_EUCL",
+        "simulations/u0_DIFFGA_ANTERO",
+        "simulations/u0_DIFFGA_RETRO",
+        "simulations/u0_DIFFGA_BIDIR",
+    ],
     [
         "simulations/u0_DIFF_RETRO",
         "simulations/u0_DIFFG_RETRO",
@@ -65,18 +65,18 @@ model_names_list = [
         "retrograde",
         "bidirectional",
     ],
-    #[
-    #    "euclidean",
-    #    "anterograde",
-    #    "retrograde",
-    #    "bidirectional",
-    #],
-    #[
-    #    "euclidean",
-    #    "anterograde",
-    #    "retrograde",
-    #    "bidirectional",
-    #],
+    [
+        "euclidean",
+        "anterograde",
+        "retrograde",
+        "bidirectional",
+    ],
+    [
+        "euclidean",
+        "anterograde",
+        "retrograde",
+        "bidirectional",
+    ],
     [
         "DIFF",
         "DIFFG",
@@ -110,8 +110,8 @@ model_names_list = [
 
 fig_prefixes = [
     "u0_striatum_DIFF",
-    #"striatum_DIFFG",
-    #"striatum_DIFFGA",
+    "u0_striatum_DIFFG",
+    "u0_striatum_DIFFGA",
     "u0_striatum_RETRO_ONLY",
     #"hippo_DIFF",
     #"hippo_DIFFG",
@@ -121,8 +121,8 @@ fig_prefixes = [
 
 fig_titles = [
     "DIFF",
-    #"DIFFG",
-    #"DIFFGA",
+    "DIFFG",
+    "DIFFGA",
     "Retrograde transport",
     #"DIFF (hippocampal)",
     #"DIFFG (hippocampal)",

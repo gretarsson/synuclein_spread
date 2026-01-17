@@ -1029,9 +1029,11 @@ function compute_waic(inference; S::Int=10, group_cells::Bool=false)
         if get(inference, "bayesian_seed", false)
             if isa(seed, Int)
                 u0_s[seed] = sample[seed_ch_idx[1]]
+                #u0_s[seed] = mean(posterior_samples[:, seed_ch_idx[1]])  # check
             else
                 for (i, sidx) in enumerate(seed)
                     u0_s[sidx] = sample[seed_ch_idx[i]]
+                    #u0_s[sidx] = mean(Array(posterior_samples)[:, seed_ch_idx[1]])  # check
                 end
             end
         else
