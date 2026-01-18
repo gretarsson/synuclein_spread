@@ -217,7 +217,7 @@ function main(parsed)
             data = Array(reshape(data, size(data,1), size(data,2), 1))
         end
         if ignore_seed  # set seed region data to missing, if told so
-            data[seed_indices, 6:8, :] .= missing
+            data[seed_indices, 1:5, :] .= missing
         end
         # STRUCTURAL DATA
         Lr,N,labels = read_W(w_file, direction=:retro, shuffle=shuffle);
