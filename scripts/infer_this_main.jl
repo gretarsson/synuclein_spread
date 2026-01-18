@@ -255,8 +255,8 @@ function main(parsed)
     K = bilateral ? maximum(region_group) : N
     priors = get_priors(ode,K)
     priors["σ"] = LogNormal(0,1);
-    #priors["seed"] = truncated(Normal(50.,20),lower=0);
-    priors["seed"] = LogNormal(log(41.2), 0.96);
+    priors["seed"] = truncated(Normal(50.,20),lower=0);
+    #priors["seed"] = LogNormal(log(41.2), 0.96);
     # OPTIONALLY REPLACE PRIORS WITH POSTERIOR-BASED PRIORS
     if parsed["posterior_priors"] !== nothing
         println("→ Using posterior-based priors from: $(parsed["posterior_priors"])")
