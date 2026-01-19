@@ -11,7 +11,7 @@ simulations = ["igs_DIFF_EUCL", "igs_DIFF_ANTERO", "igs_DIFF_RETRO", "igs_DIFF_B
 simulations = ["DIFFG_global", "DIFFGA_global", "DIFFG_alpha_C2", "DIFFGA_alpha_C3"]
 #simulations = ["u0_DIFF_RETRO", "u0_DIFFG_RETRO", "u0_DIFFGA_RETRO", "u0_DIFFGA_EUCL", "u0_DIFFGA_ANTERO", "u0_DIFFGA_BIDIR"]
 simulations = ["u0s_DIFFGA_EUCL", "u0s_DIFFGA_RETRO", "u0s_DIFFGA_BIDIR"]
-#simulations = ["u0s_DIFF_RETRO"]
+simulations = ["s_DIFF"]
 
 
 for simulation in simulations
