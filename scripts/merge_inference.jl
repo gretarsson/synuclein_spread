@@ -5,7 +5,7 @@ using Glob
 
 
 # --- SETTINGS ---
-base     = "simulations/u0s_DIFFGA_BIDIR"
+base     = "simulations/u0s_DIFFGA_ANTERO"
 outfile  = base*".jls"
 
 # --- FIND ALL MATCHING CHAINS ---
