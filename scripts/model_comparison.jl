@@ -10,10 +10,10 @@ group_cells = false  # weight each region x timepoint equally in WAIC
 # Read inference results
 simulations_list = [
     [
-        "simulations/u0s_DIFF_EUCL",
-        "simulations/u0s_DIFF_ANTERO",
-        "simulations/u0s_DIFF_RETRO",
-        "simulations/u0s_DIFF_BIDIR",
+        "simulations/u0perc_DIFF_EUCL",
+        "simulations/u0perc_DIFF_ANTERO",
+        "simulations/u0perc_DIFF_RETRO",
+        "simulations/u0perc_DIFF_BIDIR",
     ],
     [
         "simulations/u0s_DIFFG_EUCL",
