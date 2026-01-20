@@ -10,8 +10,8 @@ simulations = ["igs_DIFF_EUCL", "igs_DIFF_ANTERO", "igs_DIFF_RETRO", "igs_DIFF_B
 ]
 simulations = ["DIFFG_global", "DIFFGA_global", "DIFFG_alpha_C2", "DIFFGA_alpha_C3"]
 #simulations = ["u0_DIFF_RETRO", "u0_DIFFG_RETRO", "u0_DIFFGA_RETRO", "u0_DIFFGA_EUCL", "u0_DIFFGA_ANTERO", "u0_DIFFGA_BIDIR"]
-simulations = ["u0s_DIFFGA_EUCL", "u0s_DIFFGA_RETRO", "u0s_DIFFGA_BIDIR"]
-simulations = ["s_DIFF"]
+simulations = ["u0s_DIFF_EUCL", "u0s_DIFF_ANTERO", "u0s_DIFF_BIDIR"]
+#simulations = ["u0s_DIFFGA_ANTERO"]
 
 
 for simulation in simulations
@@ -30,7 +30,7 @@ for simulation in simulations
     # plot
     setup_plot_theme!()  # set plotting settings
     display("Plotting inference results...")
-    plot_inference(inference_obj,"figures/inferences/"*simulation; plot_priors_posteriors=true)  
+    plot_inference(inference_obj,"figures/inferences/"*simulation; plot_priors_posteriors=false)  
     display("Plots saved to figures/inferences/"*simulation)
     display("---------------------------------------------------")
 
