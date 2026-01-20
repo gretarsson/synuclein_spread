@@ -16,10 +16,10 @@ simulations_list = [
         "simulations/u0s_DIFF_BIDIR",
     ],
     [
-        "simulations/u0_DIFFG_EUCL",
-        "simulations/u0_DIFFG_ANTERO",
-        "simulations/u0_DIFFG_RETRO",
-        "simulations/u0_DIFFG_BIDIR",
+        "simulations/u0s_DIFFG_EUCL",
+        "simulations/u0s_DIFFG_ANTERO",
+        "simulations/u0s_DIFFG_RETRO",
+        "simulations/u0s_DIFFG_BIDIR",
     ],
     [
         "simulations/u0s_DIFFGA_EUCL",
