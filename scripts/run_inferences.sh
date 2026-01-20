@@ -30,22 +30,22 @@ declare -A BASE_JOBS
 #BASE_JOBS["DIFFGA_ANTERO_NEW"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1  --target_acceptance=0.65"
 
 # DIFF
-BASE_JOBS["u0woSEa_DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1 --ignore_seed"
-BASE_JOBS["u0woSEa_DIFF_ANTERO"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1 --ignore_seed "
-BASE_JOBS["u0woSEa_DIFF_BIDIR"]="DIFF_bidirectional data/W_labeled_filtered.csv data/total_path.csv --n_chains=1  --ignore_seed"
-BASE_JOBS["u0woSEa_DIFF_EUCL"]="DIFF data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1 --ignore_seed"
+BASE_JOBS["u0perc_DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1 --ignore_seed"
+BASE_JOBS["u0perc_DIFF_ANTERO"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1 --ignore_seed "
+BASE_JOBS["u0perc_DIFF_BIDIR"]="DIFF_bidirectional data/W_labeled_filtered.csv data/total_path.csv --n_chains=1  --ignore_seed"
+BASE_JOBS["u0perc_DIFF_EUCL"]="DIFF data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1 --ignore_seed"
              
 # DIFFG      
-BASE_JOBS["u0wS_DIFFG_RETRO"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
-BASE_JOBS["u0wS_DIFFG_ANTERO"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1"
-BASE_JOBS["u0wS_DIFFG_BIDIR"]="DIFFG_bidirectional data/W_labeled_filtered.csv data/total_path.csv --n_chains=1"
-BASE_JOBS["u0wS_DIFFG_EUCL"]="DIFFG data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1"
+BASE_JOBS["u0perc_DIFFG_RETRO"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1 --ignore_seed"
+BASE_JOBS["u0perc_DIFFG_ANTERO"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1 --ignore_seed"
+BASE_JOBS["u0perc_DIFFG_BIDIR"]="DIFFG_bidirectional data/W_labeled_filtered.csv data/total_path.csv --n_chains=1 --ignore_seed"
+BASE_JOBS["u0perc_DIFFG_EUCL"]="DIFFG data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1 --ignore_seed"
              
 # DIFFGA     
-BASE_JOBS["u0wS_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
-BASE_JOBS["u0wS_DIFFGA_ANTERO"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1"
-BASE_JOBS["u0wS_DIFFGA_BIDIR"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/total_path.csv --n_chains=1"
-BASE_JOBS["u0wS_DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1"
+BASE_JOBS["u0perc_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1 --ignore_seed"
+BASE_JOBS["u0perc_DIFFGA_ANTERO"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1 --ignore_seed"
+BASE_JOBS["u0perc_DIFFGA_BIDIR"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/total_path.csv --n_chains=1 --ignore_seed"
+BASE_JOBS["u0perc_DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1 --ignore_seed"
 #
 ## DIFFGAM
 #BASE_JOBS["DIFFGAM_RETRO"]="DIFFGAM data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
