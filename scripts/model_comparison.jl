@@ -23,7 +23,7 @@ simulations_list = [
     ],
     [
         "simulations/u0s_DIFFGA_EUCL",
-        "simulations/u0s_DIFFGA_ANTERO",
+        "simulations/u0perc_DIFFGA_ANTERO",
         "simulations/u0s_DIFFGA_RETRO",
         "simulations/u0s_DIFFGA_BIDIR",
     ],
