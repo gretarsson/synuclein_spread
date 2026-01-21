@@ -22,10 +22,10 @@ simulations_list = [
         "simulations/u0s_DIFFG_BIDIR",
     ],
     [
-        "simulations/u0s_DIFFGA_EUCL",
+        "simulations/u0perc_DIFFGA_EUCL",
         "simulations/u0perc_DIFFGA_ANTERO",
-        "simulations/u0s_DIFFGA_RETRO",
-        "simulations/u0s_DIFFGA_BIDIR",
+        "simulations/u0perc_DIFFGA_RETRO",
+        "simulations/u0perc_DIFFGA_BIDIR",
     ],
     [
         "simulations/u0_DIFF_RETRO",
