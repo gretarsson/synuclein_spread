@@ -217,7 +217,7 @@ function main(parsed)
             data = Array(reshape(data, size(data,1), size(data,2), 1))
         end
         if ignore_seed  # set seed region data to missing, if told so
-            data[seed_indices, 1:5, :] .= missing
+            data[seed_indices, :, :] .= missing
         end
         # STRUCTURAL DATA
         Lr,N,labels = read_W(w_file, direction=:retro, shuffle=shuffle);
@@ -255,8 +255,9 @@ function main(parsed)
     K = bilateral ? maximum(region_group) : N
     priors = get_priors(ode,K)
     priors["σ"] = LogNormal(0,1);
-    #priors["seed"] = truncated(Normal(50.,20),lower=0);
-    priors["seed"] = truncated(LogNormal(3.,0.28),lower=0,upper=100);  # assume percentages
+    priors["seed"] = truncated(Normal(0.,0.1),lower=0);
+    #priors["seed"] = truncated(Normal(50.,20),lower=0);  # large prior for DIFF
+    #priors["seed"] = truncated(LogNormal(3.,0.28),lower=0,upper=100);  # assume percentages
     #priors["seed"] = LogNormal(log(41.2), 0.96);
     # OPTIONALLY REPLACE PRIORS WITH POSTERIOR-BASED PRIORS
     if parsed["posterior_priors"] !== nothing
