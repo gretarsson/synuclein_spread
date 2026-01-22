@@ -132,6 +132,9 @@ function build_parser()
         "--ignore_seed"
             action = :store_true
             help = "If set, removes the seeded region(s) from the training data"
+        "--flush_test"
+            action = :store_true
+            help = "If set, only keep the first neighbours of the seed region"
         
     end
 
@@ -154,6 +157,7 @@ function main(parsed)
     shuffle = parsed["shuffle"]
     mean_data = parsed["mean_data"]
     ignore_seed = parsed["ignore_seed"]
+    flush_test = parsed["flush_test"]
 
     # PRINT ARGS
     println("→ ODE:        $ode")
@@ -165,6 +169,7 @@ function main(parsed)
     println("→ Hold out last timepoints: $holdout_last")
     println("→ Shuffle network weights: $shuffle")
     println("→ Ignore seed regional data: $ignore_seed")
+    println("→ Only keep edges directly connected to seed: $flush_test")
     println("→ Average data samples: $mean_data")
     println("→ Target acceptance:    $target_acceptance")
     println("→ Output:     $out_file")
@@ -222,6 +227,19 @@ function main(parsed)
         # STRUCTURAL DATA
         Lr,N,labels = read_W(w_file, direction=:retro, shuffle=shuffle);
         La,_,_ = read_W(w_file, direction=:antero, shuffle=shuffle);
+        # REMOVE EDGES NOT DIRECTLY CONNECTED TO SEED IF SPECIFIED
+        if flush_test
+            non_seed = setdiff(1:N, seed_indices)
+            # set all edges to zero except those going out of the seed regions
+            La[:, non_seed] .= 0.0
+            Lr[:, non_seed] .= 0.0
+            # set all diagonals to zero (to renormalize the diagonal)
+            La[diagind(La)] .= 0.0
+            Lr[diagind(Lr)] .= 0.0
+            # normalize the diagonal
+            La[diagind(La)] .= -vec(sum(La,dims=1)) 
+            Lr[diagind(Lr)] .= -vec(sum(Lr,dims=1)) 
+        end
         # REMOVE LAST TIMEPOINTS IF SPECIFIED
         if holdout_last < 0
             error("holdout_last must be ≥ 0, got $holdout_last")
@@ -347,6 +365,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # 3) on each worker, bring in your modeling code
     @everywhere using Turing
     @everywhere using ParallelDataTransfer
+    @everywhere using LinearAlgebra  # needed for manipulating matrices
     # NEW
     @everywhere using PathoSpread
     # OLD
