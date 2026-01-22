@@ -2,7 +2,7 @@
 here we create a folder of analysis plots of interence results
 =#
 using PathoSpread
-plot_priors_and_posteriors = false
+plot_priors_and_posteriors = true
 
 
 simulations = ["igs_DIFF_EUCL", "igs_DIFF_ANTERO", "igs_DIFF_RETRO", "igs_DIFF_BIDIR",
@@ -12,7 +12,8 @@ simulations = ["igs_DIFF_EUCL", "igs_DIFF_ANTERO", "igs_DIFF_RETRO", "igs_DIFF_B
 simulations = ["DIFFG_global", "DIFFGA_global", "DIFFG_alpha_C2", "DIFFGA_alpha_C3"]
 #simulations = ["u0_DIFF_RETRO", "u0_DIFFG_RETRO", "u0_DIFFGA_RETRO", "u0_DIFFGA_EUCL", "u0_DIFFGA_ANTERO", "u0_DIFFGA_BIDIR"]
 simulations = ["u0s_DIFF_EUCL", "u0s_DIFF_ANTERO", "u0s_DIFF_BIDIR"]
-simulations = ["u0perc_DIFFGA_EUCL"]
+simulations = ["u0percNoS_DIFFG_BIDIR", "u0percNoS_DIFFG_RETRO", "u0percNoS_DIFFG_EUCL"]
+simulations = ["igs_DIFF_RETRO"]
 
 
 for simulation in simulations

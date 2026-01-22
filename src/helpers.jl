@@ -971,7 +971,7 @@ end
 # WAIC (and optional WBIC) Computation
 # ============================================================
 
-function compute_waic(inference; S::Int=10, group_cells::Bool=false)
+function compute_waic(inference; S::Int=10, group_cells::Bool=false, ignore_seed=false)
     # --- Unpack inference object ---
     priors      = inference["priors"]
     ks          = collect(keys(priors))
@@ -985,6 +985,11 @@ function compute_waic(inference; S::Int=10, group_cells::Bool=false)
     factors     = inference["factors"]
     N_pars      = findall(x -> x == "σ", ks)[1] - 1
     par_names   = chain.name_map.parameters
+
+    # ---- ignore seed it told to ----
+    if ignore_seed
+        data[seed, :, :] .= missing
+    end
 
     # --- Handle Bayesian or deterministic seeding ---
     if get(inference, "bayesian_seed", false)

@@ -10,27 +10,27 @@ group_cells = false  # weight each region x timepoint equally in WAIC
 # Read inference results
 simulations_list = [
     [
-        "simulations/u0perc_DIFF_EUCL",
-        "simulations/u0perc_DIFF_ANTERO",
-        "simulations/u0perc_DIFF_RETRO",
-        "simulations/u0perc_DIFF_BIDIR",
-    ],
-    [
-        "simulations/u0perc_DIFFG_EUCL",
-        "simulations/u0perc_DIFFG_ANTERO",
-        "simulations/u0perc_DIFFG_RETRO",
-        "simulations/u0perc_DIFFG_BIDIR",
-    ],
-    [
-        "simulations/u0perc_DIFFGA_EUCL",
-        "simulations/u0perc_DIFFGA_ANTERO",
-        "simulations/u0perc_DIFFGA_RETRO",
-        "simulations/u0perc_DIFFGA_BIDIR",
-    ],
-    [
+        "simulations/u0_DIFF_EUCL",
+        "simulations/u0_DIFF_ANTERO",
         "simulations/u0_DIFF_RETRO",
-        "simulations/u0_DIFFG_RETRO",
-        "simulations/u0_DIFFGA_RETRO",
+        "simulations/u0_DIFF_BIDIR",
+    ],                     
+    [                      
+        "simulations/DIFFG_EUCL",
+        "simulations/DIFFG_ANTERO",
+        "simulations/DIFFG_RETRO",
+        "simulations/DIFFG_BIDIR",
+    ],               
+    [
+        "simulations/DIFFGA_EUCL",
+        "simulations/DIFFGA_ANTERO",
+        "simulations/DIFFGA_RETRO",
+        "simulations/DIFFGA_BIDIR",
+    ],               
+    [                
+        "simulations/u0_DIFF_RETRO",
+        "simulations/DIFFG_RETRO",
+        "simulations/DIFFGA_RETRO",
     ],
     # HIPPO
     #[
@@ -109,10 +109,10 @@ model_names_list = [
 ]
 
 fig_prefixes = [
-    "u0_striatum_DIFF",
-    "u0_striatum_DIFFG",
-    "u0_striatum_DIFFGA",
-    "u0_striatum_RETRO_ONLY",
+    "striatum_DIFF",
+    "striatum_DIFFG",
+    "striatum_DIFFGA",
+    "striatum_RETRO_ONLY",
     #"hippo_DIFF",
     #"hippo_DIFFG",
     #"hippo_DIFFGA",
@@ -177,7 +177,7 @@ for (i,(simulations, model_names, prefix, fig_title)) in enumerate(zip(simulatio
     pwaic_vals  = Float64[]   # optional: if you returned p_waic
 
     for inference in inferences
-        waic, se_waic, waic_i, lppd, p_waic, n_used = compute_waic(inference; S=Sn, group_cells=group_cells)
+        waic, se_waic, waic_i, lppd, p_waic, n_used = compute_waic(inference; S=Sn, group_cells=group_cells, ignore_seed=true)
         push!(waic_vals, waic)
         push!(se_waic_vals, se_waic)
         push!(waic_i_list, waic_i)
