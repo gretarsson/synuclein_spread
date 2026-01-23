@@ -17,7 +17,7 @@ for MODEL in "${MODELS[@]}"; do
   # --- identify missing shuffles ---
   missing=()
   for ((i=1; i<=N_NULLS; i++)); do
-      out_file="$SIM_DIR/${MODEL}_shuffle_${i}.jls"
+      out_file="$SIM_DIR/largeu0_${MODEL}_shuffle_${i}.jls"
       if [[ ! -f "$out_file" ]]; then
           missing+=("$i")
       fi
