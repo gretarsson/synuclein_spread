@@ -135,6 +135,9 @@ function build_parser()
         "--flush_test"
             action = :store_true
             help = "If set, only keep the first neighbours of the seed region"
+        "--large_u0"
+            action = :store_true
+            help = "If set, only keep the first neighbours of the seed region"
         
     end
 
@@ -158,6 +161,7 @@ function main(parsed)
     mean_data = parsed["mean_data"]
     ignore_seed = parsed["ignore_seed"]
     flush_test = parsed["flush_test"]
+    large_u0 = parsed["large_u0"]
 
     # PRINT ARGS
     println("→ ODE:        $ode")
@@ -170,6 +174,7 @@ function main(parsed)
     println("→ Shuffle network weights: $shuffle")
     println("→ Ignore seed regional data: $ignore_seed")
     println("→ Only keep edges directly connected to seed: $flush_test")
+    println("→ Large prior on seed: $large_u0")
     println("→ Average data samples: $mean_data")
     println("→ Target acceptance:    $target_acceptance")
     println("→ Output:     $out_file")
@@ -273,6 +278,9 @@ function main(parsed)
     K = bilateral ? maximum(region_group) : N
     priors = get_priors(ode,K)
     priors["σ"] = LogNormal(0,1);
+    if large_u0
+        priors["seed"] = truncated(Normal(0.,1.0),lower=0);
+    else
     priors["seed"] = truncated(Normal(0.,0.1),lower=0);
     #priors["seed"] = truncated(Normal(50.,20),lower=0);  # large prior for DIFF
     #priors["seed"] = truncated(LogNormal(3.,0.28),lower=0,upper=100);  # assume percentages

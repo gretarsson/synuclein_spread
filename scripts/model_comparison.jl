@@ -41,6 +41,10 @@ simulations_list = [
         "simulations/FLUSH_DIFFG_RETRO",
         "simulations/DIFFG_RETRO",
     ],
+    [
+        "simulations/FLUSH_DIFFGA_RETRO_C1",
+        "simulations/DIFFGA_RETRO",
+    ],
 
     # HIPPO
     #[
@@ -100,6 +104,10 @@ model_names_list = [
         "DIFFG flush",
         "DIFFG retrograde",
     ],
+    [
+        "DIFFGA flush",
+        "DIFFGA retrograde",
+    ],
     # HIPPO
     #[
     #    "euclidean",
@@ -133,6 +141,7 @@ fig_prefixes = [
     "striatum_RETRO_ONLY",
     "striatum_FLUSH_DIFF",
     "striatum_FLUSH_DIFFG",
+    "striatum_FLUSH_DIFFGA",
     #"hippo_DIFF",
     #"hippo_DIFFG",
     #"hippo_DIFFGA",
@@ -144,6 +153,7 @@ fig_titles = [
     "DIFFG",
     "DIFFGA",
     "Retrograde transport",
+    "",
     "",
     "",
     #"DIFF (hippocampal)",
