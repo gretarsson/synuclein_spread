@@ -279,9 +279,10 @@ function main(parsed)
     priors = get_priors(ode,K)
     priors["σ"] = LogNormal(0,1);
     if large_u0
-        priors["seed"] = truncated(Normal(0.,1.0),lower=0);
+        priors["seed"] = truncated(Normal(50.,20),lower=0);  # large prior for DIFF
     else
-    priors["seed"] = truncated(Normal(0.,0.1),lower=0);
+        priors["seed"] = truncated(Normal(0.,0.1),lower=0);
+    end
     #priors["seed"] = truncated(Normal(50.,20),lower=0);  # large prior for DIFF
     #priors["seed"] = truncated(LogNormal(3.,0.28),lower=0,upper=100);  # assume percentages
     #priors["seed"] = LogNormal(log(41.2), 0.96);
