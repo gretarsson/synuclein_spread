@@ -45,7 +45,7 @@ for MODEL in "${MODELS[@]}"; do
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=32G
 #SBATCH --partition=all
-#SBATCH --time=5-00:00:00
+#SBATCH --time=2-00:00:00
 #SBATCH --chdir=$PROJECT_DIR
 #SBATCH --output=logs/nulls/%x_%A_%a.out
 #SBATCH --error=logs/nulls/%x_%A_%a.err
