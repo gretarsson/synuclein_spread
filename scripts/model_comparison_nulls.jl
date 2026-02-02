@@ -9,7 +9,7 @@ mode = :seed
 sim_true = "simulations/DIFFGA_RETRO.jls"
 waic_cache_file = "results/waic_cache/DIFFGA_$(String(mode))_waic_all.jls"
 waic_cache_dir  = "results/waic_cache"
-out_pdf = "figures/model_comparison/nulls/DIFFGA_$(String(mode))_WAIC_box.pdf"
+out_pdf = "figures/model_comparison/nulls_largeu0/DIFFGA_$(String(mode))_WAIC_box.pdf"
 
 # Load WAICs
 waic_all = deserialize(waic_cache_file)
