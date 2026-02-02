@@ -5,9 +5,9 @@ Random.seed!(123456)
 
 tresh = -5.8*1e4 # WAIC threshold for plotting
 
-mode = :seed
-sim_true = "simulations/DIFFGA_RETRO.jls"
-waic_cache_file = "results/waic_cache/DIFFGA_$(String(mode))_waic_all.jls"
+mode = :shuffle
+sim_true = "simulations/u0_DIFFGA_RETRO.jls"
+waic_cache_file = "results/waic_cache/largeu0_DIFFGA_$(String(mode))_waic_all.jls"
 waic_cache_dir  = "results/waic_cache"
 out_pdf = "figures/model_comparison/nulls_largeu0/DIFFGA_$(String(mode))_WAIC_box.pdf"
 
@@ -19,7 +19,7 @@ all_files = readdir("simulations"; join=true)
 sim_paths = if mode == :seed
     filter(f -> occursin(r"DIFFGA_seed_\d+$", splitext(basename(f))[1]), all_files)
 else
-    filter(f -> occursin(r"DIFFGA_shuffle_\d+$", splitext(basename(f))[1]), all_files)
+    filter(f -> occursin(r"largeu0_DIFFGA_shuffle_\d+$", splitext(basename(f))[1]), all_files)
 end
 
 
