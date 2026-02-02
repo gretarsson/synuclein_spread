@@ -44,8 +44,8 @@ for MODEL in "${MODELS[@]}"; do
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=32G
-#SBATCH --partition=long
-#SBATCH --time=5-00:00:00
+#SBATCH --partition=all
+#SBATCH --time=2-00:00:00
 #SBATCH --chdir=$PROJECT_DIR
 #SBATCH --output=logs/nulls/%x_%A_%a.out
 #SBATCH --error=logs/nulls/%x_%A_%a.err
@@ -69,7 +69,7 @@ trap 'echo "[trap] SIGUSR1 received; attempting clean exit"; pkill -USR1 -P \$\$
 shuffle_list=($(cat $idx_file))
 i=\${shuffle_list[\$((SLURM_ARRAY_TASK_ID-1))]}
 
-OUT_FILE="simulations/${MODEL}_shuffle_\${i}.jls"
+OUT_FILE="simulations/largeu0_${MODEL}_shuffle_\${i}.jls"
 echo "[ \$(date) ] Starting randomized null run \$i for ${MODEL}"
 
 exec stdbuf -oL -eL julia --project=. scripts/infer_this_main.jl \
@@ -78,6 +78,7 @@ exec stdbuf -oL -eL julia --project=. scripts/infer_this_main.jl \
     --n_chains=1 \
     --out_file=\$OUT_FILE \
     --shuffle
+    --large_u0
 EOF
 
 done
