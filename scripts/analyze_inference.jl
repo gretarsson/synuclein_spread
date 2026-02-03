@@ -13,7 +13,7 @@ simulations = ["DIFFG_global", "DIFFGA_global", "DIFFG_alpha_C2", "DIFFGA_alpha_
 #simulations = ["u0_DIFF_RETRO", "u0_DIFFG_RETRO", "u0_DIFFGA_RETRO", "u0_DIFFGA_EUCL", "u0_DIFFGA_ANTERO", "u0_DIFFGA_BIDIR"]
 simulations = ["u0s_DIFF_EUCL", "u0s_DIFF_ANTERO", "u0s_DIFF_BIDIR"]
 simulations = ["u0percNoS_DIFFG_BIDIR", "u0percNoS_DIFFG_RETRO", "u0percNoS_DIFFG_EUCL"]
-simulations = ["FLUSH_DIFFGA_RETRO_C1"]
+simulations = ["hippo_DIFFGA_RETRO_posterior_prior"]
 
 
 for simulation in simulations

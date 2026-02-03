@@ -5,7 +5,7 @@ using Printf
 
 # number of samples for WAIC
 Sn = 300
-group_cells = true  # weight each region x timepoint equally in WAIC
+group_cells = false  # weight each region x timepoint equally in WAIC
 
 # Read inference results
 simulations_list = [
@@ -65,11 +65,11 @@ simulations_list = [
     #    "simulations/hippo_DIFFGA_RETRO_CUT",
     #    "simulations/hippo_DIFFGA_BIDIR",
     #],
-    #[
-    #    "simulations/hippo_DIFF_RETRO",
-    #    "simulations/hippo_DIFFG_RETRO",
-    #    "simulations/hippo_DIFFGA_RETRO_CUT",
-    #],
+    [
+        "simulations/hippo_DIFF_RETRO",
+        "simulations/hippo_DIFFGA_RETRO_posterior_prior",
+        "simulations/hippo_DIFFGA_RETRO_posterior_prior",
+    ],
 ]
 
 model_names_list = [
@@ -127,11 +127,11 @@ model_names_list = [
     #    "retrograde",
     #    "bidirectional",
     #],
-    #[
-    #    "DIFF" 
-    #    "DIFFG" 
-    #    "DIFFGA" 
-    #],
+    [
+        "DIFF" 
+        "DIFFG" 
+        "DIFFGA" 
+    ],
 ]
 
 fig_prefixes = [
@@ -145,7 +145,7 @@ fig_prefixes = [
     #"hippo_DIFF",
     #"hippo_DIFFG",
     #"hippo_DIFFGA",
-    #"hippo_RETRO_ONLY",
+    "hippo_RETRO_ONLY",
 ]
 
 fig_titles = [
@@ -159,7 +159,7 @@ fig_titles = [
     #"DIFF (hippocampal)",
     #"DIFFG (hippocampal)",
     #"DIFFGA (hippocampal)",
-    #"Retrograde transport (hippocampal)",
+    "Retrograde transport (hippocampal)",
 ]
 
 #model_names_list = [model_names_list[1]]
