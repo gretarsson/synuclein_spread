@@ -48,9 +48,13 @@ declare -A BASE_JOBS
 #BASE_JOBS["u0percNoS_DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1"
 
 # FLUSH HYPOTHESIS
-BASE_JOBS["FLUSH_DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1 --flush_test"
-BASE_JOBS["FLUSH_DIFFG_RETRO"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1  --flush_test"
-BASE_JOBS["FLUSH_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1 --flush_test"
+#BASE_JOBS["FLUSH_DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1 --flush_test"
+#BASE_JOBS["FLUSH_DIFFG_RETRO"]="DIFFG data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1  --flush_test"
+#BASE_JOBS["FLUSH_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1 --flush_test"
+
+# BILATERAL
+BASE_JOBS["BILATERAL_DIFFGA_RETRO"]="DIFFGA_bilateral data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
+BASE_JOBS["BILATERAL_DIFFG_RETRO"]="DIFFG_bilateral data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
 
 #
 ## DIFFGAM
