@@ -67,8 +67,8 @@ simulations_list = [
     #],
     [
         "simulations/hippo_DIFF_RETRO",
-        "simulations/hippo_DIFFGA_RETRO_posterior_prior",
-        "simulations/hippo_DIFFGA_RETRO_posterior_prior",
+        "simulations/hippo_DIFFG_RETRO",
+        "simulations/hippo_DIFFGA_RETRO_C2",
     ],
 ]
 

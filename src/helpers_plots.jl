@@ -2921,7 +2921,8 @@ function predicted_observed_marked(inference;
     train_timepoints::Union{Nothing,AbstractVector}=nothing,
     mark_heldout::Bool=true,
     skip_first_timepoint::Bool=true,
-    show_r2::Bool=true,   # NEW keyword: toggle R² label on global plot
+    show_r2::Bool=true,
+    y_max::Union{Nothing,Real}=nothing,   # shared upper limit for BOTH axes (global + all timepoints)
 )
     # --- Unpack / choose data+time grid ---
     chain       = inference["chain"]
@@ -2947,38 +2948,32 @@ function predicted_observed_marked(inference;
 
     u0 = copy(inference["u0"])
     if get(inference, "bayesian_seed", false)
-        # Get parameter names and seed indices
         par_names = names(chain, :parameters)
         seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
         isempty(seed_ch_idx) && error("No seed parameters found in chain.")
         seed_ch_idx = sort(seed_ch_idx)
-    
-        # If single seed
+
         if isa(seed, Int)
             u0[seed] = chain.value[argmax[1], seed_ch_idx[1], argmax[2]]
         else
-            # Multiple seeds — assume same order as priors
             for (i, sidx) in enumerate(seed)
                 u0[sidx] = chain.value[argmax[1], seed_ch_idx[i], argmax[2]]
             end
         end
-    
     else
-        # Fixed seeding (non-Bayesian)
         if isa(seed, Int)
             u0[seed] = inference["seed_value"]
         else
             u0[seed] .= inference["seed_value"]
         end
     end
-    
 
     prob = make_ode_problem(ode;
-        labels     = labels,
-        Ltuple     = Ltuple,
-        factors    = factors,
-        u0         = u0,
-        timepoints = timepoints,
+        labels       = labels,
+        Ltuple       = Ltuple,
+        factors      = factors,
+        u0           = u0,
+        timepoints   = timepoints,
         seed_indices = inference["seed_idx"],
     )
     sol = solve(prob, Tsit5(); p=p, u0=u0, saveat=timepoints, abstol=1e-9, reltol=1e-6)
@@ -3029,6 +3024,37 @@ function predicted_observed_marked(inference;
         return ss_tot == 0 ? NaN : 1 - ss_res/ss_tot
     end
 
+    # --- Shared square-limit helper (applies to BOTH x and y) ---
+    function set_square_limits!(ax, x::AbstractVector, y::AbstractVector)
+        isempty(x) && return
+        isempty(y) && return
+
+        mn = min(minimum(x), minimum(y))
+        mx = max(maximum(x), maximum(y))
+
+        if plotscale === log10
+            mn = max(mn, eps(Float64))  # log axis requires > 0
+        end
+
+        if y_max !== nothing
+            mx = Float64(y_max)
+            # If y_max is invalid for log scale, fail loudly rather than silently.
+            if plotscale === log10 && mx <= 0
+                error("y_max must be > 0 when using log10 scale.")
+            end
+            # Ensure mn < mx (otherwise Makie can error / degenerate)
+            if !(mn < mx)
+                mn = plotscale === log10 ? mx/10 : mx - 1
+            end
+        end
+
+        CairoMakie.xlims!(ax, mn, mx)
+        CairoMakie.ylims!(ax, mn, mx)
+        #ax.aspect = DataAspect()  # 1 unit in x equals 1 unit in y (square in data coordinates)
+        ax.aspect = AxisAspect(1)  # 1 unit in x equals 1 unit in y (square in data coordinates)
+        return mn, mx
+    end
+
     # --- Colors/markers ---
     train_color   = RGBf(0/255,71/255,171/255)    # blue
     heldout_color = RGBf(200/255, 60/255, 50/255) # red
@@ -3046,21 +3072,24 @@ function predicted_observed_marked(inference;
         end
     end
 
-    # Compute R² (all pooled points)
-    allx = vcat(x_train, x_hold)
-    ally = vcat(y_train, y_hold)
+    allx = vcat(x_train, x_hold)   # Observed
+    ally = vcat(y_train, y_hold)   # Predicted
     r2_global = r2_score(allx, ally)
 
     # Axis ticks for log10
     use_log = (plotscale === log10)
     xticks = use_log ? ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e0],
-                        [L"$10^{-6}$",L"$10^{-5}$",L"$10^{-4}$",L"$10^{-3}$",L"$10^{-2}$",L"$10^{-1}$",L"$10^{0}$"]) : Makie.automatic
+                        [L"$10^{-6}$",L"$10^{-5}$",L"$10^{-4}$",L"$10^{-3}$",L"$10^{-2}$",L"$10^{-1}$",L"$10^{0}$"]) :
+                       Makie.automatic
 
-    f = Figure()
+    #f = Figure()
+    f = Figure(size = (450, 450), figure_padding = 5)
     ax = Axis(f[1,1];
         title="",
         xlabel="Observed", ylabel="Predicted",
-        xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=xticks)
+        xscale=plotscale, yscale=plotscale,
+        xticks=xticks, yticks=xticks,
+        alignmode=Inside())
 
     if !isempty(x_train)
         CairoMakie.scatter!(ax, x_train, y_train; color=(train_color,0.55))
@@ -3069,9 +3098,9 @@ function predicted_observed_marked(inference;
         CairoMakie.scatter!(ax, x_hold, y_hold; color=(heldout_color,0.7), marker=:utriangle)
     end
 
+    # Square limits (optionally capped by y_max) + 1:1 line
     if !isempty(allx)
-        mn = min(minimum(allx), minimum(ally))
-        mx = max(maximum(allx), maximum(ally))
+        mn, mx = set_square_limits!(ax, allx, ally)
         lines!(ax, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
     end
 
@@ -3083,21 +3112,26 @@ function predicted_observed_marked(inference;
 
     if !isempty(save_path)
         try; mkpath(save_path); catch; end
+        resize_to_layout!(f)
         save(joinpath(save_path,"predicted_observed_marked_all.pdf"), f)
     end
 
-    # === Per-timepoint panels (unchanged) ===
+    # === Per-timepoint panels ===
     figs = Any[f]
     for j in cols
         xj, yj = prep_xy(view(obs, :, j), view(pred, :, j))
         isempty(xj) && continue
 
-        f_t = Figure()
+        r2_t = r2_score(xj, yj)
+
+        #f_t = Figure()
+        f_t = Figure(size = (450, 450), figure_padding = 5)
         ax_t = Axis(f_t[1,1];
-            #title = @sprintf("t = %.3f%s", timepoints[j], (is_train_time(timepoints[j]) ? " (train)" : " (held-out)")),
-            title = @sprintf("t = %.3f", timepoints[j]),
-            xlabel="Observed", ylabel="Predicted",
-            xscale=plotscale, yscale=plotscale, xticks=xticks, yticks=xticks)
+            #title  = @sprintf("t = %.3f", timepoints[j]),
+            xlabel = "Observed", ylabel = "Predicted",
+            xscale = plotscale, yscale = plotscale,
+            xticks = xticks, yticks = xticks,
+            alignmode=Inside())
 
         if mark_heldout && !is_train_time(timepoints[j])
             CairoMakie.scatter!(ax_t, xj, yj; color=(heldout_color,0.7), marker=:utriangle)
@@ -3105,9 +3139,16 @@ function predicted_observed_marked(inference;
             CairoMakie.scatter!(ax_t, xj, yj; color=(train_color,0.55))
         end
 
-        mn = min(minimum(xj), minimum(yj))
-        mx = max(maximum(xj), maximum(yj))
+        # Square limits (optionally capped by y_max) + 1:1 line
+        mn, mx = set_square_limits!(ax_t, xj, yj)
         lines!(ax_t, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
+
+        if show_r2 && isfinite(r2_t)
+            text!(ax_t, 0.05, 0.95,
+                  text=@sprintf("R² = %.3f", r2_t),
+                  align=(:left,:top), space=:relative,
+                  color=:black, fontsize=28)
+        end
 
         if !isempty(save_path)
             save(joinpath(save_path, "predicted_observed_marked_t$(j).pdf"), f_t)
@@ -3117,6 +3158,8 @@ function predicted_observed_marked(inference;
 
     return figs
 end
+
+
 
 
 function plot_ppc_coverage_heldout(
@@ -3391,7 +3434,18 @@ function plot_inference(inference, save_path;
             mark_heldout         = false,
             skip_first_timepoint = false,
             show_r2 = true,
-            plotscale=identity
+            plotscale=identity,
+            y_max = 0.85
+        )
+        # No full series → plot fitted range only (all blue)
+        predicted_observed_marked(
+            inference;
+            save_path            = joinpath(save_path, "predicted_observed_marked_log"),
+            mark_heldout         = false,
+            skip_first_timepoint = false,
+            show_r2 = true,
+            plotscale=log10,
+            y_max = 0.85
         )
     end
 
