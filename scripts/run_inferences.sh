@@ -179,9 +179,9 @@ set -euo pipefail
 module purge
 module load julia
 export JULIA_DEPOT_PATH="$PROJECT_DIR/.julia_depot"
-mkdir -p "$JULIA_DEPOT_PATH"
+mkdir -p "$PROJECT_DIR/.julia_depot"
 
-julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
+julia --project="$PROJECT_DIR" -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
 
 # ---------- added fixes ----------
 # Lift CPU-time cap if allowed
@@ -199,7 +199,7 @@ echo "[CPU limit (s)] \$(ulimit -t)"
 trap 'echo "[trap] SIGUSR1 received; attempting clean exit"; pkill -USR1 -P $$ || true' USR1
 
 echo "[\$(date)] Launching Julia job $FULL_JOBNAME"
-exec stdbuf -oL -eL julia --project=. scripts/infer_this_main.jl $CMD_BASE --n_chains=1 --out_file=$OUT_FILE
+exec stdbuf -oL -eL julia --project="$PROJECT_DIR" scripts/infer_this_main.jl $CMD_BASE --n_chains=1 --out_file=$OUT_FILE
 EOF
 
   done
