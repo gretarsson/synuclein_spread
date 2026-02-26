@@ -178,6 +178,10 @@ for JOBNAME in "${!BASE_JOBS[@]}"; do
 set -euo pipefail
 module purge
 module load julia
+export JULIA_DEPOT_PATH="$PROJECT_DIR/.julia_depot"
+mkdir -p "$JULIA_DEPOT_PATH"
+
+julia --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
 
 # ---------- added fixes ----------
 # Lift CPU-time cap if allowed
