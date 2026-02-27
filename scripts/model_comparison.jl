@@ -45,10 +45,10 @@ simulations_list = [
         "simulations/BILATERAL_DIFFGA_RETRO",
     ],
     # STRIATUM: flush ablations
-    #[
-    #    "simulations/FLUSH_DIFF_RETRO",
-    #    "simulations/u0_DIFF_RETRO",
-    #],
+    [
+        "simulations/FLUSH_DIFF_RETRO_C1",
+        "simulations/u0_DIFF_RETRO",
+    ],
     #[
     #    "simulations/FLUSH_DIFFG_RETRO",
     #    "simulations/DIFFG_RETRO",
@@ -68,9 +68,9 @@ simulations_list = [
     ],
     # HIPPOCAMPUS: retro-only model class comparison
     [
-        "simulations/hippo_DIFF_RETRO",
-        "simulations/hippo_DIFFG_RETRO",
-        "simulations/hippo_DIFFGA_RETRO_C3",
+        "simulations/new_hippo_DIFF_RETRO_C1",
+        "simulations/new_hippo_DIFFG_RETRO_C1",
+        "simulations/new_hippo_DIFFGA_RETRO_C2",
     ],
 ]
 
@@ -87,7 +87,7 @@ model_names_list = [
     ["DIFF", "DIFFG", "DIFFGA", "DIFFG bilateral", "DIFFGA bilateral"],
 
     # STRIATUM: flush ablations labels
-    #["DIFF flush",  "DIFF retrograde"],
+    ["DIFF flush",  "DIFF retrograde"],
     #["DIFFG flush", "DIFFG retrograde"],
     #["DIFFGA flush","DIFFGA retrograde"],
 
@@ -105,7 +105,7 @@ fig_prefixes = [
     "striatum_DIFFGA",
     "striatum_RETRO_ONLY",
     "striatum_RETRO_ONLY_BILATERAL",
-    #"striatum_FLUSH_DIFF",
+    "striatum_FLUSH_DIFF",
     #"striatum_FLUSH_DIFFG",
     #"striatum_FLUSH_DIFFGA",
     "striatum_BILATERAL_DIFFG",
@@ -119,7 +119,7 @@ fig_titles = [
     "DIFFGA",
     "Retrograde transport",
     "Retrograde transport",
-    #"",  # flush panels often have their own annotations; keep blank if you do that elsewhere
+    "",  # flush panels often have their own annotations; keep blank if you do that elsewhere
     #"",
     #"",
     "Bilateral vs unilateral",
