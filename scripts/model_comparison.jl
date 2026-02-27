@@ -9,62 +9,64 @@ group_cells = false  # weight each region x timepoint equally in WAIC
 
 # Read inference results
 simulations_list = [
+    # STRIATUM: directionality (DIFF)
     [
         "simulations/u0_DIFF_EUCL",
         "simulations/u0_DIFF_ANTERO",
         "simulations/u0_DIFF_RETRO",
         "simulations/u0_DIFF_BIDIR",
-    ],                     
-    [                      
+    ],
+    # STRIATUM: directionality (DIFFG)
+    [
         "simulations/DIFFG_EUCL",
         "simulations/DIFFG_ANTERO",
         "simulations/DIFFG_RETRO",
         "simulations/DIFFG_BIDIR",
-    ],               
+    ],
+    # STRIATUM: directionality (DIFFGA)
     [
         "simulations/DIFFGA_EUCL",
         "simulations/DIFFGA_ANTERO",
         "simulations/DIFFGA_RETRO",
         "simulations/DIFFGA_BIDIR",
-    ],               
-    [                
+    ],
+    # STRIATUM: retro-only model class comparison
+    [
         "simulations/u0_DIFF_RETRO",
         "simulations/DIFFG_RETRO",
         "simulations/DIFFGA_RETRO",
     ],
-    # FLUSH
-    [                
-        "simulations/FLUSH_DIFF_RETRO",
-        "simulations/u0_DIFF_RETRO",
-    ],          
+    # STRIATUM with BILATERAL: retro-only model class comparison
     [
-        "simulations/FLUSH_DIFFG_RETRO",
+        "simulations/u0_DIFF_RETRO",
+        "simulations/DIFFG_RETRO",
+        "simulations/DIFFGA_RETRO",
+        "simulations/BILATERAL_DIFFG_RETRO",
+        "simulations/BILATERAL_DIFFGA_RETRO",
+    ],
+    # STRIATUM: flush ablations
+    #[
+    #    "simulations/FLUSH_DIFF_RETRO",
+    #    "simulations/u0_DIFF_RETRO",
+    #],
+    #[
+    #    "simulations/FLUSH_DIFFG_RETRO",
+    #    "simulations/DIFFG_RETRO",
+    #],
+    #[
+    #    "simulations/FLUSH_DIFFGA_RETRO_C1",
+    #    "simulations/DIFFGA_RETRO",
+    #],
+    # STRIATUM: bilateral vs unilateral (retro)
+    [
+        "simulations/BILATERAL_DIFFG_RETRO",
         "simulations/DIFFG_RETRO",
     ],
     [
-        "simulations/FLUSH_DIFFGA_RETRO_C1",
+        "simulations/BILATERAL_DIFFGA_RETRO",
         "simulations/DIFFGA_RETRO",
     ],
-
-    # HIPPO
-    #[
-    #    "simulations/igs_hippo_DIFF_EUCL",
-    #    "simulations/igs_hippo_DIFF_ANTERO",
-    #    "simulations/igs_hippo_DIFF_RETRO",
-    #    "simulations/igs_hippo_DIFF_BIDIR",
-    #],
-    #[
-    #    "simulations/hippo_DIFFG_EUCL",
-    #    "simulations/hippo_DIFFG_ANTERO",
-    #    "simulations/hippo_DIFFG_RETRO",
-    #    "simulations/hippo_DIFFG_BIDIR",
-    #],
-    #[
-    #    "simulations/hippo_DIFFGA_EUCL",
-    #    "simulations/hippo_DIFFGA_ANTERO",
-    #    "simulations/hippo_DIFFGA_RETRO_CUT",
-    #    "simulations/hippo_DIFFGA_BIDIR",
-    #],
+    # HIPPOCAMPUS: retro-only model class comparison
     [
         "simulations/hippo_DIFF_RETRO",
         "simulations/hippo_DIFFG_RETRO",
@@ -73,65 +75,28 @@ simulations_list = [
 ]
 
 model_names_list = [
-    [
-        "euclidean",
-        "anterograde",
-        "retrograde",
-        "bidirectional",
-    ],
-    [
-        "euclidean",
-        "anterograde",
-        "retrograde",
-        "bidirectional",
-    ],
-    [
-        "euclidean",
-        "anterograde",
-        "retrograde",
-        "bidirectional",
-    ],
-    [
-        "DIFF",
-        "DIFFG",
-        "DIFFGA",
-    ],
-    [
-        "DIFF flush",
-        "DIFF retrograde",
-    ],
-    [
-        "DIFFG flush",
-        "DIFFG retrograde",
-    ],
-    [
-        "DIFFGA flush",
-        "DIFFGA retrograde",
-    ],
-    # HIPPO
-    #[
-    #    "euclidean",
-    #    "anterograde",
-    #    "retrograde",
-    #    "bidirectional",
-    #],
-    #[
-    #    "euclidean",
-    #    "anterograde",
-    #    "retrograde",
-    #    "bidirectional",
-    #],
-    #[
-    #    "euclidean",
-    #    "anterograde",
-    #    "retrograde",
-    #    "bidirectional",
-    #],
-    [
-        "DIFF" 
-        "DIFFG" 
-        "DIFFGA" 
-    ],
+    # STRIATUM: directionality labels
+    ["euclidean", "anterograde", "retrograde", "bidirectional"],
+    ["euclidean", "anterograde", "retrograde", "bidirectional"],
+    ["euclidean", "anterograde", "retrograde", "bidirectional"],
+
+    # STRIATUM: retro-only model class comparison labels
+    ["DIFF", "DIFFG", "DIFFGA"],
+    
+    # STRIATUM with BILATERAL: retro-only model class comparison labels
+    ["DIFF", "DIFFG", "DIFFGA", "DIFFG bilateral", "DIFFGA bilateral"],
+
+    # STRIATUM: flush ablations labels
+    #["DIFF flush",  "DIFF retrograde"],
+    #["DIFFG flush", "DIFFG retrograde"],
+    #["DIFFGA flush","DIFFGA retrograde"],
+
+    # STRIATUM: bilateral vs unilateral labels
+    ["DIFFG",  "DIFFG bilateral"],
+    ["DIFFGA", "DIFFGA bilateral"],
+
+    # HIPPOCAMPUS: retro-only model class comparison labels
+    ["DIFF", "DIFFG", "DIFFGA"],
 ]
 
 fig_prefixes = [
@@ -139,12 +104,12 @@ fig_prefixes = [
     "striatum_DIFFG",
     "striatum_DIFFGA",
     "striatum_RETRO_ONLY",
-    "striatum_FLUSH_DIFF",
-    "striatum_FLUSH_DIFFG",
-    "striatum_FLUSH_DIFFGA",
-    #"hippo_DIFF",
-    #"hippo_DIFFG",
-    #"hippo_DIFFGA",
+    "striatum_RETRO_ONLY_BILATERAL",
+    #"striatum_FLUSH_DIFF",
+    #"striatum_FLUSH_DIFFG",
+    #"striatum_FLUSH_DIFFGA",
+    "striatum_BILATERAL_DIFFG",
+    "striatum_BILATERAL_DIFFGA",
     "hippo_RETRO_ONLY",
 ]
 
@@ -153,12 +118,12 @@ fig_titles = [
     "DIFFG",
     "DIFFGA",
     "Retrograde transport",
-    "",
-    "",
-    "",
-    #"DIFF (hippocampal)",
-    #"DIFFG (hippocampal)",
-    #"DIFFGA (hippocampal)",
+    "Retrograde transport",
+    #"",  # flush panels often have their own annotations; keep blank if you do that elsewhere
+    #"",
+    #"",
+    "Bilateral vs unilateral",
+    "Bilateral vs unilateral",
     "Retrograde transport (hippocampal)",
 ]
 

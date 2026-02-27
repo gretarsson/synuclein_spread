@@ -15,7 +15,8 @@ simulations = ["u0s_DIFF_EUCL", "u0s_DIFF_ANTERO", "u0s_DIFF_BIDIR"]
 simulations = ["u0percNoS_DIFFG_BIDIR", "u0percNoS_DIFFG_RETRO", "u0percNoS_DIFFG_EUCL"]
 simulations = ["hippo_DIFFGA_RETRO_posterior_prior"]
 
-simulations = ["igs_DIFF_RETRO", "DIFFG_RETRO", "DIFFGA_RETRO"]
+#simulations = ["BILATERAL_DIFFG_RETRO", "BILATERAL_DIFFGA_RETRO"]
+simulations = ["DIFFGA_T1", "DIFFGA_T2", "DIFFG_T1", "DIFFG_T2"]
 
 
 for simulation in simulations
@@ -32,15 +33,15 @@ for simulation in simulations
     #save_inference("simulations/" * simulation * "_CUT.jls", inference_obj)
 
     # plot
-    setup_plot_theme!()  # set plotting settings
-    display("Plotting inference results...")
-    plot_inference(inference_obj,"figures/inferences/"*simulation; plot_priors_posteriors=plot_priors_and_posteriors)  
-    display("Plots saved to figures/inferences/"*simulation)
-    display("---------------------------------------------------")
+    #setup_plot_theme!()  # set plotting settings
+    #display("Plotting inference results...")
+    #plot_inference(inference_obj,"figures/inferences_final/"*simulation; plot_priors_posteriors=plot_priors_and_posteriors)  
+    #display("Plots saved to figures/inferences/"*simulation)
+    #display("---------------------------------------------------")
 
     # plot with training data
-    #setup_plot_theme!()  # set plotting settings
-    #data_full, timepoints_full = PathoSpread.process_pathology("data/total_path.csv", W_csv="data/W_labeled_filtered.csv")
-    #plot_inference(inference_obj,"figures/"*simulation; full_data=data_full, full_timepoints=timepoints_full)  
+    setup_plot_theme!()  # set plotting settings
+    data_full, timepoints_full = PathoSpread.process_pathology("data/total_path.csv", W_csv="data/W_labeled_filtered.csv")
+    plot_inference(inference_obj,"figures/inferences_final/"*simulation; full_data=data_full, full_timepoints=timepoints_full, plot_priors_and_posteriors=plot_priors_and_posteriors)  
     #
 end
