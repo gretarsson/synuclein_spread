@@ -7,3 +7,4 @@
 /results/*
 .DS_Store
 scripts/.DS_Store
+.julia_depot/*
