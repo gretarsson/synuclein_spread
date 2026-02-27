@@ -138,6 +138,9 @@ function build_parser()
         "--large_u0"
             action = :store_true
             help = "If set, only keep the first neighbours of the seed region"
+        "--small_sigma"
+            action = :store_true
+            help = "If set, use smaller prior on σ"
         
     end
 
@@ -162,6 +165,7 @@ function main(parsed)
     ignore_seed = parsed["ignore_seed"]
     flush_test = parsed["flush_test"]
     large_u0 = parsed["large_u0"]
+    small_sigma = parsed["small_sigma"]
 
     # PRINT ARGS
     println("→ ODE:        $ode")
@@ -175,6 +179,7 @@ function main(parsed)
     println("→ Ignore seed regional data: $ignore_seed")
     println("→ Only keep edges directly connected to seed: $flush_test")
     println("→ Large prior on seed: $large_u0")
+    println("→ Small prior on sigma: $small_sigma")
     println("→ Average data samples: $mean_data")
     println("→ Target acceptance:    $target_acceptance")
     println("→ Output:     $out_file")
@@ -277,7 +282,11 @@ function main(parsed)
     region_group = build_region_groups(labels)  # prepare bilateral parameters
     K = bilateral ? maximum(region_group) : N
     priors = get_priors(ode,K)
-    priors["σ"] = LogNormal(0,1);
+    if small_sigma
+        priors["σ"] = truncated(Normal(0, 0.05));  # smaller prior for noise variance
+    else
+        priors["σ"] = LogNormal(0,1);
+    end
     if large_u0
         priors["seed"] = truncated(Normal(50.,20),lower=0);  # large prior for DIFF
     else
