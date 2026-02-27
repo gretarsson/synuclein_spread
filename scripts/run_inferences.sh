@@ -47,7 +47,6 @@ declare -A BASE_JOBS
 #BASE_JOBS["u0percNoS_DIFFGA_BIDIR"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/total_path.csv --n_chains=1"
 #BASE_JOBS["u0percNoS_DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/total_path.csv --n_chains=1"
 
-#
 ## DIFFGAM
 #BASE_JOBS["DIFFGAM_RETRO"]="DIFFGAM data/W_labeled_filtered.csv data/total_path.csv --retrograde=true --n_chains=1"
 #BASE_JOBS["DIFFGAM_ANTERO"]="DIFFGAM data/W_labeled_filtered.csv data/total_path.csv --retrograde=false --n_chains=1"
