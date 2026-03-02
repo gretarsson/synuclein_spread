@@ -32,13 +32,13 @@ simulations_list = [
     ],
     # STRIATUM: retro-only model class comparison
     [
-        "simulations/u0_DIFF_RETRO",
+        "simulations/u0l_DIFF_RETRO",
         "simulations/DIFFG_RETRO",
         "simulations/DIFFGA_RETRO",
     ],
     # STRIATUM with BILATERAL: retro-only model class comparison
     [
-        "simulations/u0_DIFF_RETRO",
+        "simulations/u0l_DIFF_RETRO",
         "simulations/DIFFG_RETRO",
         "simulations/DIFFGA_RETRO",
         "simulations/BILATERAL_DIFFG_RETRO",
@@ -46,17 +46,17 @@ simulations_list = [
     ],
     # STRIATUM: flush ablations
     [
-        "simulations/FLUSH_DIFF_RETRO_C1",
+        "simulations/FLUSH_DIFF_RETRO",
         "simulations/u0_DIFF_RETRO",
     ],
-    #[
-    #    "simulations/FLUSH_DIFFG_RETRO",
-    #    "simulations/DIFFG_RETRO",
-    #],
-    #[
-    #    "simulations/FLUSH_DIFFGA_RETRO_C1",
-    #    "simulations/DIFFGA_RETRO",
-    #],
+    [
+        "simulations/FLUSH_DIFFG_RETRO",
+        "simulations/DIFFG_RETRO",
+    ],
+    [
+        "simulations/FLUSH_DIFFGA_RETRO",
+        "simulations/DIFFGA_RETRO",
+    ],
     # STRIATUM: bilateral vs unilateral (retro)
     [
         "simulations/BILATERAL_DIFFG_RETRO",
@@ -88,8 +88,8 @@ model_names_list = [
 
     # STRIATUM: flush ablations labels
     ["DIFF flush",  "DIFF retrograde"],
-    #["DIFFG flush", "DIFFG retrograde"],
-    #["DIFFGA flush","DIFFGA retrograde"],
+    ["DIFFG flush", "DIFFG retrograde"],
+    ["DIFFGA flush","DIFFGA retrograde"],
 
     # STRIATUM: bilateral vs unilateral labels
     ["DIFFG",  "DIFFG bilateral"],
@@ -106,8 +106,8 @@ fig_prefixes = [
     "striatum_RETRO_ONLY",
     "striatum_RETRO_ONLY_BILATERAL",
     "striatum_FLUSH_DIFF",
-    #"striatum_FLUSH_DIFFG",
-    #"striatum_FLUSH_DIFFGA",
+    "striatum_FLUSH_DIFFG",
+    "striatum_FLUSH_DIFFGA",
     "striatum_BILATERAL_DIFFG",
     "striatum_BILATERAL_DIFFGA",
     "hippo_RETRO_ONLY",
@@ -120,8 +120,8 @@ fig_titles = [
     "Retrograde transport",
     "Retrograde transport",
     "",  # flush panels often have their own annotations; keep blank if you do that elsewhere
-    #"",
-    #"",
+    "",
+    "",
     "Bilateral vs unilateral",
     "Bilateral vs unilateral",
     "Retrograde transport (hippocampal)",
@@ -174,7 +174,14 @@ for (i,(simulations, model_names, prefix, fig_title)) in enumerate(zip(simulatio
     pwaic_vals  = Float64[]   # optional: if you returned p_waic
 
     for inference in inferences
-        waic, se_waic, waic_i, lppd, p_waic, n_used = compute_waic(inference; S=Sn, group_cells=group_cells, ignore_seed=true)
+        #waic = nothing
+        #se_waic = nothing
+        #waic_i = nothing
+        #lppd = nothing
+        #p_waic = nothing
+        #n_used = nothing
+        waic, se_waic, waic_i, lppd, p_waic, n_used = compute_waic(inference; S=Sn, group_cells=group_cells, ignore_seed=false)
+
         push!(waic_vals, waic)
         push!(se_waic_vals, se_waic)
         push!(waic_i_list, waic_i)

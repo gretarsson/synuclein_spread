@@ -137,7 +137,7 @@ function build_parser()
             help = "If set, only keep the first neighbours of the seed region"
         "--large_u0"
             action = :store_true
-            help = "If set, only keep the first neighbours of the seed region"
+            help = "If set, have large u0"
         "--small_sigma"
             action = :store_true
             help = "If set, use smaller prior on σ"
