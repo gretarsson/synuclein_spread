@@ -32,13 +32,13 @@ simulations_list = [
     ],
     # STRIATUM: retro-only model class comparison
     [
-        "simulations/u0l_DIFF_RETRO",
+        "simulations/u0_DIFF_RETRO",
         "simulations/DIFFG_RETRO",
         "simulations/DIFFGA_RETRO",
     ],
     # STRIATUM with BILATERAL: retro-only model class comparison
     [
-        "simulations/u0l_DIFF_RETRO",
+        "simulations/u0_DIFF_RETRO",
         "simulations/DIFFG_RETRO",
         "simulations/DIFFGA_RETRO",
         "simulations/BILATERAL_DIFFG_RETRO",
@@ -68,9 +68,9 @@ simulations_list = [
     ],
     # HIPPOCAMPUS: retro-only model class comparison
     [
-        "simulations/new_hippo_DIFF_RETRO_C1",
-        "simulations/new_hippo_DIFFG_RETRO_C1",
-        "simulations/new_hippo_DIFFGA_RETRO_C2",
+        "simulations/mean_hippo_DIFF_RETRO",
+        "simulations/mean_hippo_DIFFG_RETRO",
+        "simulations/mean_hippo_DIFFGA_RETRO",
     ],
 ]
 
@@ -180,7 +180,7 @@ for (i,(simulations, model_names, prefix, fig_title)) in enumerate(zip(simulatio
         #lppd = nothing
         #p_waic = nothing
         #n_used = nothing
-        waic, se_waic, waic_i, lppd, p_waic, n_used = compute_waic(inference; S=Sn, group_cells=group_cells, ignore_seed=false)
+        waic, se_waic, waic_i, lppd, p_waic, n_used = compute_waic(inference; S=Sn, group_cells=group_cells, ignore_seed=true)
 
         push!(waic_vals, waic)
         push!(se_waic_vals, se_waic)
