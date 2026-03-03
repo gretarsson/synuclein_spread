@@ -50,7 +50,7 @@ latex_names = Dict(
 global_parameter_names = ["rho", "alpha"]  # extend manually as needed
 
 inference_files = Dict(
-    "DIFF"   => "simulations/DIFF_RETRO.jls",
+    "DIFF"   => "simulations/largeu0_DIFF_RETRO.jls",
     "DIFFG"  => "simulations/DIFFG_RETRO.jls",
     "DIFFGA" => "simulations/DIFFGA_RETRO.jls"
 )

@@ -92,8 +92,8 @@ model_names_list = [
     ["DIFFGA flush","DIFFGA retrograde"],
 
     # STRIATUM: bilateral vs unilateral labels
-    ["DIFFG",  "DIFFG bilateral"],
-    ["DIFFGA", "DIFFGA bilateral"],
+    ["DIFFG bilateral",  "DIFFG"],
+    ["DIFFGA bilateral", "DIFFGA"],
 
     # HIPPOCAMPUS: retro-only model class comparison labels
     ["DIFF", "DIFFG", "DIFFGA"],
@@ -117,14 +117,14 @@ fig_titles = [
     "DIFF",
     "DIFFG",
     "DIFFGA",
-    "Retrograde transport",
-    "Retrograde transport",
+    "",
+    "",
     "",  # flush panels often have their own annotations; keep blank if you do that elsewhere
     "",
     "",
-    "Bilateral vs unilateral",
-    "Bilateral vs unilateral",
-    "Retrograde transport (hippocampal)",
+    "",
+    "",
+    "",
 ]
 
 #model_names_list = [model_names_list[1]]

@@ -27,7 +27,7 @@ Set a global plotting theme for both Makie (CairoMakie) and StatsPlots/Plots.
 Call this once (e.g., at the top of your script) to standardize fonts & sizes.
 """
 
-function setup_plot_theme!(; font="Arial", base=18, lw=3, markersize=10, dpi=300)
+function setup_plot_theme!(; font="Arial", base=18, lw=3, markersize=14, dpi=300)
     set_theme!(Theme(
         # ensure every text uses the same family
         fonts = (regular=font, bold=font, italic=font),
@@ -2020,6 +2020,7 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
     clamp_floor::Union{Nothing,Float64}=0.0,    # floor for BOTH band/line and data error bars (physical floor)
     lower_headroom_frac::Float64=0.03,          # small visual headroom below clamp_floor
     save_legend::Bool=true,
+    markersize=35,
     legend_filename::String="aretrodiction_legend.pdf",
 
     # --- NEW ---
@@ -2229,7 +2230,7 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         if show_band
             CairoMakie.band!(axs[i], tgrid, q_low_draw[i, :], q_high_draw[i, :]; color=(:gray, 0.25))
         end
-        CairoMakie.lines!(axs[i], tgrid, q_med_draw[i, :]; color=:black, linewidth=5)
+        CairoMakie.lines!(axs[i], tgrid, q_med_draw[i, :]; color=:black, linewidth=10)
 
         # Data
         if data_style == :mean
@@ -2245,17 +2246,39 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
 
                     if !isempty(I_train)
                         CairoMakie.scatter!(axs[i], t_i[I_train], μ_i[I_train];
-                            color=train_color, markersize=round(Int, 1.2*18), alpha=0.95)
+                            color=train_color, alpha=0.95, markersize=markersize)
                     end
                     if !isempty(I_held)
                         CairoMakie.scatter!(axs[i], t_i[I_held], μ_i[I_held];
-                            color=heldout_color, marker=:utriangle, markersize=round(Int, 1.3*18), alpha=0.95)
+                            color=heldout_color, marker=:utriangle, alpha=0.95, markersize=markersize)
                     end
                 else
                     CairoMakie.scatter!(axs[i], t_i, μ_i;
-                        color=train_color, markersize=round(Int, 1.2*18), alpha=0.95)
+                        color=train_color, alpha=0.95, markersize=markersize)
                 end
 
+                # Error bars (optional)
+                #if data_error != :none
+                #    v_i = Float64.(var_data[i, :][nonmissing])
+                #    v_i = max.(v_i, 0.0)
+                #    σ_i = sqrt.(v_i)
+                #    if data_error === :se && n_rep > 1
+                #        σ_i ./= sqrt(n_rep)
+                #    end
+                #    replace!(σ_i, NaN => 0.0)
+
+                #    if truncate_at_zero
+                #        floor = isnothing(clamp_floor) ? ymin : clamp_floor
+                #        lower_cap = max.(0.0, μ_i .- floor)
+                #        σ_low = map(min, σ_i, lower_cap)
+                #        σ_up  = σ_i
+                #        CairoMakie.errorbars!(axs[i], t_i, μ_i, σ_low, σ_up;
+                #            color=(train_color,0.5), whiskerwidth=20, linewidth=5)
+                #    else
+                #        CairoMakie.errorbars!(axs[i], t_i, μ_i, σ_i;
+                #            color=(train_color,0.5), whiskerwidth=20, linewidth=3)
+                #    end
+                #end
                 # Error bars (optional)
                 if data_error != :none
                     v_i = Float64.(var_data[i, :][nonmissing])
@@ -2266,17 +2289,38 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
                     end
                     replace!(σ_i, NaN => 0.0)
 
-                    if truncate_at_zero
-                        floor = isnothing(clamp_floor) ? ymin : clamp_floor
-                        lower_cap = max.(0.0, μ_i .- floor)
-                        σ_low = map(min, σ_i, lower_cap)
-                        σ_up  = σ_i
-                        CairoMakie.errorbars!(axs[i], t_i, μ_i, σ_low, σ_up;
-                            color=(train_color,0.5), whiskerwidth=20, linewidth=5)
+                    # indices for coloring (match what you plotted)
+                    I_train = Int[]
+                    I_held  = Int[]
+                    if mark_heldout
+                        I_train = [k for (k,t) in enumerate(t_i) if is_train(t)]
+                        I_held  = [k for (k,t) in enumerate(t_i) if !is_train(t)]
                     else
-                        CairoMakie.errorbars!(axs[i], t_i, μ_i, σ_i;
-                            color=(train_color,0.5), whiskerwidth=20, linewidth=3)
+                        I_train = collect(eachindex(t_i))
                     end
+
+                    # helper to draw one group
+                    function _draw_err!(I, col)
+                        isempty(I) && return
+                        tG = t_i[I]
+                        μG = μ_i[I]
+                        σG = σ_i[I]
+
+                        if truncate_at_zero
+                            floor = isnothing(clamp_floor) ? ymin : clamp_floor
+                            lower_cap = max.(0.0, μG .- floor)
+                            σ_low = map(min, σG, lower_cap)
+                            σ_up  = σG
+                            CairoMakie.errorbars!(axs[i], tG, μG, σ_low, σ_up;
+                                color=(col, 0.5), whiskerwidth=40, linewidth=8)
+                        else
+                            CairoMakie.errorbars!(axs[i], tG, μG, σG;
+                                color=(col, 0.5), whiskerwidth=40, linewidth=8)
+                        end
+                    end
+
+                    _draw_err!(I_train, train_color)
+                    _draw_err!(I_held,  heldout_color)
                 end
             end
 
@@ -2297,11 +2341,11 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
                         end
                         if !isempty(I_held)
                             CairoMakie.scatter!(axs[i], t_i[I_held], y_i[I_held];
-                                color=(heldout_color,0.35), marker=:utriangle, markersize=round(Int, 0.5*18))
+                                color=(heldout_color,0.35), marker=:utriangle, markersize=markersize)
                         end
                     else
                         CairoMakie.scatter!(axs[i], t_i, y_i;
-                            color=(train_color,0.35), markersize=round(Int, 0.4*18))
+                            color=(train_color,0.35), markersize=markersize)
                     end
                 end
             end
@@ -2922,6 +2966,7 @@ function predicted_observed_marked(inference;
     mark_heldout::Bool=true,
     skip_first_timepoint::Bool=true,
     show_r2::Bool=true,
+    markersize=22,
     y_max::Union{Nothing,Real}=nothing,   # shared upper limit for BOTH axes (global + all timepoints)
 )
     # --- Unpack / choose data+time grid ---
@@ -3092,10 +3137,10 @@ function predicted_observed_marked(inference;
         alignmode=Inside())
 
     if !isempty(x_train)
-        CairoMakie.scatter!(ax, x_train, y_train; color=(train_color,0.55))
+        CairoMakie.scatter!(ax, x_train, y_train; color=(train_color,0.55), markersize=markersize)
     end
     if mark_heldout && !isempty(x_hold)
-        CairoMakie.scatter!(ax, x_hold, y_hold; color=(heldout_color,0.7), marker=:utriangle)
+        CairoMakie.scatter!(ax, x_hold, y_hold; color=(heldout_color,0.7), marker=:utriangle, markersize=markersize)
     end
 
     # Square limits (optionally capped by y_max) + 1:1 line
@@ -3134,9 +3179,9 @@ function predicted_observed_marked(inference;
             alignmode=Inside())
 
         if mark_heldout && !is_train_time(timepoints[j])
-            CairoMakie.scatter!(ax_t, xj, yj; color=(heldout_color,0.7), marker=:utriangle)
+            CairoMakie.scatter!(ax_t, xj, yj; color=(heldout_color,0.7), marker=:utriangle, markersize=markersize)
         else
-            CairoMakie.scatter!(ax_t, xj, yj; color=(train_color,0.55))
+            CairoMakie.scatter!(ax_t, xj, yj; color=(train_color,0.55), markersize=markersize)
         end
 
         # Square limits (optionally capped by y_max) + 1:1 line
