@@ -51,7 +51,7 @@ gene_IDs = names(gene_data)[2:end]
 gene_matrix = Matrix(gene_data[:, 2:end]) 
 
 # Read Disease Spreading Model
-simulation = "DIFFGA_RETRO"
+simulation = "DIFFG_RETRO"
 inference = load_inference("simulations/"*simulation*".jls")
 
 # Extract raw data used in inference
@@ -226,9 +226,9 @@ for par_name in ["beta", "gamma"]
     )
 
     if skip_zero_regions
-        out_path = "results/gene_correlation/nonzero_DIFFGA_gene_correlation_$(par_name)_$(String(PARAM_SUMMARY)).csv"
+        out_path = "results/gene_correlation/nonzero_DIFFG_gene_correlation_$(par_name)_$(String(PARAM_SUMMARY)).csv"
     else
-        out_path = "results/gene_correlation/DIFFGA_gene_correlation_$(par_name)_$(String(PARAM_SUMMARY)).csv"
+        out_path = "results/gene_correlation/DIFFG_gene_correlation_$(par_name)_$(String(PARAM_SUMMARY)).csv"
     end
     CSV.write(out_path, out_df)
     println("  Saved frequentist summary to $out_path")
@@ -254,8 +254,8 @@ for par_name in ["beta", "gamma"]
     genes_bonf = gene_IDs[idx_bonf]
     # Output file names
     base = skip_zero_regions ?
-        "results/gene_correlation/nonzero_DIFFGA_siggenes_$(par_name)_$(String(PARAM_SUMMARY))" :
-        "results/gene_correlation/DIFFGA_siggenes_$(par_name)_$(String(PARAM_SUMMARY))"
+        "results/gene_correlation/nonzero_DIFFG_siggenes_$(par_name)_$(String(PARAM_SUMMARY))" :
+        "results/gene_correlation/DIFFG_siggenes_$(par_name)_$(String(PARAM_SUMMARY))"
 
     # Write each list to a text file (one gene name per line)
     open(base * "_uncorrected.txt", "w") do io
