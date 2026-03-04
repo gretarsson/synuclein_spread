@@ -283,7 +283,7 @@ function main(parsed)
     K = bilateral ? maximum(region_group) : N
     priors = get_priors(ode,K)
     if small_sigma
-        priors["σ"] = truncated(Normal(0, 0.005));  # smaller prior for noise variance
+        priors["σ"] = truncated(Normal(0, 0.005), lower=0, upper=0.04);  # smaller prior for noise variance
     else
         priors["σ"] = LogNormal(0,1);
     end
