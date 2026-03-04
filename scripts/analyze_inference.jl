@@ -15,12 +15,13 @@ simulations = ["u0s_DIFF_EUCL", "u0s_DIFF_ANTERO", "u0s_DIFF_BIDIR"]
 simulations = ["u0percNoS_DIFFG_BIDIR", "u0percNoS_DIFFG_RETRO", "u0percNoS_DIFFG_EUCL"]
 simulations = ["hippo_DIFFGA_RETRO_posterior_prior"]
 
-simulations = ["BILATERAL_DIFFGA_RETRO", "BILATERAL_DIFFGA_RETRO"]
+#simulations = ["BILATERAL_DIFFGA_RETRO", "BILATERAL_DIFFGA_RETRO"]
 #simulations = ["DIFFGA_T1", "DIFFGA_T2", "DIFFG_T1", "DIFFG_T2"]
 
 #simulations = ["FLUSH_DIFF_RETRO", "FLUSH_DIFFG_RETRO", "FLUSH_DIFFGA_RETRO"]
 #simulations = ["DIFFG_RETRO"]
 #simulations = ["u0_DIFF_RETRO", "DIFFG_RETRO", "DIFFGA_RETRO"]
+simulations = ["new_hippo_DIFF_RETRO", "new_hippo_DIFFG_RETRO", "new_hippo_DIFFGA_RETRO"]
 
 for simulation in simulations
     # simulation to analyze
