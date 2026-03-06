@@ -276,3 +276,87 @@ beta_gamma_scatter = Plots.scatter(
 outfile_bg = joinpath(save_dir, "beta_gamma_scatter_DIFFGA.pdf")
 savefig(beta_gamma_scatter, outfile_bg)
 println("Saved → $outfile_bg")
+
+# ============================================================
+# SAVE POSTERIOR MEAN β AND γ WITH REGION LABELS
+# ============================================================
+
+println("Saving optimal β and γ parameters with region labels...")
+
+"""
+Extract posterior means of parameters with prefix like beta[ or gamma[
+Assumes priors ordering corresponds to p[i].
+"""
+function posterior_mean_vector_by_prefix(inf::Dict, prefix::AbstractString)
+    priors = inf["priors"]
+    chain  = inf["chain"]
+
+    names_ = filter(n -> startswith(n, prefix * "["), collect(keys(priors)))
+
+    # ensure ordering beta[1], beta[2], ...
+    sort!(names_, by = n -> parse(Int, match(Regex("^" * prefix * "\\[(\\d+)\\]"), n).captures[1]))
+
+    prior_keys = collect(keys(priors))
+    means = Float64[]
+
+    for pname in names_
+        idx = findfirst(==(pname), prior_keys)
+        samples = posterior_samples_from_p(chain, idx)
+        push!(means, mean(samples))
+    end
+
+    return means
+end
+
+
+"""
+Write region,value csv
+"""
+function write_region_param_csv(outfile, regions, values, colname)
+    if length(regions) != length(values)
+        error("Length mismatch: $(length(regions)) regions vs $(length(values)) values.")
+    end
+
+    open(outfile, "w") do io
+        println(io, "region,$colname")
+        for (r,v) in zip(regions, values)
+            println(io, "$r,$v")
+        end
+    end
+end
+
+
+# ------------------------------------------------------------
+# DIFFGA
+# ------------------------------------------------------------
+inf_GA = inferences["DIFFGA"]
+
+regions = String.(inf_GA["labels"])
+
+beta_mean_GA  = posterior_mean_vector_by_prefix(inf_GA, "beta")
+gamma_mean_GA = posterior_mean_vector_by_prefix(inf_GA, "gamma")
+
+outfile_beta_GA  = joinpath(save_dir, "DIFFGA_beta_optimal.csv")
+outfile_gamma_GA = joinpath(save_dir, "DIFFGA_gamma_optimal.csv")
+
+write_region_param_csv(outfile_beta_GA, regions, beta_mean_GA, "beta_mean_post")
+write_region_param_csv(outfile_gamma_GA, regions, gamma_mean_GA, "gamma_mean_post")
+
+println("Saved → $outfile_beta_GA")
+println("Saved → $outfile_gamma_GA")
+
+
+# ------------------------------------------------------------
+# DIFFG
+# ------------------------------------------------------------
+inf_G = inferences["DIFFG"]
+
+regions_G = String.(inf_G["labels"])
+
+beta_mean_G = posterior_mean_vector_by_prefix(inf_G, "beta")
+
+outfile_beta_G = joinpath(save_dir, "DIFFG_beta_optimal.csv")
+
+write_region_param_csv(outfile_beta_G, regions_G, beta_mean_G, "beta_mean_post")
+
+println("Saved → $outfile_beta_G")
