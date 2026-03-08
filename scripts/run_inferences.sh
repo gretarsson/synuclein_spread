@@ -85,9 +85,9 @@ declare -A BASE_JOBS
 ## HIPPOCAMPUS INJECTION SITE
 ## --------------------------------
 # ONLY RETRO
-BASE_JOBS["new_hippo_DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1 --large_u0 --small_sigma"
-BASE_JOBS["new_hippo_DIFFG_RETRO"]="DIFFG data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1 --small_sigma"
-BASE_JOBS["new_hippo_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1 --small_sigma"
+BASE_JOBS["largeu0_hippo_DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1 --large_u0"
+BASE_JOBS["bilateral_hippo_DIFFG_RETRO"]="DIFFG_bilateral data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1"
+BASE_JOBS["bilateral_hippo_DIFFGA_RETRO"]="DIFFGA_bilateral data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1"
 
 ## DIFF
 #BASE_JOBS["hippo_DIFF_RETRO"]="DIFF data/W_labeled_filtered.csv data/hippocampal/hippocampal_syn_only.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1"
