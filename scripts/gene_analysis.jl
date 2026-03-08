@@ -51,7 +51,7 @@ gene_IDs = names(gene_data)[2:end]
 gene_matrix = Matrix(gene_data[:, 2:end]) 
 
 # Read Disease Spreading Model
-simulation = "DIFFG_RETRO"
+simulation = "BILATERAL_DIFFGA_RETRO"
 inference = load_inference("simulations/"*simulation*".jls")
 
 # Extract raw data used in inference
@@ -226,9 +226,9 @@ for par_name in ["beta", "gamma"]
     )
 
     if skip_zero_regions
-        out_path = "results/gene_correlation/nonzero_DIFFG_gene_correlation_$(par_name)_$(String(PARAM_SUMMARY)).csv"
+        out_path = "results/gene_correlation/nonzero"*simulation*"_gene_corr_$(par_name).csv"
     else
-        out_path = "results/gene_correlation/DIFFG_gene_correlation_$(par_name)_$(String(PARAM_SUMMARY)).csv"
+        out_path = "results/gene_correlation/"*simulation*"_gene_corr_$(par_name).csv"
     end
     CSV.write(out_path, out_df)
     println("  Saved frequentist summary to $out_path")
@@ -254,8 +254,8 @@ for par_name in ["beta", "gamma"]
     genes_bonf = gene_IDs[idx_bonf]
     # Output file names
     base = skip_zero_regions ?
-        "results/gene_correlation/nonzero_DIFFG_siggenes_$(par_name)_$(String(PARAM_SUMMARY))" :
-        "results/gene_correlation/DIFFG_siggenes_$(par_name)_$(String(PARAM_SUMMARY))"
+        "results/gene_correlation/nonzero"*simulation*"siggenes_$(par_name)_$(String(PARAM_SUMMARY))" :
+        "results/gene_correlation/"*simulation*"_siggenes_$(par_name)_$(String(PARAM_SUMMARY))"
 
     # Write each list to a text file (one gene name per line)
     open(base * "_uncorrected.txt", "w") do io
@@ -290,147 +290,3 @@ open("results/gene_correlation/PANGEA_all_genes.txt", "w") do io
 end
 
 println("\nSaved list of ALL gene names to DIFFGA_all_genes.txt")
-
-#######################################################################
-# === END FREQUENTIST ANALYSIS =======================================
-#######################################################################
-
-
-# BAYESIAN ANALYSIS (PROBABLY INACCURATE APPROACH)
-# Extract posterior samples for beta and gamma
-#beta_posterior = Array(chain[:,beta_ind, :])
-#gamma_posterior = Array(chain[:, gamma_ind, :])
-#posteriors = [beta_posterior, gamma_posterior]  
-#par_names = ["beta", "gamma"]   
-#
-## find the correlation matrix for each parameter
-#for (posterior, par_name) in zip(posteriors,par_names)
-#    # Compute average beta for each gene region
-#    S = size(posterior, 1)
-#    R = length(gene_regions)
-#
-#    beta_gene = Array{Float64}(undef, S, R)
-#
-#    for (r, gr) in enumerate(gene_regions)
-#        regions = region_map[gr]
-#
-#        if isempty(regions)
-#            beta_gene[:, r] .= NaN
-#            continue
-#        end
-#
-#        idxs = [model_index[mr] for mr in regions]  # model indices
-#
-#        for s in 1:S
-#            beta_gene[s, r] = mean(posterior[s, idxs])
-#        end
-#    end
-#
-#
-#    # Compute Pearson correlation between gene expression and beta values
-#    G = size(gene_matrix, 2)
-#    pearson_matrix = Array{Float64}(undef, G, S)
-#    pval_matrix = Array{Float64}(undef, G, S)
-#
-#    @showprogress for g in 1:G
-#        expr = gene_matrix[:, g]
-#
-#        for s in 1:S
-#            beta_vec = beta_gene[s, :]
-#
-#            # mask invalid (NaN from unmatched regions)
-#            mask = .!isnan.(beta_vec)
-#
-#            if sum(mask) < 3
-#                pearson_matrix[g, s] = NaN
-#            else
-#                pearson_matrix[g, s] = cor(expr[mask], beta_vec[mask])
-#                pval_matrix[g, s] = pvalue(CorrelationTest(expr[mask], beta_vec[mask]))
-#            end
-#        end
-#    end
-#
-#    # Convert pearson matrix to DataFrame for saving (and convert to Float32 to save space)
-#    pearson_df = DataFrame(Float32.(pearson_matrix), :auto)
-#    # Give columns meaningful names (optional)
-#    rename!(pearson_df, Symbol.(string.("sample_", 1:size(pearson_matrix, 2))))
-#    # Give rows gene names (optional but highly recommended)
-#    pearson_df.gene = gene_IDs
-#    # Move the gene column to the front
-#    select!(pearson_df, :gene, Not(:gene))
-#    # save pearson matrix
-#    CSV.write("results/gene_pearson_$(par_name).csv", pearson_df)
-#    println("Saved gene pearson r-values for $par_name to results/gene_pearson_$(par_name).csv")
-#
-#    # Convert pearson matrix to DataFrame for saving (and convert to Float32 to save space)
-#    pval_df = DataFrame(Float32.(pval_matrix), :auto)
-#    # Give columns meaningful names (optional)
-#    rename!(pval_df, Symbol.(string.("sample_", 1:size(pval_matrix, 2))))
-#    # Give rows gene names (optional but highly recommended)
-#    pval_df.gene = gene_IDs
-#    # Move the gene column to the front
-#    select!(pval_df, :gene, Not(:gene))
-#    # save pearson matrix
-#    CSV.write("results/gene_pval_$(par_name).csv", pval_df)
-#    println("Saved gene pearson p-values for $par_name to results/gene_pval_$(par_name).csv")
-#
-#    ## === Create summary file: mean r and mean p per gene ===
-#    # Compute means across samples, ignoring NaN entries
-#    mean_r = [mean(skipmissing(pearson_matrix[g, :])) for g in 1:G]
-#    mean_p = [mean(skipmissing(pval_matrix[g, :])) for g in 1:G]
-#    mean_p_bonf = [min(p * G, 1.0) for p in mean_p]  # Bonferroni correction    
-#    mean_p_fdr = fdr_bh(mean_p)  # FDR correction
-#
-#    summary_df = DataFrame(
-#        gene = gene_IDs,
-#        r = Float32.(mean_r),
-#        p_bonf = Float32.(mean_p_bonf),
-#        p_fdr = Float32.(mean_p_fdr),
-#        p_un = Float32.(mean_p)
-#    )
-#
-#    CSV.write("results/gene_summary_$(par_name).csv", summary_df)
-#    println("Saved summary statistics for $par_name to results/gene_summary_$(par_name).csv")
-#
-#end
-#
-#
-#
-#for (posterior, par_name) in zip(posteriors,par_names)
-#    # read the pearson and p-values 
-#    pearson_matrix = Matrix(CSV.read("results/gene_pearson_$(par_name).csv", DataFrame))[:,2:end]   
-#    pval_matrix = Matrix(CSV.read("results/gene_pval_$(par_name).csv", DataFrame))[:,2:end]   
-#
-#    ## === Create summary file: mean r and mean p per gene ===
-#    G = size(pearson_matrix, 1)
-#    # Compute means across samples, ignoring NaN entries
-#    mean_r = [mean(pearson_matrix[g, :]) for g in 1:G]
-#    mean_p = [mean(pval_matrix[g, :]) for g in 1:G]
-#    mean_p_bonf = [min(p * G, 1.0) for p in mean_p]  # Bonferroni correction    
-#    mean_p_fdr = fdr_bh(mean_p)  # FDR correction
-#
-#    summary_df = DataFrame(
-#        gene = gene_IDs,
-#        r = Float32.(mean_r),
-#        p_bonf = Float32.(mean_p_bonf),
-#        p_fdr = Float32.(mean_p_fdr),
-#        p_un = Float32.(mean_p)
-#    )
-#
-#    CSV.write("results/gene_summary_$(par_name).csv", summary_df)
-#    println("Saved summary statistics for $par_name to results/gene_summary_$(par_name).csv")
-#
-#    # === Count significant genes at α = 0.05 ===
-#    α = 0.05
-#    n_sig_un   = count(<(α), summary_df.p_un)
-#    n_sig_bonf = count(<(α), summary_df.p_bonf)
-#    n_sig_fdr  = count(<(α), summary_df.p_fdr)
-#
-#    println("Significant genes for $par_name:")
-#    println("  Uncorrected p-values (<0.05):      $n_sig_un")
-#    println("  Bonferroni-corrected (<0.05):      $n_sig_bonf")
-#    println("  FDR BH-corrected (<0.05):          $n_sig_fdr")
-#end
-#
-#
-#

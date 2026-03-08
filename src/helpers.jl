@@ -3179,29 +3179,71 @@ function shuffle_weights(W::AbstractMatrix; keep_diagonal_zero::Bool=true)
 end
 
 
-function posterior_to_priors(inference::Dict; widen=2.0)
+#function posterior_to_priors(inference::Dict; widen=2.0)
+#    chn        = inference["chain"]
+#    old_priors = inference["priors"]::OrderedDict{String,Any}
+#
+#    # posterior params (in chain order) and prior keys (in OrderedDict order)
+#    post_syms  = collect(names(chn, :parameters))   # Vector{Symbol}
+#    prior_keys = collect(keys(old_priors))          # Vector{String}
+#
+#    @assert length(post_syms) == length(prior_keys) "Length mismatch: $(length(post_syms)) posterior params vs $(length(prior_keys)) priors."
+#
+#    # nonnegativity test (support on [0,∞))
+#    is_nonneg(d; eps=1e-12) = (!insupport(d, -eps)) && insupport(d, 0.0)
+#
+#    new_priors = OrderedDict{String,Any}()
+#    for i in eachindex(prior_keys)
+#        name = prior_keys[i]   # keep human-readable prior key
+#        psym = post_syms[i]    # match by index only
+#
+#        μ = mean(chn[psym])
+#        σ = std(chn[psym]) * widen
+#
+#        oldp = old_priors[name]
+#        new_priors[name] = is_nonneg(oldp) ? truncated(Normal(μ, σ), lower=0) : Normal(μ, σ)
+#    end
+#
+#    return new_priors
+#end
+using OrderedCollections, Distributions, Statistics
+
+is_indexed_param(name::AbstractString) = occursin(r"\[\d+\]$", name)
+is_nonneg(d; eps=1e-12) = (!insupport(d, -eps)) && insupport(d, 0.0)
+
+function posterior_to_priors(
+    inference::Dict;
+    widen::Float64 = 2.0,
+    update_indexed::Bool = true,
+    min_std::Float64 = 1e-6,
+    update_filter::Union{Nothing,Function} = nothing,
+)
     chn        = inference["chain"]
     old_priors = inference["priors"]::OrderedDict{String,Any}
 
-    # posterior params (in chain order) and prior keys (in OrderedDict order)
-    post_syms  = collect(names(chn, :parameters))   # Vector{Symbol}
-    prior_keys = collect(keys(old_priors))          # Vector{String}
-
-    @assert length(post_syms) == length(prior_keys) "Length mismatch: $(length(post_syms)) posterior params vs $(length(prior_keys)) priors."
-
-    # nonnegativity test (support on [0,∞))
-    is_nonneg(d; eps=1e-12) = (!insupport(d, -eps)) && insupport(d, 0.0)
-
+    post_names = Set(String.(names(chn, :parameters)))
     new_priors = OrderedDict{String,Any}()
-    for i in eachindex(prior_keys)
-        name = prior_keys[i]   # keep human-readable prior key
-        psym = post_syms[i]    # match by index only
 
-        μ = mean(chn[psym])
-        σ = std(chn[psym]) * widen
+    for (name, oldp) in old_priors
+        has_posterior = name in post_names
+        indexed = is_indexed_param(name)
 
-        oldp = old_priors[name]
-        new_priors[name] = is_nonneg(oldp) ? truncated(Normal(μ, σ), lower=0) : Normal(μ, σ)
+        should_update =
+            has_posterior &&
+            (update_indexed || !indexed) &&
+            (update_filter === nothing || update_filter(name))
+
+        if should_update
+            vals = vec(Array(chn[Symbol(name)]))
+            μ = mean(vals)
+            σ = max(std(vals) * widen, min_std)
+
+            new_priors[name] = is_nonneg(oldp) ?
+                truncated(Normal(μ, σ), lower=0) :
+                Normal(μ, σ)
+        else
+            new_priors[name] = oldp
+        end
     end
 
     return new_priors

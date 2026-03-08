@@ -292,14 +292,11 @@ function main(parsed)
     else
         priors["seed"] = truncated(Normal(0.,0.1),lower=0);
     end
-    #priors["seed"] = truncated(Normal(50.,20),lower=0);  # large prior for DIFF
-    #priors["seed"] = truncated(LogNormal(3.,0.28),lower=0,upper=100);  # assume percentages
-    #priors["seed"] = LogNormal(log(41.2), 0.96);
     # OPTIONALLY REPLACE PRIORS WITH POSTERIOR-BASED PRIORS
     if parsed["posterior_priors"] !== nothing
         println("→ Using posterior-based priors from: $(parsed["posterior_priors"])")
         prev_inference = load_inference(parsed["posterior_priors"])
-        priors = posterior_to_priors(prev_inference; widen=1.0)
+        priors = posterior_to_priors(prev_inference; widen=1.0, update_indexed=false)
         println("→ Replaced base priors with posterior-based priors.")
         flush(stdout)
     end
