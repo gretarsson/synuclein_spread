@@ -16,8 +16,8 @@ using KernelDensity
 # ============================================================
 
 inference_files = Dict(
-    "DIFFG"  => "simulations/DIFFG_RETRO.jls",
-    "DIFFGA" => "simulations/DIFFGA_RETRO.jls"
+    "DIFFGA" => "simulations/DIFFGA_RETRO.jls",
+    #"DIFFGA_hippo_posterior" => "simulations/global_hippo_DIFFGA_RETRO_posterior_prior.jls"
 )
 
 save_dir = "figures/posteriors_mean"

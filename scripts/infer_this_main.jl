@@ -296,7 +296,7 @@ function main(parsed)
     if parsed["posterior_priors"] !== nothing
         println("→ Using posterior-based priors from: $(parsed["posterior_priors"])")
         prev_inference = load_inference(parsed["posterior_priors"])
-        priors = posterior_to_priors(prev_inference; widen=1.0, update_indexed=false)
+        priors = posterior_to_priors(prev_inference; widen=2.5, update_indexed=false)
         println("→ Replaced base priors with posterior-based priors.")
         flush(stdout)
     end
