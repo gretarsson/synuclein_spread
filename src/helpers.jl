@@ -3217,33 +3217,80 @@ function posterior_to_priors(
     update_indexed::Bool = true,
     min_std::Float64 = 1e-6,
     update_filter::Union{Nothing,Function} = nothing,
+    verbose::Bool = true,
 )
     chn        = inference["chain"]
     old_priors = inference["priors"]::OrderedDict{String,Any}
 
-    post_names = Set(String.(names(chn, :parameters)))
+    # Match posterior parameters to priors by order only
+    post_syms  = collect(names(chn, :parameters))
+    prior_keys = collect(keys(old_priors))
+
+    @assert length(post_syms) == length(prior_keys) "Length mismatch: $(length(post_syms)) posterior params vs $(length(prior_keys)) priors."
+
     new_priors = OrderedDict{String,Any}()
 
-    for (name, oldp) in old_priors
-        has_posterior = name in post_names
+    updated_nonindexed = String[]
+    updated_indexed    = String[]
+
+    for i in eachindex(prior_keys)
+        name = prior_keys[i]
+        oldp = old_priors[name]
+        psym = post_syms[i]
+
         indexed = is_indexed_param(name)
 
         should_update =
-            has_posterior &&
             (update_indexed || !indexed) &&
             (update_filter === nothing || update_filter(name))
 
         if should_update
-            vals = vec(Array(chn[Symbol(name)]))
+            vals = vec(Array(chn[psym]))
             μ = mean(vals)
             σ = max(std(vals) * widen, min_std)
 
             new_priors[name] = is_nonneg(oldp) ?
                 truncated(Normal(μ, σ), lower=0) :
                 Normal(μ, σ)
+
+            if indexed
+                push!(updated_indexed, name)
+            else
+                push!(updated_nonindexed, name)
+            end
         else
             new_priors[name] = oldp
         end
+    end
+
+    if verbose
+        println("\n=== posterior_to_priors update summary ===")
+
+        if isempty(updated_nonindexed)
+            println("Updated non-indexed parameters: none")
+        else
+            println("Updated non-indexed parameters:")
+            for name in updated_nonindexed
+                println("  ", name)
+            end
+        end
+
+        if isempty(updated_indexed)
+            println("Updated indexed parameters: no")
+        else
+            println("Updated indexed parameters: yes ($(length(updated_indexed)) total)")
+            nshow = min(6, length(updated_indexed))
+            first_examples = updated_indexed[1:nshow]
+
+            if length(updated_indexed) <= 2nshow
+                println("  ", join(updated_indexed, ", "))
+            else
+                last_examples = updated_indexed[end-nshow+1:end]
+                println("  examples: ", join(first_examples, ", "), ", ..., ", join(last_examples, ", "))
+            end
+        end
+
+        println("==========================================\n")
     end
 
     return new_priors

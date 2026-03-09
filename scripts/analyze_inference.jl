@@ -2,7 +2,7 @@
 here we create a folder of analysis plots of interence results
 =#
 using PathoSpread
-plot_priors_and_posteriors = false
+plot_priors_and_posteriors = true
 
 
 simulations = ["igs_DIFF_EUCL", "igs_DIFF_ANTERO", "igs_DIFF_RETRO", "igs_DIFF_BIDIR",
