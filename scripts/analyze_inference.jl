@@ -22,7 +22,7 @@ simulations = ["hippo_DIFFGA_RETRO_posterior_prior"]
 #simulations = ["DIFFG_RETRO"]
 #simulations = ["u0_DIFF_RETRO", "DIFFG_RETRO", "DIFFGA_RETRO"]
 simulations = ["new_hippo_DIFF_RETRO", "new_hippo_DIFFG_RETRO", "new_hippo_DIFFGA_RETRO"]
-simulations = ["global_hippo_DIFFGA_RETRO_posterior_prior"]
+simulations = ["DIFFG_T1"]
 
 for simulation in simulations
     # simulation to analyze

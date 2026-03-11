@@ -3105,6 +3105,7 @@ function predicted_observed_marked(inference;
     heldout_color = RGBf(200/255, 60/255, 50/255) # red
 
     # === Global scatter (all chosen timepoints pooled) ===
+    # === Global scatter (all chosen timepoints pooled) ===
     x_train = Float64[]; y_train = Float64[]
     x_hold  = Float64[]; y_hold  = Float64[]
     for j in cols
@@ -3120,6 +3121,8 @@ function predicted_observed_marked(inference;
     allx = vcat(x_train, x_hold)   # Observed
     ally = vcat(y_train, y_hold)   # Predicted
     r2_global = r2_score(allx, ally)
+    r2_train  = r2_score(x_train, y_train)
+    r2_hold   = r2_score(x_hold, y_hold)
 
     # Axis ticks for log10
     use_log = (plotscale === log10)
@@ -3127,7 +3130,9 @@ function predicted_observed_marked(inference;
                         [L"$10^{-6}$",L"$10^{-5}$",L"$10^{-4}$",L"$10^{-3}$",L"$10^{-2}$",L"$10^{-1}$",L"$10^{0}$"]) :
                        Makie.automatic
 
-    #f = Figure()
+    figs = Any[]
+
+    # --- Global combined plot ---
     f = Figure(size = (450, 450), figure_padding = 5)
     ax = Axis(f[1,1];
         title="",
@@ -3143,13 +3148,11 @@ function predicted_observed_marked(inference;
         CairoMakie.scatter!(ax, x_hold, y_hold; color=(heldout_color,0.7), marker=:utriangle, markersize=markersize)
     end
 
-    # Square limits (optionally capped by y_max) + 1:1 line
     if !isempty(allx)
         mn, mx = set_square_limits!(ax, allx, ally)
         lines!(ax, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
     end
 
-    # Add R² label (optional)
     if show_r2 && isfinite(r2_global)
         text!(ax, 0.05, 0.95, text=@sprintf("R² = %.3f", r2_global),
               align=(:left,:top), space=:relative, color=:black, fontsize=28)
@@ -3160,9 +3163,66 @@ function predicted_observed_marked(inference;
         resize_to_layout!(f)
         save(joinpath(save_path,"predicted_observed_marked_all.pdf"), f)
     end
+    push!(figs, f)
+
+    # --- Global in-sample only plot ---
+    if !isempty(x_train)
+        f_in = Figure(size = (450, 450), figure_padding = 5)
+        ax_in = Axis(f_in[1,1];
+            title="",
+            xlabel="Observed", ylabel="Predicted",
+            xscale=plotscale, yscale=plotscale,
+            xticks=xticks, yticks=xticks,
+            alignmode=Inside())
+
+        CairoMakie.scatter!(ax_in, x_train, y_train;
+            color=(train_color,0.55), markersize=markersize)
+
+        mn, mx = set_square_limits!(ax_in, x_train, y_train)
+        lines!(ax_in, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
+
+        if show_r2 && isfinite(r2_train)
+            text!(ax_in, 0.05, 0.95, text=@sprintf("R² = %.3f", r2_train),
+                  align=(:left,:top), space=:relative, color=:black, fontsize=28)
+        end
+
+        if !isempty(save_path)
+            resize_to_layout!(f_in)
+            save(joinpath(save_path, "predicted_observed_marked_insample.pdf"), f_in)
+        end
+        push!(figs, f_in)
+    end
+
+    # --- Global held-out only plot ---
+    if mark_heldout && !isempty(x_hold)
+        f_out = Figure(size = (450, 450), figure_padding = 5)
+        ax_out = Axis(f_out[1,1];
+            title="",
+            xlabel="Observed", ylabel="Predicted",
+            xscale=plotscale, yscale=plotscale,
+            xticks=xticks, yticks=xticks,
+            alignmode=Inside())
+
+        CairoMakie.scatter!(ax_out, x_hold, y_hold;
+            color=(heldout_color,0.7), marker=:utriangle, markersize=markersize)
+
+        mn, mx = set_square_limits!(ax_out, x_hold, y_hold)
+        lines!(ax_out, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
+
+        if show_r2 && isfinite(r2_hold)
+            text!(ax_out, 0.05, 0.95, text=@sprintf("R² = %.3f", r2_hold),
+                  align=(:left,:top), space=:relative, color=:black, fontsize=28)
+        end
+
+        if !isempty(save_path)
+            resize_to_layout!(f_out)
+            save(joinpath(save_path, "predicted_observed_marked_outsample.pdf"), f_out)
+        end
+        push!(figs, f_out)
+    end
 
     # === Per-timepoint panels ===
-    figs = Any[f]
+    #figs = Any[f]
     for j in cols
         xj, yj = prep_xy(view(obs, :, j), view(pred, :, j))
         isempty(xj) && continue
