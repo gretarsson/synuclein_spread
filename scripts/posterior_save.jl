@@ -15,12 +15,16 @@ using KernelDensity
 # USER SETTINGS
 # ============================================================
 
-inference_files = Dict(
-    "DIFFGA" => "simulations/DIFFGA_RETRO.jls",
-    #"DIFFGA_hippo_posterior" => "simulations/global_hippo_DIFFGA_RETRO_posterior_prior.jls"
-)
+# Single inference file to analyze
+inference_file = "simulations/global_hippo_DIFFGA_RETRO_posterior_prior.jls"
 
-save_dir = "figures/posteriors_mean"
+# Name used for outputs
+model_name = "DIFFGA"
+
+# Which parameter prefixes to process
+prefixes_to_process = ["beta", "gamma"]
+
+save_dir = "figures/posteriors_mean/hippo_DIFFGA_posterior_prior"
 csv_dir  = save_dir
 plot_dir = joinpath(save_dir, "update_checks")
 mkpath(csv_dir)
@@ -194,7 +198,7 @@ Output columns:
     updated
 """
 function extract_parameter_table_and_plots(
-    inf::Dict,
+    inf::AbstractDict,
     prefix::AbstractString,
     model::AbstractString;
     alpha::Float64=ALPHA,
@@ -427,61 +431,26 @@ end
 # MAIN
 # ============================================================
 
-println("Loading inference files...")
-inferences = Dict{String,Dict}()
+println("Loading inference file...")
+inf = load_inference(inference_file)
 
-for (model, path) in inference_files
-    inferences[model] = load_inference(path)
-end
-
-println("Loaded models: ", join(keys(inferences), ", "))
+println("Loaded model: $model_name")
+println("Inference file: $inference_file")
 println("Using KS threshold alpha = $ALPHA")
 
 summary_rows = NamedTuple[]
 row_lookup = Dict{Tuple{String,String},Any}()
 
-# ------------------------------------------------------------
-# DIFFGA: beta and gamma
-# ------------------------------------------------------------
-if haskey(inferences, "DIFFGA")
-    inf_GA = inferences["DIFFGA"]
+for prefix in prefixes_to_process
+    rows = extract_parameter_table_and_plots(inf, prefix, model_name; alpha=ALPHA)
 
-    beta_rows_GA = extract_parameter_table_and_plots(inf_GA, "beta", "DIFFGA"; alpha=ALPHA)
-    gamma_rows_GA = extract_parameter_table_and_plots(inf_GA, "gamma", "DIFFGA"; alpha=ALPHA)
+    row_lookup[(model_name, prefix)] = rows
+    push!(summary_rows, summarize_rows(rows, model_name, prefix; alpha=ALPHA))
 
-    row_lookup[("DIFFGA", "beta")] = beta_rows_GA
-    row_lookup[("DIFFGA", "gamma")] = gamma_rows_GA
+    outfile = joinpath(csv_dir, "$(model_name)_$(prefix)_optimal.csv")
+    write_namedtuple_csv(outfile, rows)
 
-    push!(summary_rows, summarize_rows(beta_rows_GA, "DIFFGA", "beta"; alpha=ALPHA))
-    push!(summary_rows, summarize_rows(gamma_rows_GA, "DIFFGA", "gamma"; alpha=ALPHA))
-
-    outfile_beta_GA  = joinpath(csv_dir, "DIFFGA_beta_optimal.csv")
-    outfile_gamma_GA = joinpath(csv_dir, "DIFFGA_gamma_optimal.csv")
-
-    write_namedtuple_csv(outfile_beta_GA, beta_rows_GA)
-    write_namedtuple_csv(outfile_gamma_GA, gamma_rows_GA)
-
-    println("Saved → $outfile_beta_GA")
-    println("Saved → $outfile_gamma_GA")
-end
-
-# ------------------------------------------------------------
-# DIFFG: beta
-# ------------------------------------------------------------
-if haskey(inferences, "DIFFG")
-    inf_G = inferences["DIFFG"]
-
-    beta_rows_G = extract_parameter_table_and_plots(inf_G, "beta", "DIFFG"; alpha=ALPHA)
-
-    row_lookup[("DIFFG", "beta")] = beta_rows_G
-
-    push!(summary_rows, summarize_rows(beta_rows_G, "DIFFG", "beta"; alpha=ALPHA))
-
-    outfile_beta_G = joinpath(csv_dir, "DIFFG_beta_optimal.csv")
-
-    write_namedtuple_csv(outfile_beta_G, beta_rows_G)
-
-    println("Saved → $outfile_beta_G")
+    println("Saved → $outfile")
 end
 
 # ------------------------------------------------------------

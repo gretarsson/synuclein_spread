@@ -10,13 +10,15 @@ using HypothesisTests
 using Plots
 using StatsPlots
 using KernelDensity
+using StatsBase
+using Measures
 
 # ============================================================
 # USER SETTINGS
 # ============================================================
 
 # Single inference file to analyze
-inference_file = "simulations/global_hippo_DIFFGA_RETRO_posterior_prior.jls"
+inference_file = "simulations/DIFFGA_RETRO.jls"
 
 # Name used for outputs
 model_name = "DIFFGA"
@@ -24,11 +26,13 @@ model_name = "DIFFGA"
 # Which parameter prefixes to process
 prefixes_to_process = ["beta", "gamma"]
 
-save_dir = "figures/posteriors_mean/hippo_DIFFGA_posterior_prior"
+save_dir = "figures/posteriors_mean/DIFFGA_RETRO"
 csv_dir  = save_dir
 plot_dir = joinpath(save_dir, "update_checks")
+scatter_dir = joinpath(save_dir, "parameter_scatter")
 mkpath(csv_dir)
 mkpath(plot_dir)
+mkpath(scatter_dir)
 
 # Threshold for calling a parameter "updated"
 const ALPHA = 0.001
@@ -43,6 +47,10 @@ const SAVE_ONLY_FLAGGED_PLOTS = false
 # Borderline window if SAVE_ONLY_FLAGGED_PLOTS = true
 const BORDERLINE_LOW  = 0.5 * ALPHA
 const BORDERLINE_HIGH = 2.0 * ALPHA
+
+# Scatter settings
+const SCATTER_MARKERSIZE = 6
+const SCATTER_ALPHA = 0.8
 
 # ============================================================
 # HELPERS
@@ -94,14 +102,12 @@ function plotting_range(samples::AbstractVector, prior_dist)
     lo = smin - 0.5 * ss
     hi = smax + 0.5 * ss
 
-    # widen using prior quantiles if available
     try
         qlo = quantile(prior_dist, 0.001)
         qhi = quantile(prior_dist, 0.999)
         lo = min(lo, qlo)
         hi = max(hi, qhi)
     catch
-        # fallback: use prior mean ± 5 sd if quantile is unavailable
         try
             pm = mean(prior_dist)
             ps = std(prior_dist)
@@ -427,6 +433,98 @@ function write_summary_txt(outfile::AbstractString, summary_rows, row_lookup::Di
     end
 end
 
+"""
+Format p-values for annotation.
+"""
+function format_pvalue(p::Real)
+    if isnan(p)
+        return "NaN"
+    elseif p < 1e-4
+        return "< 1e-4"
+    else
+        return string(round(p, sigdigits=3))
+    end
+end
+
+"""
+Create beta-gamma scatter from row tables.
+If updated_only=true, keep only rows with beta.updated==1 and gamma.updated==1.
+Spearman rho is computed as Pearson correlation of tied ranks.
+The p-value is taken from CorrelationTest on the tied ranks.
+"""
+function save_beta_gamma_scatter(
+    beta_rows,
+    gamma_rows,
+    outfile::AbstractString;
+    updated_only::Bool=false,
+    title_prefix::AbstractString=model_name
+)
+    beta_map  = Dict(r.region => r for r in beta_rows)
+    gamma_map = Dict(r.region => r for r in gamma_rows)
+
+    common_regions = intersect(Set(keys(beta_map)), Set(keys(gamma_map)))
+    regions = sort!(collect(common_regions))
+
+    x = Float64[]
+    y = Float64[]
+
+    for region in regions
+        br = beta_map[region]
+        gr = gamma_map[region]
+
+        if updated_only && !((br.updated == 1) && (gr.updated == 1))
+            continue
+        end
+
+        push!(x, br.mean_post)
+        push!(y, gr.mean_post)
+    end
+
+    ttl = updated_only ? "$title_prefix: beta vs gamma (updated only)" :
+                         "$title_prefix: beta vs gamma (all regions)"
+
+    plt = scatter(
+        x, y;
+        markersize=SCATTER_MARKERSIZE,
+        alpha=SCATTER_ALPHA,
+        xlabel="beta posterior mean",
+        ylabel="gamma posterior mean",
+        title="",
+        label=false,
+        guidefontsize=18,
+        bottom_margin=5mm,
+        top_margin=5mm
+    )
+
+    if length(x) >= 3
+        rx = tiedrank(x)
+        ry = tiedrank(y)
+        ρ = cor(rx, ry)
+        test = CorrelationTest(rx, ry)
+        p = pvalue(test)
+
+        ann = "Spearman ρ = $(round(ρ, sigdigits=3))\np = $(format_pvalue(p))\nn = $(length(x))"
+    else
+        @warn "Not enough points to compute Spearman correlation for $outfile"
+        ann = "n = $(length(x))"
+    end
+
+    # Put annotation in top-left corner in DATA coordinates
+    if !isempty(x) && !isempty(y)
+        xmin, xmax = extrema(x)
+        ymin, ymax = extrema(y)
+
+        xpad = xmax == xmin ? 1.0 : 0.05 * (xmax - xmin)
+        ypad = ymax == ymin ? 1.0 : 0.05 * (ymax - ymin)
+
+        xloc = xmin + xpad
+        yloc = ymax - ypad
+
+        annotate!(plt, xloc, yloc, text(ann, 15, :black, :left))
+    end
+
+    savefig(plt, outfile)
+end
 # ============================================================
 # MAIN
 # ============================================================
@@ -451,6 +549,23 @@ for prefix in prefixes_to_process
     write_namedtuple_csv(outfile, rows)
 
     println("Saved → $outfile")
+end
+
+# ------------------------------------------------------------
+# Save beta-gamma scatter plots
+# ------------------------------------------------------------
+if haskey(row_lookup, (model_name, "beta")) && haskey(row_lookup, (model_name, "gamma"))
+    beta_rows = row_lookup[(model_name, "beta")]
+    gamma_rows = row_lookup[(model_name, "gamma")]
+
+    scatter_all_file = joinpath(scatter_dir, "$(model_name)_beta_vs_gamma_all.$(PLOT_FORMAT)")
+    scatter_updated_file = joinpath(scatter_dir, "$(model_name)_beta_vs_gamma_UPDATED.$(PLOT_FORMAT)")
+
+    save_beta_gamma_scatter(beta_rows, gamma_rows, scatter_all_file; updated_only=false, title_prefix=model_name)
+    save_beta_gamma_scatter(beta_rows, gamma_rows, scatter_updated_file; updated_only=true, title_prefix=model_name)
+
+    println("Saved → $scatter_all_file")
+    println("Saved → $scatter_updated_file")
 end
 
 # ------------------------------------------------------------
