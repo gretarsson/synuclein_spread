@@ -1,0 +1,517 @@
+uniqueID,preLimVal,region,hemi,genotype,postLimVal,removeRegion,parent,major,x,y
+app_ACAd_left,0.833196099,ACAd,left,app,0.833196099,FALSE,ACA,Isocortex,app,ACAd_left
+app_ACAd_right,0.772100275,ACAd,right,app,0.772100275,FALSE,ACA,Isocortex,app,ACAd_right
+app_ACAv_left,0.875141083,ACAv,left,app,0.875141083,FALSE,ACA,Isocortex,app,ACAv_left
+app_ACAv_right,0.794278188,ACAv,right,app,0.794278188,FALSE,ACA,Isocortex,app,ACAv_right
+app_ACB_left,0.715994687,ACB,left,app,0.715994687,FALSE,ACB,STR,app,ACB_left
+app_ACB_right,0.666654867,ACB,right,app,0.666654867,FALSE,ACB,STR,app,ACB_right
+app_AHN_left,0.672523202,AHN,left,app,0.672523202,FALSE,AHN,HY,app,AHN_left
+app_AHN_right,0.423050664,AHN,right,app,0.423050664,FALSE,AHN,HY,app,AHN_right
+app_AId_left,0.90980165,AId,left,app,0.90980165,FALSE,AI,Isocortex,app,AId_left
+app_AId_right,0.866356579,AId,right,app,0.866356579,FALSE,AI,Isocortex,app,AId_right
+app_AIp_left,0.977202557,AIp,left,app,0.977202557,FALSE,AI,Isocortex,app,AIp_left
+app_AIp_right,0.879107199,AIp,right,app,0.879107199,FALSE,AI,Isocortex,app,AIp_right
+app_AIv_left,0.811086307,AIv,left,app,0.811086307,FALSE,AI,Isocortex,app,AIv_left
+app_AIv_right,0.755549993,AIv,right,app,0.755549993,FALSE,AI,Isocortex,app,AIv_right
+app_alv_left,0.79426314,alv,left,app,0.79426314,TRUE,alv,fiber tracts,app,alv_left
+app_alv_right,0.704387173,alv,right,app,0.704387173,TRUE,alv,fiber tracts,app,alv_right
+app_amc_left,0.959019735,amc,left,app,0.959019735,TRUE,amc,fiber tracts,app,amc_left
+app_amc_right,0.879808264,amc,right,app,0.879808264,TRUE,amc,fiber tracts,app,amc_right
+app_AON_left,0.756986031,AON,left,app,0.756986031,FALSE,AON,OLF,app,AON_left
+app_AON_right,0.74646208,AON,right,app,0.74646208,FALSE,AON,OLF,app,AON_right
+app_APN_left,0.65016556,APN,left,app,0.65016556,FALSE,APN,MB,app,APN_left
+app_APN_right,0.642469659,APN,right,app,0.642469659,FALSE,APN,MB,app,APN_right
+app_APr_left,0.828357367,APr,left,app,0.828357367,FALSE,APr,HPF,app,APr_left
+app_APr_right,0.83238448,APr,right,app,0.83238448,FALSE,APr,HPF,app,APr_right
+app_AQ_left,-1.866608002,AQ,left,app,0,TRUE,AQ,VS,app,AQ_left
+app_AQ_right,-1.587166225,AQ,right,app,0,TRUE,AQ,VS,app,AQ_right
+app_ar_left,0.492566883,ar,left,app,0.492566883,TRUE,ar,fiber tracts,app,ar_left
+app_ar_right,0.468125141,ar,right,app,0.468125141,TRUE,ar,fiber tracts,app,ar_right
+app_ARH_left,0.217714739,ARH,left,app,0.217714739,FALSE,ARH,HY,app,ARH_left
+app_ARH_right,0.32423723,ARH,right,app,0.32423723,FALSE,ARH,HY,app,ARH_right
+app_AT_left,0.117123088,AT,left,app,0.117123088,FALSE,AT,MB,app,AT_left
+app_AT_right,0.359305514,AT,right,app,0.359305514,FALSE,AT,MB,app,AT_right
+app_AUDd_left,1.068261632,AUDd,left,app,1,FALSE,AUDd,Isocortex,app,AUDd_left
+app_AUDd_right,0.888010362,AUDd,right,app,0.888010362,FALSE,AUDd,Isocortex,app,AUDd_right
+app_AUDp_left,1.080844905,AUDp,left,app,1,FALSE,AUDp,Isocortex,app,AUDp_left
+app_AUDp_right,0.971688543,AUDp,right,app,0.971688543,FALSE,AUDp,Isocortex,app,AUDp_right
+app_AUDpo_left,1.067663344,AUDpo,left,app,1,FALSE,AUDpo,Isocortex,app,AUDpo_left
+app_AUDpo_right,0.971616439,AUDpo,right,app,0.971616439,FALSE,AUDpo,Isocortex,app,AUDpo_right
+app_AUDv_left,1.041901534,AUDv,left,app,1,FALSE,AUDv,Isocortex,app,AUDv_left
+app_AUDv_right,0.968614183,AUDv,right,app,0.968614183,FALSE,AUDv,Isocortex,app,AUDv_right
+app_AVPV_left,0.548741856,AVPV,left,app,0.548741856,FALSE,AVPV,HY,app,AVPV_left
+app_AVPV_right,0.58218499,AVPV,right,app,0.58218499,FALSE,AVPV,HY,app,AVPV_right
+app_BA_left,1.228795419,BA,left,app,1,FALSE,BA,STR,app,BA_left
+app_BA_right,1.04907729,BA,right,app,1,FALSE,BA,STR,app,BA_right
+app_bic_left,0.527872277,bic,left,app,0.527872277,TRUE,bic,fiber tracts,app,bic_left
+app_bic_right,0.514726676,bic,right,app,0.514726676,TRUE,bic,fiber tracts,app,bic_right
+app_BLA_left,0.989179963,BLA,left,app,0.989179963,FALSE,BLA,CTXsp,app,BLA_left
+app_BLA_right,0.937586654,BLA,right,app,0.937586654,FALSE,BLA,CTXsp,app,BLA_right
+app_BMA_left,0.948528171,BMA,left,app,0.948528171,FALSE,BMA,CTXsp,app,BMA_left
+app_BMA_right,0.934909259,BMA,right,app,0.934909259,FALSE,BMA,CTXsp,app,BMA_right
+app_bsc_left,0.479581715,bsc,left,app,0.479581715,TRUE,bsc,fiber tracts,app,bsc_left
+app_bsc_right,0.25710669,bsc,right,app,0.25710669,TRUE,bsc,fiber tracts,app,bsc_right
+app_BST_left,0.754733332,BST,left,app,0.754733332,FALSE,BST,PAL,app,BST_left
+app_BST_right,0.553597709,BST,right,app,0.553597709,FALSE,BST,PAL,app,BST_right
+app_CA1_left,0.908226799,CA1,left,app,0.908226799,FALSE,CA1,HPF,app,CA1_left
+app_CA1_right,0.883754872,CA1,right,app,0.883754872,FALSE,CA1,HPF,app,CA1_right
+app_CA2_left,0.895233686,CA2,left,app,0.895233686,FALSE,CA2,HPF,app,CA2_left
+app_CA2_right,0.803946935,CA2,right,app,0.803946935,FALSE,CA2,HPF,app,CA2_right
+app_CA3_left,0.79765759,CA3,left,app,0.79765759,FALSE,CA3,HPF,app,CA3_left
+app_CA3_right,0.809665474,CA3,right,app,0.809665474,FALSE,CA3,HPF,app,CA3_right
+app_CB_left,-0.010208708,CB,left,app,0,FALSE,CB,CB,app,CB_left
+app_CB_right,-0.508654017,CB,right,app,0,FALSE,CB,CB,app,CB_right
+app_cc_left,0.494382989,cc,left,app,0.494382989,TRUE,cc,fiber tracts,app,cc_left
+app_cc_right,0.421905576,cc,right,app,0.421905576,TRUE,cc,fiber tracts,app,cc_right
+app_ccg_left,0.359851747,ccg,left,app,0.359851747,TRUE,ccg,fiber tracts,app,ccg_left
+app_ccg_right,0.28466725,ccg,right,app,0.28466725,TRUE,ccg,fiber tracts,app,ccg_right
+app_CEA_left,0.802242937,CEA,left,app,0.802242937,FALSE,CEA,STR,app,CEA_left
+app_CEA_right,0.777088472,CEA,right,app,0.777088472,FALSE,CEA,STR,app,CEA_right
+app_chpl_left,-0.265469522,chpl,left,app,0,TRUE,chpl,VS,app,chpl_left
+app_chpl_right,-0.136542695,chpl,right,app,0,TRUE,chpl,VS,app,chpl_right
+app_cing_left,0.529307309,cing,left,app,0.529307309,TRUE,cing,fiber tracts,app,cing_left
+app_cing_right,0.426879506,cing,right,app,0.426879506,TRUE,cing,fiber tracts,app,cing_right
+app_CL_left,0.604869763,CL,left,app,0.604869763,FALSE,CL,TH,app,CL_left
+app_CL_right,0.621812163,CL,right,app,0.621812163,FALSE,CL,TH,app,CL_right
+app_CLA_left,0.801309186,CLA,left,app,0.801309186,FALSE,CLA,CTXsp,app,CLA_left
+app_CLA_right,0.803163463,CLA,right,app,0.803163463,FALSE,CLA,CTXsp,app,CLA_right
+app_CLI_left,0.120188512,CLI,left,app,0.120188512,FALSE,CLI,MB,app,CLI_left
+app_CLI_right,0.091876189,CLI,right,app,0.091876189,FALSE,CLI,MB,app,CLI_right
+app_CM_left,0.423288729,CM,left,app,0.423288729,FALSE,CM,TH,app,CM_left
+app_CM_right,0.694501851,CM,right,app,0.694501851,FALSE,CM,TH,app,CM_right
+app_COA_left,0.913271591,COA,left,app,0.913271591,FALSE,COA,OLF,app,COA_left
+app_COA_right,0.889562846,COA,right,app,0.889562846,FALSE,COA,OLF,app,COA_right
+app_COAp_left,1.160220116,COAp,left,app,1,FALSE,COA,OLF,app,COAp_left
+app_COAp_right,1.173851307,COAp,right,app,1,FALSE,COA,OLF,app,COAp_right
+app_CP_left,0.629480561,CP,left,app,0.629480561,FALSE,CP,STR,app,CP_left
+app_CP_right,0.605941587,CP,right,app,0.605941587,FALSE,CP,STR,app,CP_right
+app_cpd_left,0.423601514,cpd,left,app,0.423601514,TRUE,cpd,fiber tracts,app,cpd_left
+app_cpd_right,0.421370596,cpd,right,app,0.421370596,TRUE,cpd,fiber tracts,app,cpd_right
+app_CS_left,0.287944201,CS,left,app,0.287944201,FALSE,CS,P,app,CS_left
+app_CS_right,0.33672298,CS,right,app,0.33672298,FALSE,CS,P,app,CS_right
+app_csc_left,0.130123336,csc,left,app,0.130123336,TRUE,csc,fiber tracts,app,csc_left
+app_csc_right,0.297082727,csc,right,app,0.297082727,TRUE,csc,fiber tracts,app,csc_right
+app_cst_left,0.740004113,cst,left,app,0.740004113,TRUE,cst,fiber tracts,app,cst_left
+app_cst_right,0.639000801,cst,right,app,0.639000801,TRUE,cst,fiber tracts,app,cst_right
+app_CTXsp_left,0.920301978,CTXsp,left,app,0.920301978,FALSE,CTXsp,CTXsp,app,CTXsp_left
+app_CTXsp_right,0.888717433,CTXsp,right,app,0.888717433,FALSE,CTXsp,CTXsp,app,CTXsp_right
+app_CUN_left,0.146125754,CUN,left,app,0.146125754,FALSE,CUN,MB,app,CUN_left
+app_CUN_right,0.379724263,CUN,right,app,0.379724263,FALSE,CUN,MB,app,CUN_right
+app_DG_left,0.643644268,DG,left,app,0.643644268,FALSE,DG,HPF,app,DG_left
+app_DG_right,0.636793176,DG,right,app,0.636793176,FALSE,DG,HPF,app,DG_right
+app_dhc_left,0.51773537,dhc,left,app,0.51773537,TRUE,dhc,fiber tracts,app,dhc_left
+app_dhc_right,0.483182025,dhc,right,app,0.483182025,TRUE,dhc,fiber tracts,app,dhc_right
+app_DMH_left,0.454964241,DMH,left,app,0.454964241,FALSE,DMH,HY,app,DMH_left
+app_DMH_right,0.458780151,DMH,right,app,0.458780151,FALSE,DMH,HY,app,DMH_right
+app_DP_left,0.708511137,DP,left,app,0.708511137,FALSE,DP,OLF,app,DP_left
+app_DP_right,0.688851173,DP,right,app,0.688851173,FALSE,DP,OLF,app,DP_right
+app_DR_left,0.388100306,DR,left,app,0.388100306,FALSE,DR,MB,app,DR_left
+app_DR_right,0.460378934,DR,right,app,0.460378934,FALSE,DR,MB,app,DR_right
+app_dscp_left,-0.106260326,dscp,left,app,0,TRUE,dscp,fiber tracts,app,dscp_left
+app_dscp_right,-0.131805356,dscp,right,app,0,TRUE,dscp,fiber tracts,app,dscp_right
+app_DT_left,0.755577717,DT,left,app,0.755577717,FALSE,DT,MB,app,DT_left
+app_DT_right,0.509368815,DT,right,app,0.509368815,FALSE,DT,MB,app,DT_right
+app_dtd_left,-1.04450419,dtd,left,app,0,TRUE,dtd,fiber tracts,app,dtd_left
+app_dtd_right,0.33129166,dtd,right,app,0.33129166,TRUE,dtd,fiber tracts,app,dtd_right
+app_ec_left,0.769883026,ec,left,app,0.769883026,TRUE,ec,fiber tracts,app,ec_left
+app_ec_right,0.689624727,ec,right,app,0.689624727,TRUE,ec,fiber tracts,app,ec_right
+app_ECT_left,1.026901143,ECT,left,app,1,FALSE,ECT,Isocortex,app,ECT_left
+app_ECT_right,0.960835309,ECT,right,app,0.960835309,FALSE,ECT,Isocortex,app,ECT_right
+app_em_left,0.668612051,em,left,app,0.668612051,TRUE,em,fiber tracts,app,em_left
+app_em_right,0.868559725,em,right,app,0.868559725,TRUE,em,fiber tracts,app,em_right
+app_ENTl_left,1.078655224,ENTl,left,app,1,FALSE,ENT,HPF,app,ENTl_left
+app_ENTl_right,1.014487891,ENTl,right,app,1,FALSE,ENT,HPF,app,ENTl_right
+app_ENTm_left,1.030471319,ENTm,left,app,1,FALSE,ENT,HPF,app,ENTm_left
+app_ENTm_right,1.002339734,ENTm,right,app,1,FALSE,ENT,HPF,app,ENTm_right
+app_EP_left,0.905018916,EP,left,app,0.905018916,FALSE,EP,CTXsp,app,EP_left
+app_EP_right,0.882760092,EP,right,app,0.882760092,FALSE,EP,CTXsp,app,EP_right
+app_Eth_left,0.714621873,Eth,left,app,0.714621873,FALSE,Eth,TH,app,Eth_left
+app_Eth_right,0.852884609,Eth,right,app,0.852884609,FALSE,Eth,TH,app,Eth_right
+app_EW_left,-0.190329171,EW,left,app,0,FALSE,EW,MB,app,EW_left
+app_EW_right,0.258897215,EW,right,app,0.258897215,FALSE,EW,MB,app,EW_right
+app_FC_left,0.794411715,FC,left,app,0.794411715,FALSE,FC,HPF,app,FC_left
+app_FC_right,0.804851865,FC,right,app,0.804851865,FALSE,FC,HPF,app,FC_right
+app_FF_left,0.498572318,FF,left,app,0.498572318,FALSE,FF,HY,app,FF_left
+app_FF_right,0.190131029,FF,right,app,0.190131029,FALSE,FF,HY,app,FF_right
+app_fi_left,0.467450371,fi,left,app,0.467450371,TRUE,fi,fiber tracts,app,fi_left
+app_fi_right,0.376432766,fi,right,app,0.376432766,TRUE,fi,fiber tracts,app,fi_right
+app_fiber tracts_left,0.47914392,fiber tracts,left,app,0.47914392,TRUE,fiber tracts,fiber tracts,app,fiber tracts_left
+app_fiber tracts_right,0.401305785,fiber tracts,right,app,0.401305785,TRUE,fiber tracts,fiber tracts,app,fiber tracts_right
+app_fr_left,-0.057250643,fr,left,app,0,TRUE,fr,fiber tracts,app,fr_left
+app_fr_right,-0.003246944,fr,right,app,0,TRUE,fr,fiber tracts,app,fr_right
+app_FRP_left,0.380279789,FRP,left,app,0.380279789,FALSE,Isocortex,Isocortex,app,FRP_left
+app_FRP_right,0.508819614,FRP,right,app,0.508819614,FALSE,Isocortex,Isocortex,app,FRP_right
+app_fx_left,0.532487415,fx,left,app,0.532487415,TRUE,fx,fiber tracts,app,fx_left
+app_fx_right,0.508512682,fx,right,app,0.508512682,TRUE,fx,fiber tracts,app,fx_right
+app_GU_left,1.043925098,GU,left,app,1,FALSE,GU,Isocortex,app,GU_left
+app_GU_right,0.986558104,GU,right,app,0.986558104,FALSE,GU,Isocortex,app,GU_right
+app_HATA_left,0.963172218,HATA,left,app,0.963172218,FALSE,HATA,HPF,app,HATA_left
+app_HATA_right,1.048493741,HATA,right,app,1,FALSE,HATA,HPF,app,HATA_right
+app_hbc_left,0.224992323,hbc,left,app,0.224992323,TRUE,hbc,fiber tracts,app,hbc_left
+app_hbc_right,0.264171666,hbc,right,app,0.264171666,TRUE,hbc,fiber tracts,app,hbc_right
+app_HPF_left,0.73289331,HPF,left,app,0.73289331,FALSE,HPF,HPF,app,HPF_left
+app_HPF_right,0.590646025,HPF,right,app,0.590646025,FALSE,HPF,HPF,app,HPF_right
+app_HY_left,0.568097372,HY,left,app,0.568097372,FALSE,HY,HY,app,HY_left
+app_HY_right,0.518348003,HY,right,app,0.518348003,FALSE,HY,HY,app,HY_right
+app_IA_left,1.000373905,IA,left,app,1,FALSE,IA,STR,app,IA_left
+app_IA_right,0.914693703,IA,right,app,0.914693703,FALSE,IA,STR,app,IA_right
+app_IC_left,0.686311235,IC,left,app,0.686311235,FALSE,IC,MB,app,IC_left
+app_IC_right,0.621095946,IC,right,app,0.621095946,FALSE,IC,MB,app,IC_right
+app_IF_left,0.340899245,IF,left,app,0.340899245,FALSE,IF,MB,app,IF_left
+app_IF_right,0.179621894,IF,right,app,0.179621894,FALSE,IF,MB,app,IF_right
+app_IG_left,0.576094236,IG,left,app,0.576094236,FALSE,IG,HPF,app,IG_left
+app_IG_right,0.655248865,IG,right,app,0.655248865,FALSE,IG,HPF,app,IG_right
+app_IGL_left,0.299568856,IGL,left,app,0.299568856,FALSE,IGL,TH,app,IGL_left
+app_IGL_right,0.416996201,IGL,right,app,0.416996201,FALSE,IGL,TH,app,IGL_right
+app_III_left,-0.024626778,III,left,app,0,FALSE,III,MB,app,III_left
+app_III_right,-0.022790725,III,right,app,0,FALSE,III,MB,app,III_right
+app_IIIn_left,0.715019229,IIIn,left,app,0.715019229,TRUE,IIIn,fiber tracts,app,IIIn_left
+app_IIIn_right,0.872270083,IIIn,right,app,0.872270083,TRUE,IIIn,fiber tracts,app,IIIn_right
+app_IIn_left,-5,IIn,left,app,0,TRUE,IIn,fiber tracts,app,IIn_left
+app_IIn_right,-2.467674106,IIn,right,app,0,TRUE,IIn,fiber tracts,app,IIn_right
+app_ILA_left,0.797839413,ILA,left,app,0.797839413,FALSE,ILA,Isocortex,app,ILA_left
+app_ILA_right,0.749931752,ILA,right,app,0.749931752,FALSE,ILA,Isocortex,app,ILA_right
+app_IMD_left,0.601033285,IMD,left,app,0.601033285,FALSE,IMD,TH,app,IMD_left
+app_IMD_right,0.645192394,IMD,right,app,0.645192394,FALSE,IMD,TH,app,IMD_right
+app_In_left,0.626520287,In,left,app,0.626520287,TRUE,In,fiber tracts,app,In_left
+app_In_right,0.555051797,In,right,app,0.555051797,TRUE,In,fiber tracts,app,In_right
+app_INC_left,0.228823337,INC,left,app,0.228823337,FALSE,INC,MB,app,INC_left
+app_INC_right,0.272911777,INC,right,app,0.272911777,FALSE,INC,MB,app,INC_right
+app_int_left,0.387051472,int,left,app,0.387051472,TRUE,int,fiber tracts,app,int_left
+app_int_right,0.376532867,int,right,app,0.376532867,TRUE,int,fiber tracts,app,int_right
+app_IntG_left,0.743694127,IntG,left,app,0.743694127,FALSE,IntG,TH,app,IntG_left
+app_IntG_right,-0.067719075,IntG,right,app,0,FALSE,IntG,TH,app,IntG_right
+app_IPN_left,0.424247085,IPN,left,app,0.424247085,FALSE,IPN,MB,app,IPN_left
+app_IPN_right,0.441291747,IPN,right,app,0.441291747,FALSE,IPN,MB,app,IPN_right
+app_IV_left,0.561152885,IV,left,app,0.561152885,FALSE,IV,MB,app,IV_left
+app_IV_right,0.241633188,IV,right,app,0.241633188,FALSE,IV,MB,app,IV_right
+app_IVn_left,-1.115564996,IVn,left,app,0,TRUE,IVn,fiber tracts,app,IVn_left
+app_LA_left,0.979191057,LA,left,app,0.979191057,FALSE,LA,CTXsp,app,LA_left
+app_LA_right,0.89320229,LA,right,app,0.89320229,FALSE,LA,CTXsp,app,LA_right
+app_LD_left,0.862463555,LD,left,app,0.862463555,FALSE,LD,TH,app,LD_left
+app_LD_right,0.720175817,LD,right,app,0.720175817,FALSE,LD,TH,app,LD_right
+app_LGd_left,0.797430973,LGd,left,app,0.797430973,FALSE,LGd,TH,app,LGd_left
+app_LGd_right,0.741730009,LGd,right,app,0.741730009,FALSE,LGd,TH,app,LGd_right
+app_LGv_left,0.725763486,LGv,left,app,0.725763486,FALSE,LGv,TH,app,LGv_left
+app_LGv_right,0.815717655,LGv,right,app,0.815717655,FALSE,LGv,TH,app,LGv_right
+app_LH_left,0.168605271,LH,left,app,0.168605271,FALSE,LH,TH,app,LH_left
+app_LH_right,0.115108959,LH,right,app,0.115108959,FALSE,LH,TH,app,LH_right
+app_LHA_left,0.344511648,LHA,left,app,0.344511648,FALSE,LHA,HY,app,LHA_left
+app_LHA_right,0.339382049,LHA,right,app,0.339382049,FALSE,LHA,HY,app,LHA_right
+app_ll_left,0.269673914,ll,left,app,0.269673914,TRUE,ll,fiber tracts,app,ll_left
+app_ll_right,0.220096848,ll,right,app,0.220096848,TRUE,ll,fiber tracts,app,ll_right
+app_LM_left,0.069841834,LM,left,app,0.069841834,FALSE,LM,HY,app,LM_left
+app_LM_right,-0.025855571,LM,right,app,0,FALSE,LM,HY,app,LM_right
+app_lotg_left,0.384184956,lotg,left,app,0.384184956,TRUE,In,fiber tracts,app,lotg_left
+app_lotg_right,0.284483588,lotg,right,app,0.284483588,TRUE,In,fiber tracts,app,lotg_right
+app_LP_left,0.760419668,LP,left,app,0.760419668,FALSE,LP,TH,app,LP_left
+app_LP_right,0.752179786,LP,right,app,0.752179786,FALSE,LP,TH,app,LP_right
+app_LPO_left,0.792950051,LPO,left,app,0.792950051,FALSE,LPO,HY,app,LPO_left
+app_LPO_right,0.766407393,LPO,right,app,0.766407393,FALSE,LPO,HY,app,LPO_right
+app_LS_left,0.872433036,LS,left,app,0.872433036,FALSE,LS,STR,app,LS_left
+app_LS_right,0.854159788,LS,right,app,0.854159788,FALSE,LS,STR,app,LS_right
+app_LT_left,0.46008223,LT,left,app,0.46008223,FALSE,LT,MB,app,LT_left
+app_LT_right,0.554570587,LT,right,app,0.554570587,FALSE,LT,MB,app,LT_right
+app_MA3_left,0.326592763,MA3,left,app,0.326592763,FALSE,MA3,MB,app,MA3_left
+app_MA3_right,0.626871785,MA3,right,app,0.626871785,FALSE,MA3,MB,app,MA3_right
+app_MB_left,0.415489892,MB,left,app,0.415489892,FALSE,MB,MB,app,MB_left
+app_MB_right,0.366567986,MB,right,app,0.366567986,FALSE,MB,MB,app,MB_right
+app_MBmot_left,0.804841751,MBmot,left,app,0.804841751,FALSE,MB,MB,app,MBmot_left
+app_MBmot_right,0.82674004,MBmot,right,app,0.82674004,FALSE,MB,MB,app,MBmot_right
+app_MBsta_left,0.628934225,MBsta,left,app,0.628934225,FALSE,MB,MB,app,MBsta_left
+app_MBsta_right,0.790781248,MBsta,right,app,0.790781248,FALSE,MB,MB,app,MBsta_right
+app_mcp_left,0.315783379,mcp,left,app,0.315783379,TRUE,mcp,fiber tracts,app,mcp_left
+app_mcp_right,0.117816189,mcp,right,app,0.117816189,TRUE,mcp,fiber tracts,app,mcp_right
+app_MD_left,0.636829109,MD,left,app,0.636829109,FALSE,MD,TH,app,MD_left
+app_MD_right,0.641606703,MD,right,app,0.641606703,FALSE,MD,TH,app,MD_right
+app_ME_left,-1.860993912,ME,left,app,0,FALSE,ME,HY,app,ME_left
+app_ME_right,-2.415282315,ME,right,app,0,FALSE,ME,HY,app,ME_right
+app_MEA_left,0.839123358,MEA,left,app,0.839123358,FALSE,MEA,STR,app,MEA_left
+app_MEA_right,0.849664955,MEA,right,app,0.849664955,FALSE,MEA,STR,app,MEA_right
+app_MEZ_left,-0.26017883,MEZ,left,app,0,FALSE,MEZ,HY,app,MEZ_left
+app_MEZ_right,0.351114639,MEZ,right,app,0.351114639,FALSE,MEZ,HY,app,MEZ_right
+app_mfb_left,-0.244958582,mfb,left,app,0,TRUE,mfb,fiber tracts,app,mfb_left
+app_mfb_right,0.026079134,mfb,right,app,0.026079134,TRUE,mfb,fiber tracts,app,mfb_right
+app_MG_left,0.791946743,MG,left,app,0.791946743,FALSE,MG,TH,app,MG_left
+app_MG_right,0.724287055,MG,right,app,0.724287055,FALSE,MG,TH,app,MG_right
+app_MH_left,-0.08655805,MH,left,app,0,FALSE,MH,TH,app,MH_left
+app_MH_right,0.05578575,MH,right,app,0.05578575,FALSE,MH,TH,app,MH_right
+app_ml_left,0.340000955,ml,left,app,0.340000955,TRUE,ml,fiber tracts,app,ml_left
+app_ml_right,0.378442151,ml,right,app,0.378442151,TRUE,ml,fiber tracts,app,ml_right
+app_mlf_left,0.25421715,mlf,left,app,0.25421715,TRUE,mlf,fiber tracts,app,mlf_left
+app_mlf_right,0.116522262,mlf,right,app,0.116522262,TRUE,mlf,fiber tracts,app,mlf_right
+app_MM_left,0.663401724,MM,left,app,0.663401724,FALSE,MM,HY,app,MM_left
+app_MM_right,0.588597702,MM,right,app,0.588597702,FALSE,MM,HY,app,MM_right
+app_MOp_left,0.958341398,MOp,left,app,0.958341398,FALSE,MOp,Isocortex,app,MOp_left
+app_MOp_right,0.858804527,MOp,right,app,0.858804527,FALSE,MOp,Isocortex,app,MOp_right
+app_MOs_left,0.898523165,MOs,left,app,0.898523165,FALSE,MOs,Isocortex,app,MOs_left
+app_MOs_right,0.796608529,MOs,right,app,0.796608529,FALSE,MOs,Isocortex,app,MOs_right
+app_moV_left,0.322017329,moV,left,app,0.322017329,TRUE,moV,fiber tracts,app,moV_left
+app_moV_right,0.177376004,moV,right,app,0.177376004,TRUE,moV,fiber tracts,app,moV_right
+app_mp_left,0.075242273,mp,left,app,0.075242273,TRUE,mp,fiber tracts,app,mp_left
+app_mp_right,0.101429616,mp,right,app,0.101429616,TRUE,mp,fiber tracts,app,mp_right
+app_MPO_right,0.215805245,MPO,right,app,0.215805245,FALSE,MPO,HY,app,MPO_right
+app_MPT_left,0.532076962,MPT,left,app,0.532076962,FALSE,MPT,MB,app,MPT_left
+app_MPT_right,0.312517632,MPT,right,app,0.312517632,FALSE,MPT,MB,app,MPT_right
+app_MRN_left,0.39079496,MRN,left,app,0.39079496,FALSE,MRN,MB,app,MRN_left
+app_MRN_right,0.401107495,MRN,right,app,0.401107495,FALSE,MRN,MB,app,MRN_right
+app_MS_left,0.354164397,MS,left,app,0.354164397,FALSE,MS,PAL,app,MS_left
+app_MS_right,0.360189953,MS,right,app,0.360189953,FALSE,MS,PAL,app,MS_right
+app_MT_left,0.287217374,MT,left,app,0.287217374,FALSE,MT,MB,app,MT_left
+app_MT_right,0.517186049,MT,right,app,0.517186049,FALSE,MT,MB,app,MT_right
+app_mtg_left,-0.356814871,mtg,left,app,0,TRUE,mtg,fiber tracts,app,mtg_left
+app_mtg_right,0.33291959,mtg,right,app,0.33291959,TRUE,mtg,fiber tracts,app,mtg_right
+app_mtt_left,0.504885436,mtt,left,app,0.504885436,TRUE,mtt,fiber tracts,app,mtt_left
+app_mtt_right,0.435938982,mtt,right,app,0.435938982,TRUE,mtt,fiber tracts,app,mtt_right
+app_NB_left,0.667234876,NB,left,app,0.667234876,FALSE,NB,MB,app,NB_left
+app_NB_right,0.643677231,NB,right,app,0.643677231,FALSE,NB,MB,app,NB_right
+app_ND_left,0.28359115,ND,left,app,0.28359115,FALSE,ND,MB,app,ND_left
+app_ND_right,0.255482599,ND,right,app,0.255482599,FALSE,ND,MB,app,ND_right
+app_NDB_left,0.512011818,NDB,left,app,0.512011818,FALSE,NDB,PAL,app,NDB_left
+app_NDB_right,0.503738548,NDB,right,app,0.503738548,FALSE,NDB,PAL,app,NDB_right
+app_NLL_left,0.25691151,NLL,left,app,0.25691151,FALSE,NLL,P,app,NLL_left
+app_NLL_right,0.310704389,NLL,right,app,0.310704389,FALSE,NLL,P,app,NLL_right
+app_NOT_left,0.634260337,NOT,left,app,0.634260337,FALSE,NOT,MB,app,NOT_left
+app_NOT_right,0.642113308,NOT,right,app,0.642113308,FALSE,NOT,MB,app,NOT_right
+app_NPC_left,0.134192973,NPC,left,app,0.134192973,FALSE,NPC,MB,app,NPC_left
+app_NPC_right,0.370848721,NPC,right,app,0.370848721,FALSE,NPC,MB,app,NPC_right
+app_nst_left,0.52530306,nst,left,app,0.52530306,TRUE,nst,fiber tracts,app,nst_left
+app_nst_right,0.589075695,nst,right,app,0.589075695,TRUE,nst,fiber tracts,app,nst_right
+app_OLF_left,0.758459631,OLF,left,app,0.758459631,FALSE,OLF,OLF,app,OLF_left
+app_OLF_right,0.720170973,OLF,right,app,0.720170973,FALSE,OLF,OLF,app,OLF_right
+app_OP_left,-0.326808536,OP,left,app,0,FALSE,OP,MB,app,OP_left
+app_OP_right,-0.190477192,OP,right,app,0,FALSE,OP,MB,app,OP_right
+app_opt_left,0.319537422,opt,left,app,0.319537422,TRUE,opt,fiber tracts,app,opt_left
+app_opt_right,0.137431633,opt,right,app,0.137431633,TRUE,opt,fiber tracts,app,opt_right
+app_or_left,0.413186625,or,left,app,0.413186625,TRUE,or,fiber tracts,app,or_left
+app_or_right,0.366658946,or,right,app,0.366658946,TRUE,or,fiber tracts,app,or_right
+app_ORBl_left,0.749095713,ORBl,left,app,0.749095713,FALSE,ORB,Isocortex,app,ORBl_left
+app_ORBl_right,0.688431383,ORBl,right,app,0.688431383,FALSE,ORB,Isocortex,app,ORBl_right
+app_ORBm_left,0.638210938,ORBm,left,app,0.638210938,FALSE,ORB,Isocortex,app,ORBm_left
+app_ORBm_right,0.682287227,ORBm,right,app,0.682287227,FALSE,ORB,Isocortex,app,ORBm_right
+app_ORBvl_left,0.673611058,ORBvl,left,app,0.673611058,FALSE,ORB,Isocortex,app,ORBvl_left
+app_ORBvl_right,0.733346535,ORBvl,right,app,0.733346535,FALSE,ORB,Isocortex,app,ORBvl_right
+app_OT_left,0.77806301,OT,left,app,0.77806301,FALSE,OT,STR,app,OT_left
+app_OT_right,0.747844833,OT,right,app,0.747844833,FALSE,OT,STR,app,OT_right
+app_P_left,0.248634846,P,left,app,0.248634846,FALSE,P,P,app,P_left
+app_P_right,0.238128576,P,right,app,0.238128576,FALSE,P,P,app,P_right
+app_PA_left,1.062284004,PA,left,app,1,FALSE,PA,CTXsp,app,PA_left
+app_PA_right,1.087003205,PA,right,app,1,FALSE,PA,CTXsp,app,PA_right
+app_Pa4_left,0.014878068,Pa4,left,app,0.014878068,FALSE,Pa4,MB,app,Pa4_left
+app_Pa4_right,0.503564932,Pa4,right,app,0.503564932,FALSE,Pa4,MB,app,Pa4_right
+app_PAA_left,1.020496232,PAA,left,app,1,FALSE,PAA,OLF,app,PAA_left
+app_PAA_right,0.958984062,PAA,right,app,0.958984062,FALSE,PAA,OLF,app,PAA_right
+app_PAG_left,0.233510781,PAG,left,app,0.233510781,FALSE,PAG,MB,app,PAG_left
+app_PAG_right,0.267803331,PAG,right,app,0.267803331,FALSE,PAG,MB,app,PAG_right
+app_PAL_left,0.561870539,PAL,left,app,0.561870539,FALSE,PAL,PAL,app,PAL_left
+app_PAL_right,0.498724362,PAL,right,app,0.498724362,FALSE,PAL,PAL,app,PAL_right
+app_PALd_left,0.648523576,PALd,left,app,0.648523576,FALSE,PAL,PAL,app,PALd_left
+app_PALd_right,0.60348887,PALd,right,app,0.60348887,FALSE,PAL,PAL,app,PALd_right
+app_PAR_left,0.942823196,PAR,left,app,0.942823196,FALSE,PAR,HPF,app,PAR_left
+app_PAR_right,0.896568623,PAR,right,app,0.896568623,FALSE,PAR,HPF,app,PAR_right
+app_PBG_left,0.241196602,PBG,left,app,0.241196602,FALSE,PBG,MB,app,PBG_left
+app_PBG_right,0.100380452,PBG,right,app,0.100380452,FALSE,PBG,MB,app,PBG_right
+app_pc_left,0.229664876,pc,left,app,0.229664876,TRUE,pc,fiber tracts,app,pc_left
+app_pc_right,0.106557317,pc,right,app,0.106557317,TRUE,pc,fiber tracts,app,pc_right
+app_PC5_left,-0.527826202,PC5,left,app,0,FALSE,PC5,P,app,PC5_left
+app_PC5_right,0.695279351,PC5,right,app,0.695279351,FALSE,PC5,P,app,PC5_right
+app_PCN_left,0.694473639,PCN,left,app,0.694473639,FALSE,PCN,TH,app,PCN_left
+app_PCN_right,0.668488918,PCN,right,app,0.668488918,FALSE,PCN,TH,app,PCN_right
+app_PeF_left,0.638427802,PeF,left,app,0.638427802,FALSE,PeF,HY,app,PeF_left
+app_PeF_right,0.370443757,PeF,right,app,0.370443757,FALSE,PeF,HY,app,PeF_right
+app_PERI_left,0.977663458,PERI,left,app,0.977663458,FALSE,PERI,Isocortex,app,PERI_left
+app_PERI_right,0.928266014,PERI,right,app,0.928266014,FALSE,PERI,Isocortex,app,PERI_right
+app_PF_left,-0.180201041,PF,left,app,0,FALSE,PF,TH,app,PF_left
+app_PF_right,-0.065031771,PF,right,app,0,FALSE,PF,TH,app,PF_right
+app_PG_left,0.520383189,PG,left,app,0.520383189,FALSE,PG,P,app,PG_left
+app_PG_right,0.585259681,PG,right,app,0.585259681,FALSE,PG,P,app,PG_right
+app_PH_left,0.1298117,PH,left,app,0.1298117,FALSE,PH,HY,app,PH_left
+app_PH_right,0.192162926,PH,right,app,0.192162926,FALSE,PH,HY,app,PH_right
+app_PIL_left,0.510180966,PIL,left,app,0.510180966,FALSE,PIL,TH,app,PIL_left
+app_PIL_right,0.54826544,PIL,right,app,0.54826544,FALSE,PIL,TH,app,PIL_right
+app_PIR_left,0.911586824,PIR,left,app,0.911586824,FALSE,PIR,OLF,app,PIR_left
+app_PIR_right,0.83576699,PIR,right,app,0.83576699,FALSE,PIR,OLF,app,PIR_right
+app_PL_left,0.79575355,PL,left,app,0.79575355,FALSE,PL,Isocortex,app,PL_left
+app_PL_right,0.743716173,PL,right,app,0.743716173,FALSE,PL,Isocortex,app,PL_right
+app_pm_left,0.476737354,pm,left,app,0.476737354,TRUE,pm,fiber tracts,app,pm_left
+app_pm_right,0.157983106,pm,right,app,0.157983106,TRUE,pm,fiber tracts,app,pm_right
+app_PN_left,0.554489907,PN,left,app,0.554489907,FALSE,PN,MB,app,PN_left
+app_PN_right,0.699877434,PN,right,app,0.699877434,FALSE,PN,MB,app,PN_right
+app_PO_left,0.850319198,PO,left,app,0.850319198,FALSE,PO,TH,app,PO_left
+app_PO_right,0.827230693,PO,right,app,0.827230693,FALSE,PO,TH,app,PO_right
+app_POL_left,0.709406492,POL,left,app,0.709406492,FALSE,POL,TH,app,POL_left
+app_POL_right,0.69188041,POL,right,app,0.69188041,FALSE,POL,TH,app,POL_right
+app_POST_left,0.763296666,POST,left,app,0.763296666,FALSE,POST,HPF,app,POST_left
+app_POST_right,0.77779804,POST,right,app,0.77779804,FALSE,POST,HPF,app,POST_right
+app_PoT_left,0.723177133,PoT,left,app,0.723177133,FALSE,PoT,TH,app,PoT_left
+app_PoT_right,0.658297815,PoT,right,app,0.658297815,FALSE,PoT,TH,app,PoT_right
+app_PP_left,0.515332729,PP,left,app,0.515332729,FALSE,PP,TH,app,PP_left
+app_PP_right,0.499420619,PP,right,app,0.499420619,FALSE,PP,TH,app,PP_right
+app_PPN_left,0.322618766,PPN,left,app,0.322618766,FALSE,PPN,MB,app,PPN_left
+app_PPN_right,0.268592656,PPN,right,app,0.268592656,FALSE,PPN,MB,app,PPN_right
+app_PPT_left,0.687540282,PPT,left,app,0.687540282,FALSE,PPT,MB,app,PPT_left
+app_PPT_right,0.621882179,PPT,right,app,0.621882179,FALSE,PPT,MB,app,PPT_right
+app_PR_left,0.295822458,PR,left,app,0.295822458,FALSE,PR,TH,app,PR_left
+app_PR_right,0.329482084,PR,right,app,0.329482084,FALSE,PR,TH,app,PR_right
+app_PRC_left,-0.540747792,PRC,left,app,0,FALSE,PRC,MB,app,PRC_left
+app_PRC_right,-1.645736796,PRC,right,app,0,FALSE,PRC,MB,app,PRC_right
+app_PRE_left,0.914096166,PRE,left,app,0.914096166,FALSE,PRE,HPF,app,PRE_left
+app_PRE_right,0.901385712,PRE,right,app,0.901385712,FALSE,PRE,HPF,app,PRE_right
+app_PRNr_left,0.408266311,PRNr,left,app,0.408266311,FALSE,PRNr,P,app,PRNr_left
+app_PRNr_right,0.355320099,PRNr,right,app,0.355320099,FALSE,PRNr,P,app,PRNr_right
+app_ProS_left,0.827771364,ProS,left,app,0.827771364,FALSE,ProS,HPF,app,ProS_left
+app_ProS_right,0.829032598,ProS,right,app,0.829032598,FALSE,ProS,HPF,app,ProS_right
+app_PST_left,0.437773726,PST,left,app,0.437773726,FALSE,PST,HY,app,PST_left
+app_PST_right,0.39220179,PST,right,app,0.39220179,FALSE,PST,HY,app,PST_right
+app_PSV_left,1.058577723,PSV,left,app,1,FALSE,PSV,P,app,PSV_left
+app_PSV_right,0.597057084,PSV,right,app,0.597057084,FALSE,PSV,P,app,PSV_right
+app_PVR_left,0.667942105,PVR,left,app,0.667942105,FALSE,PVR,HY,app,PVR_left
+app_PVR_right,0.185868637,PVR,right,app,0.185868637,FALSE,PVR,HY,app,PVR_right
+app_PVT_left,0.065000091,PVT,left,app,0.065000091,FALSE,PVT,TH,app,PVT_left
+app_PVT_right,-0.010688833,PVT,right,app,0,FALSE,PVT,TH,app,PVT_right
+app_PVZ_left,-0.047384577,PVZ,left,app,0,FALSE,PVZ,HY,app,PVZ_left
+app_PVZ_right,0.295082251,PVZ,right,app,0.295082251,FALSE,PVZ,HY,app,PVZ_right
+app_RE_left,0.496667998,RE,left,app,0.496667998,FALSE,RE,TH,app,RE_left
+app_RE_right,0.449997855,RE,right,app,0.449997855,FALSE,RE,TH,app,RE_right
+app_RH_left,0.560660546,RH,left,app,0.560660546,FALSE,RH,TH,app,RH_left
+app_RH_right,0.607536612,RH,right,app,0.607536612,FALSE,RH,TH,app,RH_right
+app_RL_left,-0.104929748,RL,left,app,0,FALSE,RL,MB,app,RL_left
+app_RL_right,0.111208531,RL,right,app,0.111208531,FALSE,RL,MB,app,RL_right
+app_RN_left,0.46277335,RN,left,app,0.46277335,FALSE,RN,MB,app,RN_left
+app_RN_right,0.418104864,RN,right,app,0.418104864,FALSE,RN,MB,app,RN_right
+app_RPF_left,-1.314931866,RPF,left,app,0,FALSE,RPF,MB,app,RPF_left
+app_RPF_right,0.319697631,RPF,right,app,0.319697631,FALSE,RPF,MB,app,RPF_right
+app_RSPagl_left,0.986512787,RSPagl,left,app,0.986512787,FALSE,RSP,Isocortex,app,RSPagl_left
+app_RSPagl_right,0.931916327,RSPagl,right,app,0.931916327,FALSE,RSP,Isocortex,app,RSPagl_right
+app_RSPd_left,0.997652191,RSPd,left,app,0.997652191,FALSE,RSP,Isocortex,app,RSPd_left
+app_RSPd_right,0.94245151,RSPd,right,app,0.94245151,FALSE,RSP,Isocortex,app,RSPd_right
+app_RSPv_left,0.912490298,RSPv,left,app,0.912490298,FALSE,RSP,Isocortex,app,RSPv_left
+app_RSPv_right,0.864342614,RSPv,right,app,0.864342614,FALSE,RSP,Isocortex,app,RSPv_right
+app_RT_left,0.739486063,RT,left,app,0.739486063,FALSE,RT,TH,app,RT_left
+app_RT_right,0.709299869,RT,right,app,0.709299869,FALSE,RT,TH,app,RT_right
+app_rust_left,0.274067382,rust,left,app,0.274067382,TRUE,rust,fiber tracts,app,rust_left
+app_rust_right,0.204514685,rust,right,app,0.204514685,TRUE,rust,fiber tracts,app,rust_right
+app_SAG_left,0.136911245,SAG,left,app,0.136911245,FALSE,SAG,MB,app,SAG_left
+app_SAG_right,0.139817905,SAG,right,app,0.139817905,FALSE,SAG,MB,app,SAG_right
+app_SCm_left,0.536240234,SCm,left,app,0.536240234,FALSE,MBmot,MB,app,SCm_left
+app_SCm_right,0.548252031,SCm,right,app,0.548252031,FALSE,MBmot,MB,app,SCm_right
+app_SCO_left,-0.360426027,SCO,left,app,0,FALSE,SCO,MB,app,SCO_left
+app_SCO_right,-0.840102431,SCO,right,app,0,FALSE,SCO,MB,app,SCO_right
+app_scp_left,0.046118092,scp,left,app,0.046118092,TRUE,scp,fiber tracts,app,scp_left
+app_scp_right,-0.257468011,scp,right,app,0,TRUE,scp,fiber tracts,app,scp_right
+app_SCs_left,0.596627523,SCs,left,app,0.596627523,FALSE,MBsen,MB,app,SCs_left
+app_SCs_right,0.59449182,SCs,right,app,0.59449182,FALSE,MBsen,MB,app,SCs_right
+app_sctv_left,0.40208284,sctv,left,app,0.40208284,TRUE,sctv,fiber tracts,app,sctv_left
+app_sctv_right,0.499179923,sctv,right,app,0.499179923,TRUE,sctv,fiber tracts,app,sctv_right
+app_scwm_left,0.53699715,scwm,left,app,0.53699715,TRUE,scwm,fiber tracts,app,scwm_left
+app_scwm_right,0.455024938,scwm,right,app,0.455024938,TRUE,scwm,fiber tracts,app,scwm_right
+app_SEZ_left,0.062844883,SEZ,left,app,0.062844883,TRUE,SEZ,VS,app,SEZ_left
+app_SEZ_right,-0.143318433,SEZ,right,app,0,TRUE,SEZ,VS,app,SEZ_right
+app_SGN_left,0.74110002,SGN,left,app,0.74110002,FALSE,SGN,TH,app,SGN_left
+app_SGN_right,0.761732084,SGN,right,app,0.761732084,FALSE,SGN,TH,app,SGN_right
+app_SH_left,0.971726485,SH,left,app,0.971726485,FALSE,SH,STR,app,SH_left
+app_SH_right,0.768077951,SH,right,app,0.768077951,FALSE,SH,STR,app,SH_right
+app_SI_left,0.842208633,SI,left,app,0.842208633,FALSE,SI,PAL,app,SI_left
+app_SI_right,0.786296144,SI,right,app,0.786296144,FALSE,SI,PAL,app,SI_right
+app_sm_left,0.394216095,sm,left,app,0.394216095,TRUE,sm,fiber tracts,app,sm_left
+app_sm_right,-0.479258601,sm,right,app,0,TRUE,sm,fiber tracts,app,sm_right
+app_SMT_left,0.53701994,SMT,left,app,0.53701994,FALSE,SMT,TH,app,SMT_left
+app_SMT_right,0.593013868,SMT,right,app,0.593013868,FALSE,SMT,TH,app,SMT_right
+app_SOC_left,0.386526755,SOC,left,app,0.386526755,FALSE,SOC,P,app,SOC_left
+app_SOC_right,0.318707097,SOC,right,app,0.318707097,FALSE,SOC,P,app,SOC_right
+app_SPF_left,0.56680647,SPF,left,app,0.56680647,FALSE,SPF,TH,app,SPF_left
+app_SPF_right,0.469241562,SPF,right,app,0.469241562,FALSE,SPF,TH,app,SPF_right
+app_SSp-bfd_left,1.064188373,SSp-bfd,left,app,1,FALSE,SSp,Isocortex,app,SSp-bfd_left
+app_SSp-bfd_right,0.928086428,SSp-bfd,right,app,0.928086428,FALSE,SSp,Isocortex,app,SSp-bfd_right
+app_SSp-ll_left,0.90859642,SSp-ll,left,app,0.90859642,FALSE,SSp,Isocortex,app,SSp-ll_left
+app_SSp-ll_right,1.199834355,SSp-ll,right,app,1,FALSE,SSp,Isocortex,app,SSp-ll_right
+app_SSp-m_left,1.039085458,SSp-m,left,app,1,FALSE,SSp,Isocortex,app,SSp-m_left
+app_SSp-m_right,0.974353803,SSp-m,right,app,0.974353803,FALSE,SSp,Isocortex,app,SSp-m_right
+app_SSp-n_right,1.166999172,SSp-n,right,app,1,FALSE,SSp,Isocortex,app,SSp-n_right
+app_SSp-tr_left,0.85268712,SSp-tr,left,app,0.85268712,FALSE,SSp,Isocortex,app,SSp-tr_left
+app_SSp-tr_right,0.928474569,SSp-tr,right,app,0.928474569,FALSE,SSp,Isocortex,app,SSp-tr_right
+app_SSp-ul_left,1.110258218,SSp-ul,left,app,1,FALSE,SSp,Isocortex,app,SSp-ul_left
+app_SSp-ul_right,1.012542242,SSp-ul,right,app,1,FALSE,SSp,Isocortex,app,SSp-ul_right
+app_SSp-un_left,0.95923195,SSp-un,left,app,0.95923195,FALSE,SSp,Isocortex,app,SSp-un_left
+app_SSp-un_right,1.238182208,SSp-un,right,app,1,FALSE,SSp,Isocortex,app,SSp-un_right
+app_SSs_left,1.075282885,SSs,left,app,1,FALSE,SSs,Isocortex,app,SSs_left
+app_SSs_right,0.951988293,SSs,right,app,0.951988293,FALSE,SSs,Isocortex,app,SSs_right
+app_st_left,0.635439729,st,left,app,0.635439729,TRUE,st,fiber tracts,app,st_left
+app_st_right,0.658581385,st,right,app,0.658581385,TRUE,st,fiber tracts,app,st_right
+app_stc_left,0.787122153,stc,left,app,0.787122153,TRUE,stc,fiber tracts,app,stc_left
+app_stc_right,0.786185604,stc,right,app,0.786185604,TRUE,stc,fiber tracts,app,stc_right
+app_STN_left,0.409617758,STN,left,app,0.409617758,FALSE,STN,HY,app,STN_left
+app_STN_right,0.530846066,STN,right,app,0.530846066,FALSE,STN,HY,app,STN_right
+app_STR_left,0.794291154,STR,left,app,0.794291154,FALSE,STR,STR,app,STR_left
+app_STR_right,0.753971303,STR,right,app,0.753971303,FALSE,STR,STR,app,STR_right
+app_Su3_left,-0.14655983,Su3,left,app,0,FALSE,Su3,MB,app,Su3_left
+app_Su3_right,0.298925536,Su3,right,app,0.298925536,FALSE,Su3,MB,app,Su3_right
+app_SUB_left,0.915528437,SUB,left,app,0.915528437,FALSE,SUB,HPF,app,SUB_left
+app_SUB_right,0.903056982,SUB,right,app,0.903056982,FALSE,SUB,HPF,app,SUB_right
+app_SUM_left,0.561396664,SUM,left,app,0.561396664,FALSE,SUM,HY,app,SUM_left
+app_SUM_right,0.467392365,SUM,right,app,0.467392365,FALSE,SUM,HY,app,SUM_right
+app_sup_left,0.298354906,sup,left,app,0.298354906,TRUE,sup,fiber tracts,app,sup_left
+app_sup_right,0.276374406,sup,right,app,0.276374406,TRUE,sup,fiber tracts,app,sup_right
+app_sV_left,-0.659286762,sV,left,app,0,TRUE,sV,fiber tracts,app,sV_left
+app_sV_right,-1.027711991,sV,right,app,0,TRUE,sV,fiber tracts,app,sV_right
+app_tb_left,-0.12528955,tb,left,app,0,TRUE,tb,fiber tracts,app,tb_left
+app_TEa_left,1.053889108,TEa,left,app,1,FALSE,TEa,Isocortex,app,TEa_left
+app_TEa_right,0.961321809,TEa,right,app,0.961321809,FALSE,TEa,Isocortex,app,TEa_right
+app_TH_left,0.559179561,TH,left,app,0.559179561,FALSE,TH,TH,app,TH_left
+app_TH_right,0.557130468,TH,right,app,0.557130468,FALSE,TH,TH,app,TH_right
+app_TR_left,1.139497893,TR,left,app,1,FALSE,TR,OLF,app,TR_left
+app_TR_right,1.095246569,TR,right,app,1,FALSE,TR,OLF,app,TR_right
+app_TRN_left,0.454089266,TRN,left,app,0.454089266,FALSE,TRN,P,app,TRN_left
+app_TRN_right,0.494721069,TRN,right,app,0.494721069,FALSE,TRN,P,app,TRN_right
+app_tspc_left,0.38322814,tspc,left,app,0.38322814,TRUE,tspc,fiber tracts,app,tspc_left
+app_tspc_right,0.156796994,tspc,right,app,0.156796994,TRUE,tspc,fiber tracts,app,tspc_right
+app_TT_left,0.584511256,TT,left,app,0.584511256,FALSE,TT,OLF,app,TT_left
+app_TT_right,0.566305841,TT,right,app,0.566305841,FALSE,TT,OLF,app,TT_right
+app_TU_left,0.679247189,TU,left,app,0.679247189,FALSE,TU,HY,app,TU_left
+app_TU_right,0.693617983,TU,right,app,0.693617983,FALSE,TU,HY,app,TU_right
+app_V3_left,-0.59736822,V3,left,app,0,TRUE,V3,VS,app,V3_left
+app_V3_right,-0.13370918,V3,right,app,0,TRUE,V3,VS,app,V3_right
+app_VAL_left,0.676584138,VAL,left,app,0.676584138,FALSE,VAL,TH,app,VAL_left
+app_VAL_right,0.605820482,VAL,right,app,0.605820482,FALSE,VAL,TH,app,VAL_right
+app_VISa_left,1.036949827,VISa,left,app,1,FALSE,VISa,Isocortex,app,VISa_left
+app_VISa_right,0.94700746,VISa,right,app,0.94700746,FALSE,VISa,Isocortex,app,VISa_right
+app_VISal_left,1.110791261,VISal,left,app,1,FALSE,VISal,Isocortex,app,VISal_left
+app_VISal_right,0.998270644,VISal,right,app,0.998270644,FALSE,VISal,Isocortex,app,VISal_right
+app_VISam_left,0.972759737,VISam,left,app,0.972759737,FALSE,VISam,Isocortex,app,VISam_left
+app_VISam_right,0.843861991,VISam,right,app,0.843861991,FALSE,VISam,Isocortex,app,VISam_right
+app_VISC_left,1.037635623,VISC,left,app,1,FALSE,VISC,Isocortex,app,VISC_left
+app_VISC_right,0.932013668,VISC,right,app,0.932013668,FALSE,VISC,Isocortex,app,VISC_right
+app_VISl_left,1.016662931,VISl,left,app,1,FALSE,VISl,Isocortex,app,VISl_left
+app_VISl_right,0.931924449,VISl,right,app,0.931924449,FALSE,VISl,Isocortex,app,VISl_right
+app_VISli_left,0.976281049,VISli,left,app,0.976281049,FALSE,VISli,Isocortex,app,VISli_left
+app_VISli_right,0.884940009,VISli,right,app,0.884940009,FALSE,VISli,Isocortex,app,VISli_right
+app_VISp_left,1.002486613,VISp,left,app,1,FALSE,VISp,Isocortex,app,VISp_left
+app_VISp_right,0.937743287,VISp,right,app,0.937743287,FALSE,VISp,Isocortex,app,VISp_right
+app_VISpl_left,0.977261319,VISpl,left,app,0.977261319,FALSE,VISpl,Isocortex,app,VISpl_left
+app_VISpl_right,0.756214259,VISpl,right,app,0.756214259,FALSE,VISpl,Isocortex,app,VISpl_right
+app_VISpm_left,0.972135507,VISpm,left,app,0.972135507,FALSE,VISpm,Isocortex,app,VISpm_left
+app_VISpm_right,0.950013086,VISpm,right,app,0.950013086,FALSE,VISpm,Isocortex,app,VISpm_right
+app_VISpor_left,1.093751821,VISpor,left,app,1,FALSE,VISpor,Isocortex,app,VISpor_left
+app_VISpor_right,0.991041246,VISpor,right,app,0.991041246,FALSE,VISpor,Isocortex,app,VISpor_right
+app_VISrl_left,1.066074012,VISrl,left,app,1,FALSE,VISrl,Isocortex,app,VISrl_left
+app_VISrl_right,0.878780784,VISrl,right,app,0.878780784,FALSE,VISrl,Isocortex,app,VISrl_right
+app_VL_left,-0.01884775,VL,left,app,0,TRUE,VL,VS,app,VL_left
+app_VL_right,-0.043556996,VL,right,app,0,TRUE,VL,VS,app,VL_right
+app_VM_left,0.564886525,VM,left,app,0.564886525,FALSE,VM,TH,app,VM_left
+app_VM_right,0.532109004,VM,right,app,0.532109004,FALSE,VM,TH,app,VM_right
+app_VMH_left,0.666267202,VMH,left,app,0.666267202,FALSE,VMH,HY,app,VMH_left
+app_VMH_right,0.673454701,VMH,right,app,0.673454701,FALSE,VMH,HY,app,VMH_right
+app_VP_left,0.623787977,VP,left,app,0.623787977,FALSE,VP,TH,app,VP_left
+app_VP_right,0.528903664,VP,right,app,0.528903664,FALSE,VP,TH,app,VP_right
+app_VPL_left,0.613482012,VPL,left,app,0.613482012,FALSE,VPL,TH,app,VPL_left
+app_VPL_right,0.638059681,VPL,right,app,0.638059681,FALSE,VPL,TH,app,VPL_right
+app_VPM_left,0.646372706,VPM,left,app,0.646372706,FALSE,VPM,TH,app,VPM_left
+app_VPM_right,0.593241963,VPM,right,app,0.593241963,FALSE,VPM,TH,app,VPM_right
+app_VTA_left,0.372184378,VTA,left,app,0.372184378,FALSE,VTA,MB,app,VTA_left
+app_VTA_right,0.394983231,VTA,right,app,0.394983231,FALSE,VTA,MB,app,VTA_right
+app_vtd_left,0.124802521,vtd,left,app,0.124802521,TRUE,vtd,fiber tracts,app,vtd_left
+app_vtd_right,-0.360681598,vtd,right,app,0,TRUE,vtd,fiber tracts,app,vtd_right
+app_Xi_left,0.284704779,Xi,left,app,0.284704779,FALSE,Xi,TH,app,Xi_left
+app_Xi_right,0.64733324,Xi,right,app,0.64733324,FALSE,Xi,TH,app,Xi_right
+app_ZI_left,0.578907755,ZI,left,app,0.578907755,FALSE,ZI,HY,app,ZI_left
+app_ZI_right,0.491353229,ZI,right,app,0.491353229,FALSE,ZI,HY,app,ZI_right

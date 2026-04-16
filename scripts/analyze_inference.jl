@@ -2,7 +2,7 @@
 here we create a folder of analysis plots of interence results
 =#
 using PathoSpread
-plot_priors_and_posteriors = true
+plot_priors_and_posteriors = false
 
 
 simulations = ["igs_DIFF_EUCL", "igs_DIFF_ANTERO", "igs_DIFF_RETRO", "igs_DIFF_BIDIR",
@@ -21,8 +21,12 @@ simulations = ["hippo_DIFFGA_RETRO_posterior_prior"]
 #simulations = ["FLUSH_DIFF_RETRO", "FLUSH_DIFFG_RETRO", "FLUSH_DIFFGA_RETRO"]
 #simulations = ["DIFFG_RETRO"]
 #simulations = ["u0_DIFF_RETRO", "DIFFG_RETRO", "DIFFGA_RETRO"]
-simulations = ["new_hippo_DIFF_RETRO", "new_hippo_DIFFG_RETRO", "new_hippo_DIFFGA_RETRO"]
-simulations = ["DIFFG_T1"]
+#simulations = ["new_hippo_DIFF_RETRO", "new_hippo_DIFFG_RETRO", "new_hippo_DIFFGA_RETRO"]
+simulations = ["global_hippo_DIFFGA_RETRO_posterior_prior"]
+
+
+#simulations = ["igs_DIFF_RETRO", "DIFFG_RETRO", "DIFFGA_RETRO"]
+#simulations = ["DIFFGA_T1", "DIFFG_T1", "DIFFGA_T2", "DIFFG_T2"]
 
 for simulation in simulations
     # simulation to analyze
@@ -38,15 +42,15 @@ for simulation in simulations
     #save_inference("simulations/" * simulation * "_CUT.jls", inference_obj)
 
     # plot
-    setup_plot_theme!()  # set plotting settings
-    display("Plotting inference results...")
-    plot_inference(inference_obj,"figures/inferences_final/"*simulation; plot_priors_posteriors=plot_priors_and_posteriors)  
-    display("Plots saved to figures/inferences/"*simulation)
-    display("---------------------------------------------------")
+    #setup_plot_theme!()  # set plotting settings
+    #display("Plotting inference results...")
+    #plot_inference(inference_obj,"figures/inferences/"*simulation; plot_priors_posteriors=plot_priors_and_posteriors)  
+    #display("Plots saved to figures/inferences/"*simulation)
+    #display("---------------------------------------------------")
 
     # plot with training data
-    #setup_plot_theme!(markersize=22)  # set plotting settings
-    #data_full, timepoints_full = PathoSpread.process_pathology("data/total_path.csv", W_csv="data/W_labeled_filtered.csv")
-    #plot_inference(inference_obj,"figures/inferences_final/"*simulation; full_data=data_full, full_timepoints=timepoints_full, plot_priors_posteriors=false)  
+    setup_plot_theme!()  # set plotting settings
+    data_full, timepoints_full = PathoSpread.process_pathology("data/total_path.csv", W_csv="data/W_labeled_filtered.csv")
+    plot_inference(inference_obj,"figures/inferences_final/"*simulation; full_data=data_full, full_timepoints=timepoints_full, plot_priors_posteriors=false)  
     #
 end

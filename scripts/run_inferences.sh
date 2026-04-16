@@ -9,6 +9,42 @@ mkdir -p "$LOG_DIR"
 # Define base (model + args) jobs
 # --------------------------------------------------
 declare -A BASE_JOBS
+
+
+# CO-PATHOLOGY DATA
+# --------------------------------
+# TAU PATHOLOGY (MAPT control)
+# --------------------------------
+BASE_JOBS["tau_mapt_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/syn_tau_abeta/tau_pathology_mapt.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1"
+BASE_JOBS["tau_mapt_DIFFGA_ANTERO"]="DIFFGA data/W_labeled_filtered.csv data/syn_tau_abeta/tau_pathology_mapt.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1"
+BASE_JOBS["tau_mapt_DIFFGA_BIDIR"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/syn_tau_abeta/tau_pathology_mapt.csv --seed_indices='[53,55,56]' --n_chains=1"
+BASE_JOBS["tau_mapt_DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/syn_tau_abeta/tau_pathology_mapt.csv --seed_indices='[53,55,56]' --n_chains=1"
+
+# --------------------------------
+# TAU PATHOLOGY (APP / amyloid background)
+# --------------------------------
+BASE_JOBS["tau_app_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/syn_tau_abeta/tau_pathology_app.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1"
+BASE_JOBS["tau_app_DIFFGA_ANTERO"]="DIFFGA data/W_labeled_filtered.csv data/syn_tau_abeta/tau_pathology_app.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1"
+BASE_JOBS["tau_app_DIFFGA_BIDIR"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/syn_tau_abeta/tau_pathology_app.csv --seed_indices='[53,55,56]' --n_chains=1"
+BASE_JOBS["tau_app_DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/syn_tau_abeta/tau_pathology_app.csv --seed_indices='[53,55,56]' --n_chains=1"
+
+# --------------------------------
+# ALPHA-SYNUCLEIN PATHOLOGY (MAPT control)
+# --------------------------------
+BASE_JOBS["syn_mapt_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/syn_tau_abeta/syn_pathology_mapt.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1"
+BASE_JOBS["syn_mapt_DIFFGA_ANTERO"]="DIFFGA data/W_labeled_filtered.csv data/syn_tau_abeta/syn_pathology_mapt.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1"
+BASE_JOBS["syn_mapt_DIFFGA_BIDIR"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/syn_tau_abeta/syn_pathology_mapt.csv --seed_indices='[53,55,56]' --n_chains=1"
+BASE_JOBS["syn_mapt_DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/syn_tau_abeta/syn_pathology_mapt.csv --seed_indices='[53,55,56]' --n_chains=1"
+
+# --------------------------------
+# ALPHA-SYNUCLEIN PATHOLOGY (APP / amyloid background)
+# --------------------------------
+BASE_JOBS["syn_app_DIFFGA_RETRO"]="DIFFGA data/W_labeled_filtered.csv data/syn_tau_abeta/syn_pathology_app.csv --seed_indices='[53,55,56]' --retrograde=true --n_chains=1"
+BASE_JOBS["syn_app_DIFFGA_ANTERO"]="DIFFGA data/W_labeled_filtered.csv data/syn_tau_abeta/syn_pathology_app.csv --seed_indices='[53,55,56]' --retrograde=false --n_chains=1"
+BASE_JOBS["syn_app_DIFFGA_BIDIR"]="DIFFGA_bidirectional data/W_labeled_filtered.csv data/syn_tau_abeta/syn_pathology_app.csv --seed_indices='[53,55,56]' --n_chains=1"
+BASE_JOBS["syn_app_DIFFGA_EUCL"]="DIFFGA data/Euclidean_distance_matrix_filtered.csv data/syn_tau_abeta/syn_pathology_app.csv --seed_indices='[53,55,56]' --n_chains=1"
+
+
 # --------------------------------
 # iCP injection site
 # --------------------------------

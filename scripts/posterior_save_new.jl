@@ -18,6 +18,7 @@ using Measures
 # ============================================================
 
 # Single inference file to analyze
+# inference_file = "simulations/global_hippo_DIFFGA_RETRO_posterior_prior.jls"
 inference_file = "simulations/DIFFGA_RETRO.jls"
 
 # Name used for outputs
@@ -26,6 +27,7 @@ model_name = "DIFFGA"
 # Which parameter prefixes to process
 prefixes_to_process = ["beta", "gamma"]
 
+#save_dir = "figures/posteriors_mean/DIFFGA_HIPPO"
 save_dir = "figures/posteriors_mean/DIFFGA_RETRO"
 csv_dir  = save_dir
 plot_dir = joinpath(save_dir, "update_checks")
@@ -49,8 +51,12 @@ const BORDERLINE_LOW  = 0.5 * ALPHA
 const BORDERLINE_HIGH = 2.0 * ALPHA
 
 # Scatter settings
-const SCATTER_MARKERSIZE = 6
+const SCATTER_MARKERSIZE = 14
 const SCATTER_ALPHA = 0.8
+const SCATTER_GUIDEFONTSIZE = 26
+const SCATTER_TICKFONTSIZE = 18
+const SCATTER_TITLEFONTSIZE = 18
+const SCATTER_ANNOTATION_FONTSIZE = 18
 
 # ============================================================
 # HELPERS
@@ -165,7 +171,7 @@ function save_prior_posterior_plot(outfile, samples, prior_dist, region, pname, 
         label="prior",
         xlabel=pname,
         ylabel="Density",
-        title=ttl,
+        title="",
         legend=:topright
     )
 
@@ -448,7 +454,11 @@ end
 
 """
 Create beta-gamma scatter from row tables.
-If updated_only=true, keep only rows with beta.updated==1 and gamma.updated==1.
+
+Filters:
+- updated_only=true      => keep only rows with beta.updated==1 and gamma.updated==1
+- beta_nonnegative=true  => keep only rows with beta.mean_post >= 0
+
 Spearman rho is computed as Pearson correlation of tied ranks.
 The p-value is taken from CorrelationTest on the tied ranks.
 """
@@ -457,6 +467,7 @@ function save_beta_gamma_scatter(
     gamma_rows,
     outfile::AbstractString;
     updated_only::Bool=false,
+    beta_nonnegative::Bool=false,
     title_prefix::AbstractString=model_name
 )
     beta_map  = Dict(r.region => r for r in beta_rows)
@@ -476,12 +487,23 @@ function save_beta_gamma_scatter(
             continue
         end
 
+        if beta_nonnegative && !(br.mean_post >= 0.0)
+            continue
+        end
+
         push!(x, br.mean_post)
         push!(y, gr.mean_post)
     end
 
-    ttl = updated_only ? "$title_prefix: beta vs gamma (updated only)" :
-                         "$title_prefix: beta vs gamma (all regions)"
+    ttl = if updated_only && beta_nonnegative
+        "$title_prefix: beta vs gamma (updated only, beta ≥ 0)"
+    elseif updated_only
+        "$title_prefix: beta vs gamma (updated only)"
+    elseif beta_nonnegative
+        "$title_prefix: beta vs gamma (beta ≥ 0)"
+    else
+        "$title_prefix: beta vs gamma (all regions)"
+    end
 
     plt = scatter(
         x, y;
@@ -491,7 +513,9 @@ function save_beta_gamma_scatter(
         ylabel="gamma posterior mean",
         title="",
         label=false,
-        guidefontsize=18,
+        guidefontsize=SCATTER_GUIDEFONTSIZE,
+        tickfontsize=SCATTER_TICKFONTSIZE,
+        titlefontsize=SCATTER_TITLEFONTSIZE,
         bottom_margin=5mm,
         top_margin=5mm
     )
@@ -503,7 +527,7 @@ function save_beta_gamma_scatter(
         test = CorrelationTest(rx, ry)
         p = pvalue(test)
 
-        ann = "Spearman ρ = $(round(ρ, sigdigits=3))\np = $(format_pvalue(p))\nn = $(length(x))"
+        ann = "Spearman ρ = $(round(ρ, sigdigits=3)), p = $(format_pvalue(p)), n = $(length(x))"
     else
         @warn "Not enough points to compute Spearman correlation for $outfile"
         ann = "n = $(length(x))"
@@ -518,13 +542,14 @@ function save_beta_gamma_scatter(
         ypad = ymax == ymin ? 1.0 : 0.05 * (ymax - ymin)
 
         xloc = xmin + xpad
-        yloc = ymax - ypad
+        yloc = ymax + ypad
 
-        annotate!(plt, xloc, yloc, text(ann, 15, :black, :left))
+        annotate!(plt, xloc, yloc, text(ann, SCATTER_ANNOTATION_FONTSIZE, :black, :left))
     end
 
     savefig(plt, outfile)
 end
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -555,17 +580,40 @@ end
 # Save beta-gamma scatter plots
 # ------------------------------------------------------------
 if haskey(row_lookup, (model_name, "beta")) && haskey(row_lookup, (model_name, "gamma"))
-    beta_rows = row_lookup[(model_name, "beta")]
+    beta_rows  = row_lookup[(model_name, "beta")]
     gamma_rows = row_lookup[(model_name, "gamma")]
 
     scatter_all_file = joinpath(scatter_dir, "$(model_name)_beta_vs_gamma_all.$(PLOT_FORMAT)")
     scatter_updated_file = joinpath(scatter_dir, "$(model_name)_beta_vs_gamma_UPDATED.$(PLOT_FORMAT)")
+    scatter_updated_beta_nonneg_file = joinpath(
+        scatter_dir,
+        "$(model_name)_beta_vs_gamma_UPDATED_BETAGE0.$(PLOT_FORMAT)"
+    )
 
-    save_beta_gamma_scatter(beta_rows, gamma_rows, scatter_all_file; updated_only=false, title_prefix=model_name)
-    save_beta_gamma_scatter(beta_rows, gamma_rows, scatter_updated_file; updated_only=true, title_prefix=model_name)
+    save_beta_gamma_scatter(
+        beta_rows, gamma_rows, scatter_all_file;
+        updated_only=false,
+        beta_nonnegative=false,
+        title_prefix=model_name
+    )
+
+    save_beta_gamma_scatter(
+        beta_rows, gamma_rows, scatter_updated_file;
+        updated_only=true,
+        beta_nonnegative=false,
+        title_prefix=model_name
+    )
+
+    save_beta_gamma_scatter(
+        beta_rows, gamma_rows, scatter_updated_beta_nonneg_file;
+        updated_only=true,
+        beta_nonnegative=true,
+        title_prefix=model_name
+    )
 
     println("Saved → $scatter_all_file")
     println("Saved → $scatter_updated_file")
+    println("Saved → $scatter_updated_beta_nonneg_file")
 end
 
 # ------------------------------------------------------------

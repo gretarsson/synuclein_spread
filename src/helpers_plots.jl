@@ -1915,97 +1915,6 @@ Filters:
 
 Scatter axes: x = mean of first base, y = mean of second base.
 """
-function plot_two_local_params_scatter(inference;
-    bases::Union{Nothing,Tuple{String,String}}=nothing,
-    min_prior_shift::Union{Nothing,Float64}=nothing,
-    region_idxs::Union{Nothing,AbstractVector{<:Integer}}=nothing,
-    overlay_regression::Bool=false,
-    show_r2::Bool=false,
-    save_path::Union{Nothing,String}=nothing,
-    filename::String="two_local_params_scatter.pdf",
-)
-    R       = size(inference["data"], 1)
-    chain   = inference["chain"]
-    priors  = inference["priors"]
-    pk      = collect(keys(priors))
-
-    # Auto-detect two bases from priors if not provided
-    if bases === nothing
-        found = String[]
-        seen  = Set{String}()
-        @inbounds for v in pk
-            m = match(r"^([^\[]+)\[(\d+)\]$", v)
-            if m !== nothing
-                b = String(m.captures[1])
-                if !(b in seen)
-                    push!(found, b); push!(seen, b)
-                end
-            end
-        end
-        if length(found) != 2
-            #@info "plot_two_local_params_scatter: expected exactly 2 local families, found $(length(found)). Doing nothing."
-            return nothing
-        end
-        bases = (found[1], found[2])
-    end
-    b1, b2 = bases
-
-    # Posterior means per region for both families (via priors→p[k] mapping)
-    μx = posterior_mean_vector_from_priors(chain, priors, b1, R)
-    μy = posterior_mean_vector_from_priors(chain, priors, b2, R)
-
-    # Build keep mask
-    keep = trues(R)
-    if region_idxs !== nothing
-        sel = falses(R)
-        @inbounds for i in region_idxs
-            if 1 <= i <= R; sel[i] = true; end
-        end
-        keep .&= sel
-    end
-
-    if min_prior_shift !== nothing
-        μp1 = similar(μx); σp1 = similar(μx)
-        μp2 = similar(μy); σp2 = similar(μy)
-        @inbounds for i in 1:R
-            pr1 = priors["$b1[$i]"]; μp1[i] = mean(pr1); σp1[i] = std(pr1)
-            pr2 = priors["$b2[$i]"]; μp2[i] = mean(pr2); σp2[i] = std(pr2)
-        end
-        δ1 = abs.(μx .- μp1) ./ σp1
-        δ2 = abs.(μy .- μp2) ./ σp2
-        keep .&= (δ1 .>= min_prior_shift) .| (δ2 .>= min_prior_shift)
-    end
-
-    keep .&= .!isnan.(μx) .& .!isnan.(μy)
-
-    # Plot
-    f = Figure()
-    ax = Axis(f[1,1];
-        title  = "$(b1) vs $(b2) (posterior means)",
-        xlabel = "$(b1) posterior mean",
-        ylabel = "$(b2) posterior mean",
-    )
-    CairoMakie.scatter!(ax, μx[keep], μy[keep])
-
-    if overlay_regression && sum(keep) ≥ 2
-        X  = hcat(ones(sum(keep)), μx[keep])
-        β  = X \ μy[keep]
-        xs = range(minimum(μx[keep]), maximum(μx[keep]); length=200)
-        lines!(ax, xs, β[1] .+ β[2] .* xs)
-        if show_r2 && sum(keep) ≥ 3
-            ŷ  = X * β
-            r2 = 1 - sum((μy[keep] .- ŷ).^2) / sum((μy[keep] .- mean(μy[keep])).^2)
-            ax.title = @sprintf("%s vs %s  (R² = %.3f, n=%d)", b1, b2, r2, sum(keep))
-        end
-    end
-
-    if save_path !== nothing
-        try; mkdir(save_path); catch; end
-        CairoMakie.save(joinpath(save_path, filename), f)
-    end
-    return f
-end
-
 function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
     show_band=true, band=(0.25, 0.75),
     data_style::Symbol=:mean, data_error::Symbol=:none,
@@ -2054,7 +1963,7 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
     R_inf = size(inference["data"], 1)
     @assert R_local == R_inf "Region count in override data ($(R_local)) differs from inference ($(R_inf))."
 
-    # Data summaries (consistent with your conventions)
+    # Data summaries
     if ndims(local_data) == 3
         mean_data = mean3(local_data)             # (region,time)
         var_data  = var3(local_data)              # (region,time)
@@ -2065,44 +1974,54 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         n_rep     = 1
     end
 
-    # ---------- Time grid for simulation (extend to max of plot timepoints) ----------
+    # ---------- Time grid for simulation ----------
     tmax  = maximum(local_timepoints)
     tgrid = collect(range(0, stop=tmax, step=0.1))
 
-    # ODE problem (we pass u0 per-draw to solve)
+    # ODE problem
     prob = make_ode_problem(ode;
-        labels     = labels,
-        Ltuple     = Ltuple,
-        factors    = factors,
-        u0         = inference["u0"],
-        timepoints = tgrid,
+        labels       = labels,
+        Ltuple       = Ltuple,
+        factors      = factors,
+        u0           = inference["u0"],
+        timepoints   = tgrid,
         seed_indices = inference["seed_idx"],
     )
+
+    # ---------- Fixed layout settings ----------
+    # These are what should keep the inner axis area more consistent across panels
+    fig_size         = (650, 400)
+    fig_padding      = (20, 20, 20, 20)
+    fixed_ytickspace = 55.0
+    fixed_xtickspace = 30.0
+    fixed_ylabelpad  = 10.0
+    fixed_xlabelpad  = 8.0
 
     # Figures & axes
     N = R_local
     fs  = Vector{Any}(undef, N)
     axs = Vector{Any}(undef, N)
+
     for i in 1:N
-        f  = CairoMakie.Figure(size=(650,400))
+        f = CairoMakie.Figure(size=fig_size, figure_padding=fig_padding)
+
         ax = CairoMakie.Axis(
-            f[1,1];
-            title  = "$(labels[i])",
+            f[1, 1];
             xlabel = "Time (months)",
-            ylabel = "\u03b1-synuclein pathology (% area)",
+            ylabel = "α-synuclein pathology",
             limits = truncate_at_zero ? (nothing, nothing, ymin, nothing) :
-                                        (nothing, nothing, nothing, nothing)
+                                        (nothing, nothing, nothing, nothing),
+            yticklabelspace = fixed_ytickspace,
+            xticklabelspace = fixed_xtickspace,
+            ylabelpadding   = fixed_ylabelpad,
+            xlabelpadding   = fixed_xlabelpad
         )
-        # ensure margins and size are all the same
-        #ax.leftmargin   = 65
-        #ax.rightmargin  = 20
-        #ax.topmargin    = 10
-        #ax.bottommargin = 50
+
         fs[i]  = f
         axs[i] = ax
     end
 
-    # Posterior trajectories
+    # ---------- Posterior trajectories ----------
     posterior_samples = sample(chain, min(N_samples, length(chain[:lp])); replace=false)
     S = size(posterior_samples, 1)
     T = length(tgrid)
@@ -2112,61 +2031,49 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
     par_names     = chain.name_map.parameters
     sigma_ch_idx  = findfirst(==(Symbol("σ")), par_names)
     sigma_ch_idx === nothing && error("Could not find :σ in chain.name_map.parameters")
-    # OLD
-    #seed_ch_idx = nothing
-    #if get(inference, "bayesian_seed", false)
-    #    seed_ch_idx = findfirst(==(Symbol("seed")), par_names)
-    #    seed_ch_idx === nothing && error("Could not find :seed in chain.name_map.parameters")
-    #end
-    # NEW
+
     seed_ch_idx = nothing
     if get(inference, "bayesian_seed", false)
-        # Find all parameters starting with "seed"
         seed_ch_idx = findall(n -> startswith(String(n), "seed"), par_names)
         isempty(seed_ch_idx) && error("Could not find any seed parameters in chain.name_map.parameters")
-
-        # Sort by order of appearance to match 'seed' ordering in inference["seed_idx"]
         seed_ch_idx = sort(seed_ch_idx)
     end
 
-
-    # Zero template u0 (only seed nonzero per draw)
+    # Zero template u0
     u0_template = fill!(similar(inference["u0"]), 0.0)
 
-    # Solve per-draw (fresh u0; per-draw seed)
+    # Solve per draw
     for (s, sample_vec) in enumerate(eachrow(Array(posterior_samples)))
         p    = sample_vec[1:N_pars]
         u0_s = copy(u0_template)
+
         if get(inference, "bayesian_seed", false)
             if isa(seed, Int)
-                # Single seed region
                 u0_s[seed] = sample_vec[seed_ch_idx[1]]
             else
-                # Multiple seed regions — one parameter per seed, same order guaranteed
-                for (i, sidx) in enumerate(seed)
-                    u0_s[sidx] = sample_vec[seed_ch_idx[i]]
+                for (j, sidx) in enumerate(seed)
+                    u0_s[sidx] = sample_vec[seed_ch_idx[j]]
                 end
             end
         else
-            # Fixed (non-Bayesian) seeding
             if isa(seed, Int)
                 u0_s[seed] = inference["seed_value"]
             else
-                # Same constant value for all seed sites
                 u0_s[seed] .= inference["seed_value"]
             end
         end
+
         sol = solve(prob, Tsit5(); p=p, u0=u0_s, saveat=tgrid, abstol=1e-9, reltol=1e-6)
         traj[:, :, s] = Array(sol[sol_idxs, :])
     end
 
-    # Quantiles
+    # ---------- Quantiles ----------
     lowq, highq = isnothing(level) ? band : ((1 - level)/2, 1 - (1 - level)/2)
     q_med_proc  = mapslices(x -> quantile(x, 0.5),   traj; dims=3)[:, :, 1]
     q_low_proc  = mapslices(x -> quantile(x, lowq),  traj; dims=3)[:, :, 1]
     q_high_proc = mapslices(x -> quantile(x, highq), traj; dims=3)[:, :, 1]
 
-    # Predictive quantiles (simulate Normal noise per draw using that draw's σ)
+    # Predictive quantiles
     q_med_pred = q_low_pred = q_high_pred = nothing
     if interval == :predictive || line_from == :predictive
         ytraj = similar(traj)
@@ -2184,6 +2091,7 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         interval == :predictive ? (q_low_pred, q_high_pred) :
         interval == :process    ? (q_low_proc, q_high_proc) :
         error("interval must be :process or :predictive")
+
     q_med_draw = (line_from == :predictive && q_med_pred !== nothing) ? q_med_pred : q_med_proc
 
     # Clamp to floor
@@ -2194,7 +2102,7 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         q_med_draw  = clamp.(q_med_draw,  floor, Inf)
     end
 
-    # Common y-max (optional)
+    # ---------- Common y-max ----------
     global_ymax = ymax
     if isnothing(global_ymax) && sync_y
         dvals = collect(skipmissing(vec(local_data)))
@@ -2206,25 +2114,22 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         end
     end
 
-    # If we have a shared top, compute a shared lower headroom below clamp_floor
     shared_ymin = nothing
     if !isnothing(global_ymax)
         floor = isnothing(clamp_floor) ? ymin : clamp_floor
         shared_ymin = floor - lower_headroom_frac * max(global_ymax - floor, 1e-9)
     end
 
-    # ---------------- Training vs held-out marker logic ----------------
-    # Reference set considered “train”:
+    # ---------- Training vs held-out ----------
     train_tp = train_timepoints === nothing ? inference["timepoints"] : train_timepoints
     train_tp_set = Set(Float64.(train_tp))
-    # For numeric robustness, match by exact values in provided vectors
     is_train = x -> (Float64(x) in train_tp_set)
 
     # Aesthetics
     train_color   = RGB(0/255,71/255,171/255)
     heldout_color = RGB(200/255, 60/255, 50/255)
 
-    # ---------------- Plot per region ----------------
+    # ---------- Plot per region ----------
     for i in 1:N
         # Band + line
         if show_band
@@ -2239,10 +2144,9 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
                 t_i = Float64.(local_timepoints[nonmissing])
                 μ_i = Float64.(mean_data[i, :][nonmissing])
 
-                # Split into train vs held-out (by timepoints)
                 if mark_heldout
-                    I_train  = [k for (k,t) in enumerate(t_i) if is_train(t)]
-                    I_held   = [k for (k,t) in enumerate(t_i) if !is_train(t)]
+                    I_train = [k for (k,t) in enumerate(t_i) if is_train(t)]
+                    I_held  = [k for (k,t) in enumerate(t_i) if !is_train(t)]
 
                     if !isempty(I_train)
                         CairoMakie.scatter!(axs[i], t_i[I_train], μ_i[I_train];
@@ -2257,39 +2161,17 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
                         color=train_color, alpha=0.95, markersize=markersize)
                 end
 
-                # Error bars (optional)
-                #if data_error != :none
-                #    v_i = Float64.(var_data[i, :][nonmissing])
-                #    v_i = max.(v_i, 0.0)
-                #    σ_i = sqrt.(v_i)
-                #    if data_error === :se && n_rep > 1
-                #        σ_i ./= sqrt(n_rep)
-                #    end
-                #    replace!(σ_i, NaN => 0.0)
-
-                #    if truncate_at_zero
-                #        floor = isnothing(clamp_floor) ? ymin : clamp_floor
-                #        lower_cap = max.(0.0, μ_i .- floor)
-                #        σ_low = map(min, σ_i, lower_cap)
-                #        σ_up  = σ_i
-                #        CairoMakie.errorbars!(axs[i], t_i, μ_i, σ_low, σ_up;
-                #            color=(train_color,0.5), whiskerwidth=20, linewidth=5)
-                #    else
-                #        CairoMakie.errorbars!(axs[i], t_i, μ_i, σ_i;
-                #            color=(train_color,0.5), whiskerwidth=20, linewidth=3)
-                #    end
-                #end
-                # Error bars (optional)
+                # Error bars
                 if data_error != :none
                     v_i = Float64.(var_data[i, :][nonmissing])
                     v_i = max.(v_i, 0.0)
                     σ_i = sqrt.(v_i)
+
                     if data_error === :se && n_rep > 1
                         σ_i ./= sqrt(n_rep)
                     end
                     replace!(σ_i, NaN => 0.0)
 
-                    # indices for coloring (match what you plotted)
                     I_train = Int[]
                     I_held  = Int[]
                     if mark_heldout
@@ -2299,7 +2181,6 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
                         I_train = collect(eachindex(t_i))
                     end
 
-                    # helper to draw one group
                     function _draw_err!(I, col)
                         isempty(I) && return
                         tG = t_i[I]
@@ -2328,13 +2209,13 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
             for k in axes(local_data, 3)
                 nonmissing = findall(local_data[i, :, k] .!== missing)
                 if !isempty(nonmissing)
-                    # jitter for visibility
                     t_i = Float64.(local_timepoints[nonmissing]) .+ randn(length(nonmissing)) .* 0.04
                     y_i = Float64.(local_data[i, :, k][nonmissing])
-                    # if marking held-out, split colors; otherwise one color
+
                     if mark_heldout
-                        I_train  = [m for (m,t) in enumerate(t_i) if is_train(t)]
-                        I_held   = [m for (m,t) in enumerate(t_i) if !is_train(t)]
+                        I_train = [m for (m,t) in enumerate(t_i) if is_train(t)]
+                        I_held  = [m for (m,t) in enumerate(t_i) if !is_train(t)]
+
                         if !isempty(I_train)
                             CairoMakie.scatter!(axs[i], t_i[I_train], y_i[I_train];
                                 color=(train_color,0.35), markersize=round(Int, 0.4*18))
@@ -2357,35 +2238,26 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         if !isnothing(global_ymax) && isfinite(global_ymax)
             low = (shared_ymin isa Number && isfinite(shared_ymin)) ? shared_ymin : ymin
             Makie.ylims!(axs[i], low, global_ymax)
-        else
-            # OLD
-            #dvals_i = ndims(local_data) == 3 ? vec(local_data[i, :, :]) : vec(local_data[i, :])
-            #dvals_i = Float64.(filter(isfinite, collect(skipmissing(dvals_i))))
-            #panel_data_max = isempty(dvals_i) ? ymin + 1.0 : maximum(dvals_i)
-            #panel_band_max = show_band ? maximum(q_high_draw[i, :]) : maximum(q_med_draw[i, :])
-            #panel_top = max(panel_data_max, panel_band_max)
-
-            #floor = isnothing(clamp_floor) ? ymin : clamp_floor
-            #panel_low = floor - lower_headroom_frac * max(panel_top - floor, 1e-9)
-            #if !(panel_top > panel_low) || !isfinite(panel_top)
-            #    panel_top = floor + 1.0
-            #end
-            #Makie.ylims!(axs[i], panel_low, panel_top)
-            nothing
         end
 
         if save_path !== nothing
-            try; mkdir(save_path); catch; end
+            try
+                mkdir(save_path)
+            catch
+            end
             CairoMakie.save(joinpath(save_path, "retrodiction_region_$(i).pdf"), fs[i])
         end
     end
 
-    # Link y-axes if we synced / fixed
+    # Link y-axes if synced / fixed
     if !isnothing(global_ymax) || sync_y
-        try; Makie.linkyaxes!(axs...); catch; end
+        try
+            Makie.linkyaxes!(axs...)
+        catch
+        end
     end
 
-    # Legend (kept as before; no need to encode train/held-out here since panel markers are obvious)
+    # ---------- Legend ----------
     if save_legend
         model_line_color   = :black
         model_line_width   = 5
@@ -2393,12 +2265,12 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         data_color         = RGB(0/255, 71/255, 171/255)
         data_marker_size   = round(Int, data_style == :mean ? 1.2*18 : 0.4*18)
 
-        line_el  = CairoMakie.LineElement(color=model_line_color, linewidth=model_line_width)
-        band_el  = CairoMakie.PolyElement(color=band_fill_color, strokecolor=:transparent)
-        mark_el  = CairoMakie.MarkerElement(marker=:circle, color=data_color, markersize=data_marker_size)
+        line_el = CairoMakie.LineElement(color=model_line_color, linewidth=model_line_width)
+        band_el = CairoMakie.PolyElement(color=band_fill_color, strokecolor=:transparent)
+        mark_el = CairoMakie.MarkerElement(marker=:circle, color=data_color, markersize=data_marker_size)
 
-        leg_fig  = CairoMakie.Figure(size = (480, 200), figure_padding=20)
-        legend   = CairoMakie.Legend(
+        leg_fig = CairoMakie.Figure(size=(480, 200), figure_padding=20)
+        legend = CairoMakie.Legend(
             leg_fig,
             [line_el, band_el, mark_el],
             ["Model fit", "95% CI", "Experimental data"];
@@ -2410,14 +2282,16 @@ function plot_retrodiction2(inference; save_path=nothing, N_samples=200,
         leg_fig[1,1] = legend
 
         if save_path !== nothing
-            try; mkdir(save_path); catch; end
+            try
+                mkdir(save_path)
+            catch
+            end
             CairoMakie.save(joinpath(save_path, legend_filename), leg_fig)
         end
     end
 
     return fs
 end
-
 
 using CairoMakie, Statistics, StatsBase
 
@@ -2978,12 +2852,12 @@ function predicted_observed_marked(inference;
     labels      = inference["labels"]
     sol_idxs    = inference["sol_idxs"]
     ks          = collect(keys(inference["priors"]))
-    N_pars      = findall(x->x=="σ",ks)[1] - 1
+    N_pars      = findall(x -> x == "σ", ks)[1] - 1
     factors     = [1.0 for _ in 1:N_pars]
     ode         = odes[inference["ode"]]
-    R           = size(data,1)
+    R           = size(data, 1)
 
-    @assert length(timepoints) == size(data,2) "timepoints length must match data's 2nd dim"
+    @assert length(timepoints) == size(data, 2) "timepoints length must match data's 2nd dim"
 
     # --- Posterior mode solve at observed timepoints ---
     n_pars = length(chain.info[1])
@@ -3027,7 +2901,7 @@ function predicted_observed_marked(inference;
     # --- Observed summary (mean over replicates if 3D) ---
     obs =
         ndims(data) == 3 ? mean3(data) :
-        ndims(data) == 2 ? data         :
+        ndims(data) == 2 ? data :
         error("data must be (R,T) or (R,T,K)")
 
     # --- Train vs held-out membership ---
@@ -3037,28 +2911,62 @@ function predicted_observed_marked(inference;
 
     # --- Columns to plot ---
     first_col = skip_first_timepoint ? 2 : 1
-    cols = first_col:size(obs,2)
+    cols = first_col:size(obs, 2)
     isempty(cols) && return nothing
 
-    # --- Helper to prepare x,y safely ---
-    function prep_xy(x_raw, y_raw)
-        mask = .!ismissing.(x_raw)
-        y_tmp = Float64.(y_raw)
-        mask .&= isfinite.(y_tmp)
-        x = Float64.(x_raw[mask])
-        y = y_tmp[mask]
-        if isempty(x); return Float64[], Float64[]; end
+    # --- Helper: raw finite x,y pairs only (no epsilon shift) ---
+    function raw_xy(x_raw, y_raw)
+        mask = trues(length(x_raw))
+
+        # remove missings first
+        mask .&= .!ismissing.(x_raw)
+        mask .&= .!ismissing.(y_raw)
+
+        if !any(mask)
+            return Float64[], Float64[]
+        end
+
+        # now it is safe to index and convert
+        x = Float64.(collect(x_raw[mask]))
+        y = Float64.(collect(y_raw[mask]))
+
+        # remove non-finite values
+        finite_mask = isfinite.(x) .& isfinite.(y)
+        if !any(finite_mask)
+            return Float64[], Float64[]
+        end
+
+        return x[finite_mask], y[finite_mask]
+    end
+
+    # --- Helper: plotting version of x,y ---
+    function prep_xy_for_plot(x_raw, y_raw)
+        x, y = raw_xy(x_raw, y_raw)
+
+        if isempty(x)
+            return Float64[], Float64[]
+        end
+
         if plotscale === log10
             pos_pool = vcat(x[x .> 0], y[y .> 0])
             isempty(pos_pool) && return Float64[], Float64[]
+
             eps_shift = minimum(pos_pool)
-            x = ifelse.(x .> 0, x, x .+ eps_shift)
-            y = ifelse.(y .> 0, y, y .+ eps_shift)
+
+            x_plot = copy(x)
+            y_plot = copy(y)
+
+            # plotting convenience only
+            x_plot[x_plot .<= 0] .= eps_shift
+            y_plot[y_plot .<= 0] .= eps_shift
+
+            return x_plot, y_plot
+        else
+            return x, y
         end
-        return x, y
     end
 
-    # --- R² helper ---
+    # --- Ordinary R² helper ---
     function r2_score(y_obs::AbstractVector, y_pred::AbstractVector)
         if isempty(y_obs) || isempty(y_pred)
             return NaN
@@ -3066,7 +2974,39 @@ function predicted_observed_marked(inference;
         μ = mean(y_obs)
         ss_res = sum((y_obs .- y_pred).^2)
         ss_tot = sum((y_obs .- μ).^2)
-        return ss_tot == 0 ? NaN : 1 - ss_res/ss_tot
+        return ss_tot == 0 ? NaN : 1 - ss_res / ss_tot
+    end
+
+    # --- R² in displayed space, but computed from RAW data ---
+    function r2_for_display(x_raw::AbstractVector, y_raw::AbstractVector)
+        if isempty(x_raw) || isempty(y_raw)
+            return NaN
+        end
+
+        if plotscale === log10
+            mask = isfinite.(x_raw) .& isfinite.(y_raw) .& (x_raw .> 0) .& (y_raw .> 0)
+            if !any(mask)
+                return NaN
+            end
+            xlog = log10.(x_raw[mask])
+            ylog = log10.(y_raw[mask])
+            return r2_score(xlog, ylog)
+        else
+            mask = isfinite.(x_raw) .& isfinite.(y_raw)
+            if !any(mask)
+                return NaN
+            end
+            return r2_score(x_raw[mask], y_raw[mask])
+        end
+    end
+
+    # --- R² label helper ---
+    function format_r2(r2::Real)
+        if plotscale === log10
+            return "R² = $(round(r2, digits=3))"
+        else
+            return "R² = $(round(r2, digits=3))"
+        end
     end
 
     # --- Shared square-limit helper (applies to BOTH x and y) ---
@@ -3083,107 +3023,131 @@ function predicted_observed_marked(inference;
 
         if y_max !== nothing
             mx = Float64(y_max)
-            # If y_max is invalid for log scale, fail loudly rather than silently.
             if plotscale === log10 && mx <= 0
                 error("y_max must be > 0 when using log10 scale.")
             end
-            # Ensure mn < mx (otherwise Makie can error / degenerate)
             if !(mn < mx)
-                mn = plotscale === log10 ? mx/10 : mx - 1
+                mn = plotscale === log10 ? mx / 10 : mx - 1
             end
         end
 
         CairoMakie.xlims!(ax, mn, mx)
         CairoMakie.ylims!(ax, mn, mx)
-        #ax.aspect = DataAspect()  # 1 unit in x equals 1 unit in y (square in data coordinates)
-        ax.aspect = AxisAspect(1)  # 1 unit in x equals 1 unit in y (square in data coordinates)
+        ax.aspect = AxisAspect(1)
         return mn, mx
     end
 
     # --- Colors/markers ---
-    train_color   = RGBf(0/255,71/255,171/255)    # blue
-    heldout_color = RGBf(200/255, 60/255, 50/255) # red
+    train_color   = RGBf(0/255, 71/255, 171/255)
+    heldout_color = RGBf(200/255, 60/255, 50/255)
 
     # === Global scatter (all chosen timepoints pooled) ===
-    # === Global scatter (all chosen timepoints pooled) ===
-    x_train = Float64[]; y_train = Float64[]
-    x_hold  = Float64[]; y_hold  = Float64[]
+    x_train = Float64[]
+    y_train = Float64[]
+    x_hold  = Float64[]
+    y_hold  = Float64[]
+
+    # raw versions for R²
+    x_train_raw = Float64[]
+    y_train_raw = Float64[]
+    x_hold_raw  = Float64[]
+    y_hold_raw  = Float64[]
+
     for j in cols
-        xj, yj = prep_xy(view(obs, :, j), view(pred, :, j))
-        isempty(xj) && continue
+        xj_raw, yj_raw = raw_xy(view(obs, :, j), view(pred, :, j))
+        isempty(xj_raw) && continue
+
+        xj_plot, yj_plot = prep_xy_for_plot(view(obs, :, j), view(pred, :, j))
+        isempty(xj_plot) && continue
+
         if mark_heldout && !is_train_time(timepoints[j])
-            append!(x_hold, xj); append!(y_hold, yj)
+            append!(x_hold, xj_plot)
+            append!(y_hold, yj_plot)
+            append!(x_hold_raw, xj_raw)
+            append!(y_hold_raw, yj_raw)
         else
-            append!(x_train, xj); append!(y_train, yj)
+            append!(x_train, xj_plot)
+            append!(y_train, yj_plot)
+            append!(x_train_raw, xj_raw)
+            append!(y_train_raw, yj_raw)
         end
     end
 
-    allx = vcat(x_train, x_hold)   # Observed
-    ally = vcat(y_train, y_hold)   # Predicted
-    r2_global = r2_score(allx, ally)
-    r2_train  = r2_score(x_train, y_train)
-    r2_hold   = r2_score(x_hold, y_hold)
+    allx     = vcat(x_train, x_hold)         # plotted observed
+    ally     = vcat(y_train, y_hold)         # plotted predicted
+    allx_raw = vcat(x_train_raw, x_hold_raw)
+    ally_raw = vcat(y_train_raw, y_hold_raw)
+
+    r2_global = r2_for_display(allx_raw, ally_raw)
+    r2_train  = r2_for_display(x_train_raw, y_train_raw)
+    r2_hold   = r2_for_display(x_hold_raw, y_hold_raw)
 
     # Axis ticks for log10
     use_log = (plotscale === log10)
-    xticks = use_log ? ([1e-6,1e-5,1e-4,1e-3,1e-2,1e-1,1e0],
-                        [L"$10^{-6}$",L"$10^{-5}$",L"$10^{-4}$",L"$10^{-3}$",L"$10^{-2}$",L"$10^{-1}$",L"$10^{0}$"]) :
-                       Makie.automatic
+    xticks = use_log ? (
+        [1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1e0],
+        [L"$10^{-6}$", L"$10^{-5}$", L"$10^{-4}$", L"$10^{-3}$", L"$10^{-2}$", L"$10^{-1}$", L"$10^{0}$"]
+    ) : Makie.automatic
 
     figs = Any[]
 
     # --- Global combined plot ---
-    f = Figure(size = (450, 450), figure_padding = 5)
-    ax = Axis(f[1,1];
+    f = Figure(size=(450, 450), figure_padding=5)
+    ax = Axis(f[1, 1];
         title="",
         xlabel="Observed", ylabel="Predicted",
         xscale=plotscale, yscale=plotscale,
         xticks=xticks, yticks=xticks,
-        alignmode=Inside())
+        alignmode=Inside()
+    )
 
     if !isempty(x_train)
-        CairoMakie.scatter!(ax, x_train, y_train; color=(train_color,0.55), markersize=markersize)
+        CairoMakie.scatter!(ax, x_train, y_train; color=(train_color, 0.55), markersize=markersize)
     end
     if mark_heldout && !isempty(x_hold)
-        CairoMakie.scatter!(ax, x_hold, y_hold; color=(heldout_color,0.7), marker=:utriangle, markersize=markersize)
+        CairoMakie.scatter!(ax, x_hold, y_hold; color=(heldout_color, 0.7), marker=:utriangle, markersize=markersize)
     end
 
     if !isempty(allx)
         mn, mx = set_square_limits!(ax, allx, ally)
-        lines!(ax, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
+        lines!(ax, [mn, mx], [mn, mx]; color=:gray, alpha=0.6)
     end
 
     if show_r2 && isfinite(r2_global)
-        text!(ax, 0.05, 0.95, text=@sprintf("R² = %.3f", r2_global),
-              align=(:left,:top), space=:relative, color=:black, fontsize=28)
+        text!(ax, 0.05, 0.95, text=format_r2(r2_global),
+              align=(:left, :top), space=:relative, color=:black, fontsize=28)
     end
 
     if !isempty(save_path)
-        try; mkpath(save_path); catch; end
+        try
+            mkpath(save_path)
+        catch
+        end
         resize_to_layout!(f)
-        save(joinpath(save_path,"predicted_observed_marked_all.pdf"), f)
+        save(joinpath(save_path, "predicted_observed_marked_all.pdf"), f)
     end
     push!(figs, f)
 
     # --- Global in-sample only plot ---
     if !isempty(x_train)
-        f_in = Figure(size = (450, 450), figure_padding = 5)
-        ax_in = Axis(f_in[1,1];
+        f_in = Figure(size=(450, 450), figure_padding=5)
+        ax_in = Axis(f_in[1, 1];
             title="",
             xlabel="Observed", ylabel="Predicted",
             xscale=plotscale, yscale=plotscale,
             xticks=xticks, yticks=xticks,
-            alignmode=Inside())
+            alignmode=Inside()
+        )
 
         CairoMakie.scatter!(ax_in, x_train, y_train;
-            color=(train_color,0.55), markersize=markersize)
+            color=(train_color, 0.55), markersize=markersize)
 
         mn, mx = set_square_limits!(ax_in, x_train, y_train)
-        lines!(ax_in, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
+        lines!(ax_in, [mn, mx], [mn, mx]; color=:gray, alpha=0.6)
 
         if show_r2 && isfinite(r2_train)
-            text!(ax_in, 0.05, 0.95, text=@sprintf("R² = %.3f", r2_train),
-                  align=(:left,:top), space=:relative, color=:black, fontsize=28)
+            text!(ax_in, 0.05, 0.95, text=format_r2(r2_train),
+                  align=(:left, :top), space=:relative, color=:black, fontsize=28)
         end
 
         if !isempty(save_path)
@@ -3195,23 +3159,24 @@ function predicted_observed_marked(inference;
 
     # --- Global held-out only plot ---
     if mark_heldout && !isempty(x_hold)
-        f_out = Figure(size = (450, 450), figure_padding = 5)
-        ax_out = Axis(f_out[1,1];
+        f_out = Figure(size=(450, 450), figure_padding=5)
+        ax_out = Axis(f_out[1, 1];
             title="",
             xlabel="Observed", ylabel="Predicted",
             xscale=plotscale, yscale=plotscale,
             xticks=xticks, yticks=xticks,
-            alignmode=Inside())
+            alignmode=Inside()
+        )
 
         CairoMakie.scatter!(ax_out, x_hold, y_hold;
-            color=(heldout_color,0.7), marker=:utriangle, markersize=markersize)
+            color=(heldout_color, 0.7), marker=:utriangle, markersize=markersize)
 
         mn, mx = set_square_limits!(ax_out, x_hold, y_hold)
-        lines!(ax_out, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
+        lines!(ax_out, [mn, mx], [mn, mx]; color=:gray, alpha=0.6)
 
         if show_r2 && isfinite(r2_hold)
-            text!(ax_out, 0.05, 0.95, text=@sprintf("R² = %.3f", r2_hold),
-                  align=(:left,:top), space=:relative, color=:black, fontsize=28)
+            text!(ax_out, 0.05, 0.95, text=format_r2(r2_hold),
+                  align=(:left, :top), space=:relative, color=:black, fontsize=28)
         end
 
         if !isempty(save_path)
@@ -3222,36 +3187,36 @@ function predicted_observed_marked(inference;
     end
 
     # === Per-timepoint panels ===
-    #figs = Any[f]
     for j in cols
-        xj, yj = prep_xy(view(obs, :, j), view(pred, :, j))
+        xj_raw, yj_raw = raw_xy(view(obs, :, j), view(pred, :, j))
+        isempty(xj_raw) && continue
+
+        xj, yj = prep_xy_for_plot(view(obs, :, j), view(pred, :, j))
         isempty(xj) && continue
 
-        r2_t = r2_score(xj, yj)
+        r2_t = r2_for_display(xj_raw, yj_raw)
 
-        #f_t = Figure()
-        f_t = Figure(size = (450, 450), figure_padding = 5)
-        ax_t = Axis(f_t[1,1];
-            #title  = @sprintf("t = %.3f", timepoints[j]),
-            xlabel = "Observed", ylabel = "Predicted",
-            xscale = plotscale, yscale = plotscale,
-            xticks = xticks, yticks = xticks,
-            alignmode=Inside())
+        f_t = Figure(size=(450, 450), figure_padding=5)
+        ax_t = Axis(f_t[1, 1];
+            xlabel="Observed", ylabel="Predicted",
+            xscale=plotscale, yscale=plotscale,
+            xticks=xticks, yticks=xticks,
+            alignmode=Inside()
+        )
 
         if mark_heldout && !is_train_time(timepoints[j])
-            CairoMakie.scatter!(ax_t, xj, yj; color=(heldout_color,0.7), marker=:utriangle, markersize=markersize)
+            CairoMakie.scatter!(ax_t, xj, yj; color=(heldout_color, 0.7), marker=:utriangle, markersize=markersize)
         else
-            CairoMakie.scatter!(ax_t, xj, yj; color=(train_color,0.55), markersize=markersize)
+            CairoMakie.scatter!(ax_t, xj, yj; color=(train_color, 0.55), markersize=markersize)
         end
 
-        # Square limits (optionally capped by y_max) + 1:1 line
         mn, mx = set_square_limits!(ax_t, xj, yj)
-        lines!(ax_t, [mn,mx], [mn,mx]; color=:gray, alpha=0.6)
+        lines!(ax_t, [mn, mx], [mn, mx]; color=:gray, alpha=0.6)
 
         if show_r2 && isfinite(r2_t)
             text!(ax_t, 0.05, 0.95,
-                  text=@sprintf("R² = %.3f", r2_t),
-                  align=(:left,:top), space=:relative,
+                  text=format_r2(r2_t),
+                  align=(:left, :top), space=:relative,
                   color=:black, fontsize=28)
         end
 
@@ -3554,12 +3519,9 @@ function plot_inference(inference, save_path;
         )
     end
 
-
-
-
-    plot_two_local_params_scatter(inference;
-        save_path=save_path*"/two_param_scatter",
-    )
+    #plot_two_local_params_scatter(inference;
+    #    save_path=save_path*"/two_param_scatter",
+    #)
 
     # Plot parameters means as function of path length from seed
     for b in vector_bases_from_priors(inference)

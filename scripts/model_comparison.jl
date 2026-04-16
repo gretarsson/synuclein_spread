@@ -81,22 +81,22 @@ model_names_list = [
     ["euclidean", "anterograde", "retrograde", "bidirectional"],
 
     # STRIATUM: retro-only model class comparison labels
-    ["DIFF", "DIFFG", "DIFFGA"],
+    ["DIFF", "DIFF-R", "DIFF-RF"],
     
     # STRIATUM with BILATERAL: retro-only model class comparison labels
-    ["DIFF", "DIFFG", "DIFFGA", "DIFFG bilateral", "DIFFGA bilateral"],
+    ["DIFF", "DIFF-R", "DIFF-RF", "DIFF-R bilateral", "DIFF-RF bilateral"],
 
     # STRIATUM: flush ablations labels
     ["DIFF flush",  "DIFF retrograde"],
-    ["DIFFG flush", "DIFFG retrograde"],
-    ["DIFFGA flush","DIFFGA retrograde"],
+    ["DIFF-R flush", "DIFF-R retrograde"],
+    ["DIFF-RF flush","DIFF-RF retrograde"],
 
     # STRIATUM: bilateral vs unilateral labels
-    ["DIFFG bilateral",  "DIFFG"],
-    ["DIFFGA bilateral", "DIFFGA"],
+    ["DIFF-R bilateral",  "DIFF-R"],
+    ["DIFF-RF bilateral", "DIFF-RF"],
 
     # HIPPOCAMPUS: retro-only model class comparison labels
-    ["DIFF", "DIFFG", "DIFFGA"],
+    ["DIFF", "DIFF-R", "DIFF-RF"],
 ]
 
 fig_prefixes = [
@@ -115,8 +115,8 @@ fig_prefixes = [
 
 fig_titles = [
     "DIFF",
-    "DIFFG",
-    "DIFFGA",
+    "DIFF-R",
+    "DIFF-RF",
     "",
     "",
     "",  # flush panels often have their own annotations; keep blank if you do that elsewhere
