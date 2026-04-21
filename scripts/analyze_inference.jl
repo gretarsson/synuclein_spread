@@ -2,7 +2,7 @@
 here we create a folder of analysis plots of interence results
 =#
 using PathoSpread
-plot_priors_and_posteriors = false
+plot_priors_and_posteriors = true
 
 
 simulations = ["igs_DIFF_EUCL", "igs_DIFF_ANTERO", "igs_DIFF_RETRO", "igs_DIFF_BIDIR",
@@ -22,7 +22,8 @@ simulations = ["hippo_DIFFGA_RETRO_posterior_prior"]
 #simulations = ["DIFFG_RETRO"]
 #simulations = ["u0_DIFF_RETRO", "DIFFG_RETRO", "DIFFGA_RETRO"]
 #simulations = ["new_hippo_DIFF_RETRO", "new_hippo_DIFFG_RETRO", "new_hippo_DIFFGA_RETRO"]
-simulations = ["global_hippo_DIFFGA_RETRO_posterior_prior"]
+#simulations = ["global_hippo_DIFFGA_RETRO_posterior_prior"]
+simulations = ["syn_mapt_DIFFGA_RETRO", "syn_app_DIFFGA_RETRO"]
 
 
 #simulations = ["igs_DIFF_RETRO", "DIFFG_RETRO", "DIFFGA_RETRO"]
@@ -51,6 +52,6 @@ for simulation in simulations
     # plot with training data
     setup_plot_theme!()  # set plotting settings
     data_full, timepoints_full = PathoSpread.process_pathology("data/total_path.csv", W_csv="data/W_labeled_filtered.csv")
-    plot_inference(inference_obj,"figures/inferences_final/"*simulation; full_data=data_full, full_timepoints=timepoints_full, plot_priors_posteriors=false)  
+    plot_inference(inference_obj,"figures/inferences_copathology/"*simulation; full_data=data_full, full_timepoints=timepoints_full, plot_priors_posteriors=false)  
     #
 end
