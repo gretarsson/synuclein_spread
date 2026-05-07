@@ -9,8 +9,8 @@ using LaTeXStrings
 # ============================================================
 
 #const SIMULATION = "global_hippo_DIFFGA_RETRO_posterior_prior"
-const SIMULATION = "DIFFGA_RETRO"
-const GENE_DATA_CSV = "data/avg_Pangea_exp.csv"
+const SIMULATION = get(ENV, "GENE_PCA_SIMULATION", "DIFFGA_RETRO")
+const GENE_DATA_CSV = get(ENV, "GENE_PCA_GENE_DATA_CSV", "data/avg_Pangea_exp.csv")
 
 # posterior summary for beta/gamma parameters
 # :mean, :median, :map
@@ -70,7 +70,7 @@ const REGIONS_TO_ANNOTATE = ["SNc", "VTA"]
 const REGION_ANNOTATION_FONTSIZE = 22
 
 # output
-const OUTROOT_BASE = "results/gene_correlation_pca_axis"
+const OUTROOT_BASE = get(ENV, "GENE_PCA_OUTROOT_BASE", "results/gene_correlation_pca_axis")
 const HEMI_SUFFIX_ROOT = USE_HEMISPHERE_DUPLICATION ? "_HEMIDUP" : ""
 const BETA_SUFFIX_ROOT = BETA_POS_ONLY ? "_beta_gt_0" : ""
 const UPDATED_SUFFIX_ROOT = UPDATED_ONLY ? "_UPDATED" : ""
